@@ -35,34 +35,31 @@ El archivo `backend/.env` ya está configurado para desarrollo local. No necesit
 ### 4. Aplicar migraciones
 
 ```powershell
-# Desde la carpeta backend/
 cd backend
 uv run alembic upgrade head
 ```
 
-### 5. Insertar eventos de prueba (seed)
+### 5. ⚠️ Insertar datos iniciales (OBLIGATORIO)
+
+> Sin este paso el formulario de registro mostrará **"No hay eventos disponibles"**.
 
 ```powershell
-uv run python -c "
-import asyncio
-from app.db.session import AsyncSessionLocal
-from app.models.evento import Evento
-
-async def seed():
-    async with AsyncSessionLocal() as db:
-        eventos = [
-            Evento(nombre='Invierno 2026', periodo='INVIERNO', anio=2026, activo=False),
-            Evento(nombre='Febrero-Junio 2026', periodo='FEB_JUN', anio=2026, activo=True),
-            Evento(nombre='Verano 2026', periodo='VERANO', anio=2026, activo=False),
-            Evento(nombre='Agosto-Diciembre 2026', periodo='AGO_DIC', anio=2026, activo=False),
-        ]
-        db.add_all(eventos)
-        await db.commit()
-        print('✅ Eventos insertados')
-
-asyncio.run(seed())
-"
+# Desde la carpeta backend/
+uv run python seed.py
 ```
+
+Deberías ver:
+```
+🌱 Ejecutando seed de datos iniciales...
+✅ 4 eventos insertados correctamente:
+   - Invierno 2026 (inactivo)
+   - Febrero-Junio 2026 (ACTIVO)
+   - Verano 2026 (inactivo)
+   - Agosto-Diciembre 2026 (inactivo)
+✅ Seed completado.
+```
+
+> Si ya corriste el seed antes, el script detecta los eventos existentes y no duplica nada.
 
 ### 6. Correr el servidor
 
