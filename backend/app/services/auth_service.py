@@ -30,7 +30,26 @@ async def registrar_alumno(db: AsyncSession, datos: RegistroRequest) -> dict:
     Raises:
         RegistroError: Si la matrícula/correo ya existe, los eventos no son válidos, etc.
     """
-    # 1. Verificar que la matrícula no exista
+    from app.models.padron_alumno import PadronAlumno
+
+    # 0. Verificar que la matrícula existe en el padrón y el nombre coincide
+    padron_result = await db.execute(
+        select(PadronAlumno).where(PadronAlumno.id_matricula == datos.matricula)
+    )
+    alumno_padron = padron_result.scalar_one_or_none()
+    
+    if not alumno_padron:
+        raise RegistroError("La matrícula no se encuentra en el padrón oficial de alumnos.")
+    
+    # Validación de coincidencia de nombre (ignorar mayúsculas/minúsculas y espacios extra)
+    nombre_padron = " ".join(alumno_padron.nombre_completo.lower().split())
+    nombre_ingresado = " ".join(datos.nombre.lower().split())
+    
+    if nombre_padron != nombre_ingresado:
+        # Podríamos ser más flexibles aquí con Levenshtein, pero por ahora pedimos coincidencia exacta de palabras
+        raise RegistroError(f"El nombre no coincide con el registrado para esta matrícula. Asegúrate de ingresar tu nombre completo como aparece en tu credencial.")
+
+    # 1. Verificar que la matrícula no exista ya como usuario registrado
     result = await db.execute(
         select(Usuario).where(Usuario.id_matricula == datos.matricula)
     )
