@@ -37,6 +37,11 @@ Empresas
 │    nombre_empresa
 │    logo_url (opcional)
 └──────────────────────────────────────────────────────────────────────
+
+PadronAlumnos (Nueva)
+│ PK id_matricula (String)
+│    nombre_completo
+└──────────────────────────────────────────────────────────────────────
 ```
 
 ---

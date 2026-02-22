@@ -212,7 +212,8 @@ ALLOWED_ORIGINS=https://tu-dominio.com
 | Campo | Validación |
 |---|---|
 | `correo` | Regex: debe terminar en `@tec.mx` |
-| `matricula` | Regex: formato `A0XXXXXXX` (A0 + 7 dígitos) |
+| `matricula` | Regex: formato `A0XXXXXXX` (A0 + 7 dígitos). **Validada contra Padrón.** |
+| `nombre` | Filtro de números, caracteres especiales y palabras ofensivas. Debe coincidir con el Padrón. |
 | `semestre` | Integer entre 1 y 12 |
 | `password` | Mínimo 8 caracteres |
 | `totp_leido` | Exactamente 6 dígitos numéricos |
