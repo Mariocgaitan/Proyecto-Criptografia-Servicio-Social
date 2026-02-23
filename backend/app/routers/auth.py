@@ -15,6 +15,8 @@ from app.services.auth_service import (
     refresh_session,
     registrar_alumno,
 )
+from app.core.limiter import limiter
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")

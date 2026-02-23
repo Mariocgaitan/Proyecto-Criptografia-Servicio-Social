@@ -1,27 +1,18 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-<<<<<<< HEAD
-from fastapi.staticfiles import StaticFiles
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-=======
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
->>>>>>> origin/feature/etapa-2-login-jwt
 
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.routers import auth
 
 
-# ── Rate Limiting ─────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
+# ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
 
 
 @asynccontextmanager
@@ -41,12 +32,6 @@ app = FastAPI(
     redoc_url="/redoc" if settings.DEBUG else None,
 )
 
-<<<<<<< HEAD
-# Configuración de Rate Limiting
-app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.add_middleware(SlowAPIMiddleware)
-=======
 # ── Security Headers Middleware ────────────────────────────────────────────────
 @app.middleware("http")
 async def security_headers_middleware(request: Request, call_next) -> Response:
@@ -56,9 +41,6 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     """
     response = await call_next(request)
 
-    # Evita que el browser ejecute scripts inline no autorizados (XSS)
-    # 'self': solo scripts del mismo origen
-    # 'unsafe-inline': necesario solo para Tailwind en desarrollo; quitar en prod
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
@@ -67,25 +49,17 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
         "img-src 'self' data:; "
         "connect-src 'self';"
     )
-    # Evita que el sitio sea embebido en un iframe (Clickjacking)
     response.headers["X-Frame-Options"] = "DENY"
-
-    # Evita que el browser adivine el content-type (MIME sniffing)
     response.headers["X-Content-Type-Options"] = "nosniff"
-
-    # Controla cuánta info del referrer se manda a otros sitios
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
 
-    # En producción activar HSTS (fuerza HTTPS). En dev se omite para no romper localhost.
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-    # Deshabilita features de browser que no necesitamos (geolocation, camera, etc.)
     response.headers["Permissions-Policy"] = (
         "geolocation=(), camera=(), microphone=(), payment=()"
     )
 
-    # Cache: no guardar páginas autenticadas en caché del browser
     if request.url.path in ("/dashboard", "/login", "/registro"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
@@ -93,10 +67,9 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     return response
 
 
-# Rate limiter state + handler
+# ── Rate Limiter ───────────────────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
->>>>>>> origin/feature/etapa-2-login-jwt
 
 # Archivos estáticos (CSS, JS)
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
