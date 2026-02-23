@@ -6,3 +6,4 @@ from app.db.base import Base  # noqa: F401
 from app.models.usuario import Usuario  # noqa: F401
 from app.models.evento import Evento  # noqa: F401
 from app.models.usuario_evento import UsuarioEvento  # noqa: F401
+from app.models.padron_alumno import PadronAlumno  # noqa: F401

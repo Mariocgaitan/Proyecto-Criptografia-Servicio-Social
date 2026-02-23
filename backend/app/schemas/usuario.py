@@ -32,7 +32,30 @@ class RegistroRequest(BaseModel):
     @field_validator("nombre")
     @classmethod
     def validar_nombre(cls, v: str) -> str:
-        return v.strip()
+        import re
+        from app.core.profanity import PROHIBITED_WORDS
+
+        v = v.strip()
+        
+        # 1. Validar que no tenga números
+        if any(char.isdigit() for char in v):
+            raise ValueError("El nombre no puede contener números.")
+        
+        # 2. Validar caracteres especiales (permitir solo letras, espacios y acentos)
+        if not re.match(r"^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$", v):
+            raise ValueError("El nombre solo puede contener letras y espacios.")
+
+        # 3. Validar palabras prohibidas
+        palabras = v.lower().split()
+        for palabra in palabras:
+            if palabra in PROHIBITED_WORDS:
+                raise ValueError(f"El nombre contiene una palabra no permitida.")
+        
+        # 4. Validar formato (Al menos dos palabras)
+        if len(palabras) < 2:
+            raise ValueError("Por favor, ingresa tu nombre completo (nombre y al menos un apellido).")
+
+        return v
 
 
 class RegistroResponse(BaseModel):

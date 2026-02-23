@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.schemas.usuario import RegistroRequest
 from app.services.auth_service import RegistroError, obtener_eventos_disponibles, registrar_alumno
+from app.core.limiter import limiter
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
@@ -22,6 +23,7 @@ async def mostrar_formulario_registro(request: Request, db: AsyncSession = Depen
 
 
 @router.post("/registro", response_class=HTMLResponse, name="registro_submit")
+@limiter.limit("5/minute")
 async def procesar_registro(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -107,7 +109,8 @@ async def registro_exitoso(request: Request, nombre: str = ""):
 # ── API JSON (para uso programático / tests) ──────────────────────────────────
 
 @router.post("/api/v1/auth/registro")
-async def api_registro(datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def api_registro(request: Request, datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
     """Endpoint JSON para registro de alumno."""
     try:
         resultado = await registrar_alumno(db, datos)
