@@ -78,3 +78,16 @@ DEBUG=true
 ---
 
 Cualquier duda, avísame.
+
+---
+
+## Solución de problemas comunes
+
+### Error: `Can't locate revision identified by '02c1c10b5c49'`
+
+Pasa si ya corriste migraciones del branch `Cambios_filtro_palabras` antes de probar este branch. Tu DB tiene registrada una versión que no existe aquí. Solución:
+
+```bash
+docker compose exec db psql -U sid_user -d sid_db -c "UPDATE alembic_version SET version_num = '98ab017e5a44';"
+uv run alembic upgrade head
+```
