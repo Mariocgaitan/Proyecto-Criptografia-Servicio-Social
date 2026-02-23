@@ -11,6 +11,7 @@ import asyncio
 from app.db.models_import import Base  # noqa: asegura que los modelos están registrados
 from app.db.session import AsyncSessionLocal
 from app.models.evento import Evento
+from app.models.padron_alumno import PadronAlumno
 from sqlalchemy import select
 
 
@@ -19,6 +20,12 @@ EVENTOS_INICIALES = [
     {"nombre": "Febrero-Junio 2026",     "periodo": "FEB_JUN",  "anio": 2026, "activo": True},
     {"nombre": "Verano 2026",            "periodo": "VERANO",   "anio": 2026, "activo": False},
     {"nombre": "Agosto-Diciembre 2026",  "periodo": "AGO_DIC",  "anio": 2026, "activo": False},
+]
+
+
+PADRON_INICIAL = [
+    {"id_matricula": "A03459128", "nombre_completo": "Juan Perez Garcia"},
+    {"id_matricula": "A01659147", "nombre_completo": "Luis Alan Morales Castillo"},
 ]
 
 
@@ -41,9 +48,25 @@ async def seed_eventos():
             print(f"   - {e.nombre} ({'ACTIVO' if e.activo else 'inactivo'})")
 
 
+async def seed_padron():
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(PadronAlumno))
+        existentes = result.scalars().all()
+
+        if existentes:
+            print(f"ℹ️  Ya existen {len(existentes)} alumnos en el padrón. No se insertaron duplicados.")
+            return
+
+        alumnos = [PadronAlumno(**data) for data in PADRON_INICIAL]
+        db.add_all(alumnos)
+        await db.commit()
+        print(f"✅ {len(alumnos)} alumnos insertados en el padrón correctamente.")
+
+
 async def main():
     print("🌱 Ejecutando seed de datos iniciales...")
     await seed_eventos()
+    await seed_padron()
     print("✅ Seed completado.")
 
 
