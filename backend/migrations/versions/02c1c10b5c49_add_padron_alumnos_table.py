@@ -1,8 +1,7 @@
-"""Generic script.py.mako template for Alembic migrations."""
 """Add padron_alumnos table
 
 Revision ID: 02c1c10b5c49
-Revises: 4eb27c45a724
+Revises: 98ab017e5a44
 Create Date: 2026-02-22 00:11:02.457447
 
 """
@@ -14,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '02c1c10b5c49'
-down_revision: Union[str, None] = '4eb27c45a724'
+down_revision: Union[str, None] = '98ab017e5a44'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

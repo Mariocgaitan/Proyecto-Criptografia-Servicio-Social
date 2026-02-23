@@ -27,3 +27,6 @@ class Usuario(Base):
     usuario_eventos: Mapped[list["UsuarioEvento"]] = relationship(
         "UsuarioEvento", back_populates="usuario", cascade="all, delete-orphan"
     )
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship(
+        "RefreshToken", back_populates="usuario", cascade="all, delete-orphan"
+    )
