@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.db.ssh_manager import ssh_tunnel_manager
 from app.routers import auth
 
 
@@ -19,7 +20,17 @@ from app.routers import auth
 async def lifespan(app: FastAPI):
     """Eventos de inicio y cierre de la aplicación."""
     print(f"🚀 SID Backend iniciando en modo: {settings.APP_ENV}")
+    
+    # Iniciar túnel SSH si está habilitado
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.start()
+        
     yield
+    
+    # Cerrar túnel SSH si está activo
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.stop()
+        
     print("🛑 SID Backend cerrando...")
 
 
