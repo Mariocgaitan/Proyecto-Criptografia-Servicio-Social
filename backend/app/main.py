@@ -1,15 +1,15 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
-from app.routers import auth
+from app.db.ssh_manager import ssh_tunnel_manager
+from app.routers import auth, alumno
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -19,14 +19,24 @@ from app.routers import auth
 async def lifespan(app: FastAPI):
     """Eventos de inicio y cierre de la aplicación."""
     print(f"🚀 SID Backend iniciando en modo: {settings.APP_ENV}")
+    
+    # Iniciar túnel SSH si está habilitado
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.start()
+        
     yield
+    
+    # Cerrar túnel SSH si está activo
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.stop()
+        
     print("🛑 SID Backend cerrando...")
 
 
 app = FastAPI(
     title="SID — Sistema de Inscripción Dinámica",
     description="API para el sistema de pre-registro e inscripción con QR dinámico",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
@@ -43,7 +53,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
@@ -76,17 +86,10 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Routers
 app.include_router(auth.router, tags=["Autenticación"])
-
-templates = Jinja2Templates(directory="app/templates")
+app.include_router(alumno.router, tags=["Alumno"])
 
 
 @app.get("/", include_in_schema=False)
 async def root():
     from fastapi.responses import RedirectResponse
     return RedirectResponse(url="/registro")
-
-
-@app.get("/dashboard", response_class=HTMLResponse, include_in_schema=False)
-async def dashboard(request: Request):
-    """Dashboard placeholder — se completa en Etapa 3."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})

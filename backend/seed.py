@@ -71,4 +71,15 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    from app.core.config import settings
+    from app.db.ssh_manager import ssh_tunnel_manager
+
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.start()
+
+    try:
+        asyncio.run(main())
+    finally:
+        if settings.USE_SSH_TUNNEL:
+            ssh_tunnel_manager.stop()
+

@@ -42,7 +42,18 @@ async def run_async_migrations() -> None:
 
 
 def run_migrations_online() -> None:
-    asyncio.run(run_async_migrations())
+    from app.core.config import settings
+    from app.db.ssh_manager import ssh_tunnel_manager
+
+    if settings.USE_SSH_TUNNEL:
+        ssh_tunnel_manager.start()
+
+    try:
+        asyncio.run(run_async_migrations())
+    finally:
+        if settings.USE_SSH_TUNNEL:
+            ssh_tunnel_manager.stop()
+
 
 
 if context.is_offline_mode():

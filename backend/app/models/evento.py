@@ -31,3 +31,9 @@ class Evento(Base):
     usuario_eventos: Mapped[list["UsuarioEvento"]] = relationship(
         "UsuarioEvento", back_populates="evento"
     )
+    proyectos: Mapped[list["Proyecto"]] = relationship(
+        "Proyecto", back_populates="evento"
+    )
+    inscripciones: Mapped[list["Inscripcion"]] = relationship(
+        "Inscripcion", back_populates="evento"
+    )
