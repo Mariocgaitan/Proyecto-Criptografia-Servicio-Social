@@ -1,7 +1,7 @@
 """add empresas, proyectos, inscripciones tables
 
 Revision ID: a1b2c3d4e5f6
-Revises: 98ab017e5a44
+Revises: 02c1c10b5c49
 Create Date: 2026-03-02 00:00:00.000000
 
 """
@@ -13,7 +13,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision: str = 'a1b2c3d4e5f6'
-down_revision: Union[str, None] = '98ab017e5a44'
+down_revision: Union[str, None] = '02c1c10b5c49'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
