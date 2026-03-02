@@ -9,7 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.ssh_manager import ssh_tunnel_manager
-from app.routers import auth, alumno
+from app.routers import auth, alumno, empresa
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -36,7 +36,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SID — Sistema de Inscripción Dinámica",
     description="API para el sistema de pre-registro e inscripción con QR dinámico",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
@@ -53,7 +53,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com; "
         "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
         "font-src 'self' https://fonts.gstatic.com; "
         "img-src 'self' data:; "
@@ -87,6 +87,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Routers
 app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
+app.include_router(empresa.router, tags=["Empresa"])
 
 
 @app.get("/", include_in_schema=False)

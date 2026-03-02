@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Escáner QR — {{ proyecto.empresa }}{% endblock %}
+
+{% block extra_head %}
+<!-- html5-qrcode — acceso a cámara y decodificación de QR -->
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto px-4 sm:px-6 py-10 animate-slide-up">
+
+    <!-- ── Cabecera del proyecto ─────────────────────────────────────────── -->
+    <div class="mb-6">
+        <p class="text-white/40 text-xs uppercase tracking-widest mb-1">Escáner de Inscripción</p>
+        <h1 class="text-2xl font-bold text-white leading-tight">
+            {{ proyecto.nombre_proyecto }}
+        </h1>
+        <p class="text-white/50 text-sm mt-1">
+            {{ proyecto.empresa }}
+            &nbsp;·&nbsp;
+            {{ proyecto.evento }}
+        </p>
+    </div>
+
+    <!-- ── Contador de cupo ──────────────────────────────────────────────── -->
+    <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+            <p class="text-white/40 text-xs mb-1">Inscritos</p>
+            <p class="text-white font-bold text-2xl tabular-nums" id="cupo-actual">
+                {{ proyecto.cupo_actual }}
+            </p>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+            <p class="text-white/40 text-xs mb-1">Capacidad</p>
+            <p class="text-white font-bold text-2xl tabular-nums">
+                {{ proyecto.capacidad_max }}
+            </p>
+        </div>
+        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+            <p class="text-white/40 text-xs mb-1">En espera</p>
+            <p class="text-white font-bold text-2xl tabular-nums" id="en-espera">
+                {{ proyecto.en_espera }}
+            </p>
+        </div>
+    </div>
+
+    <!-- ── Área del escáner ──────────────────────────────────────────────── -->
+    <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-6">
+
+        <!-- Visor de la cámara -->
+        <div id="qr-reader" class="w-full"></div>
+
+        <!-- Controles -->
+        <div class="px-6 py-4 flex gap-3">
+            <button id="btn-iniciar"
+                class="flex-1 py-2.5 bg-tec-blue hover:bg-tec-light text-white text-sm font-semibold rounded-xl transition-all duration-200">
+                Iniciar cámara
+            </button>
+            <button id="btn-detener"
+                class="hidden flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-all duration-200">
+                Detener
+            </button>
+        </div>
+    </div>
+
+    <!-- ── Panel de resultado ────────────────────────────────────────────── -->
+    <div id="resultado-panel" class="hidden rounded-2xl border p-6 mb-4 transition-all duration-300">
+        <div class="flex items-start gap-4">
+            <div id="resultado-icono" class="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl">
+            </div>
+            <div class="flex-1 min-w-0">
+                <p id="resultado-titulo" class="font-semibold text-lg text-white"></p>
+                <p id="resultado-alumno" class="text-white/70 text-sm mt-0.5"></p>
+                <p id="resultado-detalle" class="text-white/40 text-xs mt-1"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Historial de escaneos ─────────────────────────────────────────── -->
+    <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
+        <div class="px-5 py-3 border-b border-white/10">
+            <p class="text-white/50 text-xs uppercase tracking-widest font-semibold">
+                Últimos escaneos
+            </p>
+        </div>
+        <div id="historial" class="divide-y divide-white/5 max-h-64 overflow-y-auto">
+            <p class="text-white/30 text-sm text-center py-6" id="historial-vacio">
+                Aún no hay escaneos.
+            </p>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+const ID_PROYECTO = {{ proyecto.id_proyecto }};
+let html5QrCode = null;
+let escaneando = false;
+let ultimoQrLeido = null;   // Evita procesar el mismo QR dos veces seguidas
+let timerReset = null;
+
+// ── UI helpers ──────────────────────────────────────────────────────────────
+
+function mostrarResultado(tipo, titulo, alumno, detalle) {
+    const panel  = document.getElementById('resultado-panel');
+    const icono  = document.getElementById('resultado-icono');
+    const tituloEl = document.getElementById('resultado-titulo');
+    const alumnoEl = document.getElementById('resultado-alumno');
+    const detalleEl = document.getElementById('resultado-detalle');
+
+    const estilos = {
+        ok:      { bg: 'bg-green-500/20 border-green-500/40',  iconBg: 'bg-green-500/20', icono: '✅' },
+        espera:  { bg: 'bg-yellow-500/10 border-yellow-500/30', iconBg: 'bg-yellow-500/20', icono: '⏳' },
+        error:   { bg: 'bg-red-500/10 border-red-500/30',      iconBg: 'bg-red-500/20', icono: '❌' },
+    };
+
+    const e = estilos[tipo] || estilos.error;
+    panel.className = `rounded-2xl border p-6 mb-4 transition-all duration-300 ${e.bg}`;
+    icono.className = `w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl ${e.iconBg}`;
+    icono.textContent = e.icono;
+    tituloEl.textContent = titulo;
+    alumnoEl.textContent = alumno || '';
+    detalleEl.textContent = detalle || '';
+    panel.classList.remove('hidden');
+}
+
+function agregarHistorial(tipo, alumno, proyecto, timestamp) {
+    const contenedor = document.getElementById('historial');
+    const vacio = document.getElementById('historial-vacio');
+    if (vacio) vacio.remove();
+
+    const iconos = { ok: '✅', espera: '⏳', error: '❌' };
+    const colores = {
+        ok:    'text-green-400',
+        espera:'text-yellow-400',
+        error: 'text-red-400',
+    };
+
+    const fila = document.createElement('div');
+    fila.className = 'flex items-center gap-3 px-5 py-3';
+    fila.innerHTML = `
+        <span class="text-lg">${iconos[tipo] || '❌'}</span>
+        <div class="flex-1 min-w-0">
+            <p class="text-white text-sm font-medium truncate">${alumno}</p>
+            <p class="text-white/40 text-xs truncate">${proyecto}</p>
+        </div>
+        <span class="text-white/30 text-xs shrink-0">${timestamp}</span>
+    `;
+    contenedor.insertBefore(fila, contenedor.firstChild);
+}
+
+function actualizarCupo(cupoActual, enEspera) {
+    document.getElementById('cupo-actual').textContent = cupoActual;
+    document.getElementById('en-espera').textContent = enEspera;
+}
+
+// ── Lógica de escaneo ────────────────────────────────────────────────────────
+
+async function procesarQr(textoQr) {
+    // Evitar procesar el mismo QR repetidamente mientras apunta a él
+    if (textoQr === ultimoQrLeido) return;
+    ultimoQrLeido = textoQr;
+
+    // Limpiar reset previo
+    if (timerReset) clearTimeout(timerReset);
+    timerReset = setTimeout(() => { ultimoQrLeido = null; }, 5000);
+
+    let payload;
+    try {
+        payload = JSON.parse(textoQr);
+    } catch {
+        mostrarResultado('error', 'QR inválido', '', 'El código escaneado no es un QR de SID.');
+        return;
+    }
+
+    if (!payload.matricula || !payload.totp || !payload.id_evento) {
+        mostrarResultado('error', 'QR inválido', '', 'El QR no contiene los campos esperados.');
+        return;
+    }
+
+    try {
+        const resp = await fetch('/api/v1/inscripciones/validar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                matricula: payload.matricula,
+                totp_leido: payload.totp,
+                id_proyecto: ID_PROYECTO,
+            }),
+        });
+
+        const data = await resp.json();
+        const hora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        if (resp.status === 200) {
+            mostrarResultado('ok',
+                '¡Inscripción exitosa!',
+                `${data.alumno} (${data.matricula})`,
+                `${data.proyecto} · ${data.empresa}`
+            );
+            agregarHistorial('ok', `${data.alumno} (${data.matricula})`, data.proyecto, hora);
+        } else if (resp.status === 202) {
+            mostrarResultado('espera',
+                `Lista de espera — Posición ${data.posicion}`,
+                `${data.alumno} (${data.matricula})`,
+                `Proyecto: ${data.proyecto}`
+            );
+            agregarHistorial('espera', `${data.alumno} (${data.matricula})`, data.proyecto, hora);
+        } else {
+            mostrarResultado('error',
+                data.detail || 'Error al inscribir',
+                payload.matricula,
+                `Código: ${resp.status}`
+            );
+            agregarHistorial('error', payload.matricula, 'Error', hora);
+        }
+
+        // Actualizar contadores de cupo
+        try {
+            const cupoResp = await fetch(`/api/v1/empresa/proyecto/${ID_PROYECTO}`);
+            if (cupoResp.ok) {
+                const cupoData = await cupoResp.json();
+                actualizarCupo(cupoData.cupo_actual, cupoData.en_espera);
+            }
+        } catch (_) { /* silencioso */ }
+
+    } catch (err) {
+        mostrarResultado('error', 'Error de red', '', 'No se pudo conectar con el servidor.');
+    }
+}
+
+// ── Controles de la cámara ───────────────────────────────────────────────────
+
+document.getElementById('btn-iniciar').addEventListener('click', async () => {
+    html5QrCode = new Html5Qrcode('qr-reader');
+
+    try {
+        await html5QrCode.start(
+            { facingMode: 'environment' },
+            { fps: 10, qrbox: { width: 280, height: 280 } },
+            procesarQr,
+            () => {} // Error silencioso en frames sin QR
+        );
+        escaneando = true;
+        document.getElementById('btn-iniciar').classList.add('hidden');
+        document.getElementById('btn-detener').classList.remove('hidden');
+    } catch (err) {
+        mostrarResultado('error', 'No se pudo iniciar la cámara',
+            '', 'Verifica los permisos de cámara en el navegador.');
+    }
+});
+
+document.getElementById('btn-detener').addEventListener('click', async () => {
+    if (html5QrCode && escaneando) {
+        await html5QrCode.stop();
+        escaneando = false;
+        document.getElementById('btn-iniciar').classList.remove('hidden');
+        document.getElementById('btn-detener').classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}
