@@ -236,21 +236,68 @@ async function procesarQr(textoQr) {
 // ── Controles de la cámara ───────────────────────────────────────────────────
 
 document.getElementById('btn-iniciar').addEventListener('click', async () => {
-    html5QrCode = new Html5Qrcode('qr-reader');
+    // ── Paso 1: verificar que mediaDevices esté disponible ──────────────────
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        mostrarResultado('error', 'Cámara no disponible',
+            '', 'Tu navegador no soporta acceso a cámara. Usa Chrome o Edge actualizados.');
+        return;
+    }
 
+    // ── Paso 2: probar acceso directo con getUserMedia ───────────────────────
+    let stream;
     try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        // Liberar el stream de prueba antes de que html5-qrcode abra el suyo
+        stream.getTracks().forEach(t => t.stop());
+    } catch (permErr) {
+        console.error('[SID] getUserMedia error:', permErr);
+        const msg = permErr?.message || permErr?.name || String(permErr);
+        mostrarResultado('error', 'Permiso de cámara denegado',
+            '', `El navegador bloqueó la cámara. (${msg})`);
+        return;
+    }
+
+    // ── Paso 3: enumerar cámaras y arrancar html5-qrcode ────────────────────
+    try {
+        const camaras = await Html5Qrcode.getCameras();
+        console.log('[SID] Cámaras encontradas:', camaras);
+
+        if (!camaras || camaras.length === 0) {
+            mostrarResultado('error', 'No se encontró ninguna cámara',
+                '', 'El navegador no listó cámaras disponibles.');
+            return;
+        }
+
+        // Preferir cámara trasera (móvil) o la única disponible (laptop)
+        const camara = camaras.length > 1 ? camaras[camaras.length - 1] : camaras[0];
+        const camaraId = camara.id || '';
+        console.log('[SID] Usando cámara:', camara);
+
+        html5QrCode = new Html5Qrcode('qr-reader');
+
+        // Si el ID está vacío, usar constraint de facingMode como fallback
+        const cameraInput = camaraId
+            ? camaraId
+            : { facingMode: 'user' };
+
         await html5QrCode.start(
-            { facingMode: 'environment' },
+            cameraInput,
             { fps: 10, qrbox: { width: 280, height: 280 } },
             procesarQr,
-            () => {} // Error silencioso en frames sin QR
+            () => {}
         );
+
         escaneando = true;
         document.getElementById('btn-iniciar').classList.add('hidden');
         document.getElementById('btn-detener').classList.remove('hidden');
+
     } catch (err) {
-        mostrarResultado('error', 'No se pudo iniciar la cámara',
-            '', 'Verifica los permisos de cámara en el navegador.');
+        console.error('[SID] html5QrCode error:', err);
+        const msg = err?.message || err?.name
+            || (typeof err === 'string' ? err : null)
+            || JSON.stringify(err)
+            || 'Error desconocido';
+        mostrarResultado('error', 'No se pudo iniciar la cámara', '', msg);
     }
 });
 
