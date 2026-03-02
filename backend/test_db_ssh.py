@@ -1,5 +1,5 @@
 import asyncio
-import sys
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from app.core.config import settings
 from app.db.ssh_manager import ssh_tunnel_manager
@@ -20,7 +20,7 @@ async def test_connection():
         print(f"🛢️ Probando conexión a la DB: {settings.DATABASE_URL}")
         engine = create_async_engine(settings.DATABASE_URL)
         async with engine.connect() as conn:
-            result = await conn.execute("SELECT version();")
+            result = await conn.execute(text("SELECT version();"))
             version = result.scalar()
             print(f"✅ Conexión exitosa! Versión de PostgreSQL: {version}")
     except Exception as e:
@@ -29,6 +29,7 @@ async def test_connection():
         if settings.USE_SSH_TUNNEL:
             print("🛑 Cerrando túnel SSH...")
             ssh_tunnel_manager.stop()
+            print("🛑 Túnel SSH cerrado")
 
 if __name__ == "__main__":
     asyncio.run(test_connection())

@@ -61,8 +61,7 @@ async def get_current_user(request: "Request") -> dict:
     Retorna el payload del token {'sub': matricula, 'rol': 'alumno'}.
     Lanza HTTPException 401 si el token es inválido o falta.
     """
-    from fastapi import HTTPException, Request
-    from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+    from fastapi import HTTPException, Request  # noqa: F401
 
     auth_header = request.headers.get("Authorization", "")
     if not auth_header.startswith("Bearer "):
@@ -76,3 +75,20 @@ async def get_current_user(request: "Request") -> dict:
         raise HTTPException(status_code=401, detail="Token expirado")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
+
+
+async def get_current_user_optional(request: "Request") -> dict | None:
+    """
+    Dependency para rutas SSR: extrae el JWT desde la cookie 'access_token'.
+    Retorna el payload si el token es válido, o None si no hay token / es inválido.
+    El route handler decide si redirige al login.
+    """
+    from fastapi import Request  # noqa: F401
+
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        return decode_access_token(token)
+    except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+        return None
