@@ -66,9 +66,15 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
-    response.headers["Permissions-Policy"] = (
-        "geolocation=(), camera=(), microphone=(), payment=()"
-    )
+    # Permitir cámara solo en la ruta del escáner; bloquearla en el resto
+    if request.url.path.startswith("/empresa/escaner"):
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(self), microphone=(), payment=()"
+        )
+    else:
+        response.headers["Permissions-Policy"] = (
+            "geolocation=(), camera=(), microphone=(), payment=()"
+        )
 
     if request.url.path in ("/dashboard", "/login", "/registro"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
