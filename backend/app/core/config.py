@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     # App
     APP_ENV: str = "development"
     DEBUG: bool = True
+    SHOW_DOCS: bool = True  # False en producción para ocultar ReDoc
 
 
 settings = Settings()

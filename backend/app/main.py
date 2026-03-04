@@ -35,11 +35,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SID — Sistema de Inscripción Dinámica",
-    description="API para el sistema de pre-registro e inscripción con QR dinámico",
+    description=(
+        "API REST para el sistema de pre-registro e inscripción con QR dinámico.\n\n"
+        "## Autenticación\n"
+        "Los endpoints protegidos requieren un `Bearer` token JWT en el header `Authorization`.\n"
+        "Obtenlo primero desde `POST /api/v1/auth/login`.\n\n"
+        "## Rate Limiting\n"
+        "El endpoint de registro está limitado a **5 peticiones/minuto** por IP."
+    ),
     version="0.4.0",
     lifespan=lifespan,
-    docs_url="/docs" if settings.DEBUG else None,
-    redoc_url="/redoc" if settings.DEBUG else None,
+    docs_url=None,
+    redoc_url="/redoc" if settings.SHOW_DOCS else None,
+    openapi_tags=[
+        {"name": "Autenticación", "description": "Registro, login, refresh y logout de alumnos."},
+        {"name": "Alumno",        "description": "QR dinámico y estado de inscripción del alumno."},
+        {"name": "Empresa",       "description": "Escáner QR y datos del proyecto para empresas."},
+    ],
 )
 
 # ── Security Headers Middleware ────────────────────────────────────────────────

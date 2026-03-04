@@ -30,7 +30,7 @@ templates = Jinja2Templates(directory="app/templates")
 #  SSR — Dashboard
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/dashboard", response_class=HTMLResponse, name="alumno_dashboard")
+@router.get("/dashboard", response_class=HTMLResponse, name="alumno_dashboard", include_in_schema=False)
 async def dashboard(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -60,7 +60,7 @@ async def dashboard(
 #  API JSON
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/api/v1/alumno/qr-payload", tags=["Alumno"])
+@router.get("/api/v1/alumno/qr-payload", tags=["Alumno"], summary="Obtener payload QR del evento")
 async def qr_payload(
     id_evento: int,
     db: AsyncSession = Depends(get_db),
@@ -83,7 +83,7 @@ async def qr_payload(
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
 
-@router.get("/api/v1/alumno/estado-inscripcion", tags=["Alumno"])
+@router.get("/api/v1/alumno/estado-inscripcion", tags=["Alumno"], summary="Estado de inscripción en todos los eventos")
 async def estado_inscripcion(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),

@@ -38,7 +38,7 @@ class ValidarQRRequest(BaseModel):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/empresa/escaner/{id_proyecto}", response_class=HTMLResponse,
-            name="empresa_escaner", tags=["Empresa"])
+            name="empresa_escaner", tags=["Empresa"], include_in_schema=False)
 async def vista_escaner(
     id_proyecto: int,
     request: Request,
@@ -67,7 +67,7 @@ async def vista_escaner(
 #  API JSON
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/api/v1/inscripciones/validar", tags=["Empresa"])
+@router.post("/api/v1/inscripciones/validar", tags=["Empresa"], summary="Validar QR e inscribir alumno")
 async def validar_inscripcion(
     body: ValidarQRRequest,
     request: Request,
@@ -108,7 +108,7 @@ async def validar_inscripcion(
     return JSONResponse(content=resultado, status_code=status_code)
 
 
-@router.get("/api/v1/empresa/proyecto/{id_proyecto}", tags=["Empresa"])
+@router.get("/api/v1/empresa/proyecto/{id_proyecto}", tags=["Empresa"], summary="Datos actuales del proyecto")
 async def datos_proyecto(
     id_proyecto: int,
     db: AsyncSession = Depends(get_db),
