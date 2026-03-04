@@ -34,3 +34,6 @@ class Proyecto(Base):
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
         "Inscripcion", back_populates="proyecto"
     )
+    lista_espera: Mapped[list["ListaEspera"]] = relationship(
+        "ListaEspera", back_populates="proyecto"
+    )

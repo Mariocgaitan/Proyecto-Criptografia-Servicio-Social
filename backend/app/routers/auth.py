@@ -29,7 +29,7 @@ REFRESH_COOKIE_MAX_AGE = 8 * 60 * 60
 #  FORMULARIOS HTML
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.get("/registro", response_class=HTMLResponse, name="registro_form")
+@router.get("/registro", response_class=HTMLResponse, name="registro_form", include_in_schema=False)
 async def mostrar_formulario_registro(request: Request, db: AsyncSession = Depends(get_db)):
     eventos = await obtener_eventos_disponibles(db)
     return templates.TemplateResponse(
@@ -38,7 +38,7 @@ async def mostrar_formulario_registro(request: Request, db: AsyncSession = Depen
     )
 
 
-@router.post("/registro", response_class=HTMLResponse, name="registro_submit")
+@router.post("/registro", response_class=HTMLResponse, name="registro_submit", include_in_schema=False)
 @limiter.limit("5/minute")
 async def procesar_registro(
     request: Request,
@@ -94,7 +94,7 @@ async def procesar_registro(
     return RedirectResponse(url=f"/registro/exitoso?nombre={nombre}", status_code=303)
 
 
-@router.get("/registro/exitoso", response_class=HTMLResponse, name="registro_exitoso")
+@router.get("/registro/exitoso", response_class=HTMLResponse, name="registro_exitoso", include_in_schema=False)
 async def registro_exitoso(request: Request, nombre: str = ""):
     return templates.TemplateResponse(
         "auth/registro_exitoso.html",
@@ -102,7 +102,7 @@ async def registro_exitoso(request: Request, nombre: str = ""):
     )
 
 
-@router.get("/login", response_class=HTMLResponse, name="login_form")
+@router.get("/login", response_class=HTMLResponse, name="login_form", include_in_schema=False)
 async def mostrar_formulario_login(request: Request):
     return templates.TemplateResponse(
         "auth/login.html",
@@ -110,7 +110,7 @@ async def mostrar_formulario_login(request: Request):
     )
 
 
-@router.post("/login", response_class=HTMLResponse, name="login_submit")
+@router.post("/login", response_class=HTMLResponse, name="login_submit", include_in_schema=False)
 async def procesar_login(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -149,7 +149,7 @@ async def procesar_login(
     return response
 
 
-@router.get("/logout", name="logout_html")
+@router.get("/logout", name="logout_html", include_in_schema=False)
 async def logout_html(
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -167,7 +167,7 @@ async def logout_html(
 #  API JSON
 # ═══════════════════════════════════════════════════════════════════════════════
 
-@router.post("/api/v1/auth/registro", status_code=201)
+@router.post("/api/v1/auth/registro", status_code=201, tags=["Autenticación"], summary="Registrar alumno")
 async def api_registro(datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
     try:
         return await registrar_alumno(db, datos)
@@ -176,7 +176,7 @@ async def api_registro(datos: RegistroRequest, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
 
-@router.post("/api/v1/auth/login", response_model=TokenResponse)
+@router.post("/api/v1/auth/login", response_model=TokenResponse, tags=["Autenticación"], summary="Iniciar sesión")
 async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
     try:
@@ -197,7 +197,7 @@ async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = De
     return response
 
 
-@router.post("/api/v1/auth/refresh", response_model=TokenResponse)
+@router.post("/api/v1/auth/refresh", response_model=TokenResponse, tags=["Autenticación"], summary="Renovar access token")
 async def api_refresh(
     db: AsyncSession = Depends(get_db),
     refresh_token: str | None = Cookie(default=None),
@@ -212,7 +212,7 @@ async def api_refresh(
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
 
-@router.post("/api/v1/auth/logout")
+@router.post("/api/v1/auth/logout", tags=["Autenticación"], summary="Cerrar sesión")
 async def api_logout(
     db: AsyncSession = Depends(get_db),
     refresh_token: str | None = Cookie(default=None),

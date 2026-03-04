@@ -88,6 +88,26 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
                     "timestamp": inscripcion.timestamp.isoformat(),
                 }
 
+        # Proyectos disponibles para este evento (catálogo)
+        proyectos_result = await db.execute(
+            select(Proyecto, Empresa)
+            .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+            .where(Proyecto.id_evento == evento.id_evento)
+            .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
+        )
+        evento_info["proyectos"] = [
+            {
+                "id_proyecto": p.id_proyecto,
+                "nombre_proyecto": p.nombre_proyecto,
+                "empresa": e.nombre_empresa,
+                "descripcion": p.descripcion,
+                "cupo_actual": p.cupo_actual,
+                "capacidad_max": p.capacidad_max,
+                "lleno": p.cupo_actual >= p.capacidad_max,
+            }
+            for p, e in proyectos_result.all()
+        ]
+
         eventos_data.append(evento_info)
 
     return {
