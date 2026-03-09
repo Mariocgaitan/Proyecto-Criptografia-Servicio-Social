@@ -154,6 +154,35 @@
                 </div>
                 {% endif %}
 
+                <!-- ── Catálogo de proyectos disponibles ────────────────── -->
+                {% if evento.proyectos %}
+                <div class="mt-6 pt-5 border-t border-white/10">
+                    <p class="text-white/40 text-xs uppercase tracking-widest mb-3">Proyectos disponibles</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {% for p in evento.proyectos %}
+                        <div class="bg-white/5 border {% if p.lleno %}border-white/5 opacity-50{% else %}border-white/10{% endif %} rounded-xl p-4">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <p class="text-white text-sm font-semibold leading-tight truncate">{{ p.nombre_proyecto }}</p>
+                                    <p class="text-white/40 text-xs mt-0.5">{{ p.empresa }}</p>
+                                    {% if p.descripcion %}
+                                    <p class="text-white/30 text-xs mt-1 line-clamp-2">{{ p.descripcion }}</p>
+                                    {% endif %}
+                                </div>
+                                <div class="shrink-0 text-right">
+                                    {% if p.lleno %}
+                                    <span class="text-xs text-red-400/70 font-medium">Lleno</span>
+                                    {% else %}
+                                    <span class="text-xs text-green-400/80 font-medium tabular-nums">{{ p.cupo_actual }}/{{ p.capacidad_max }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </div>
         {% endfor %}
