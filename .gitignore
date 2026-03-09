@@ -46,3 +46,13 @@ backend/migrations/__pycache__/
 
 # Documentos personales (CV, notas privadas)
 CV_proyecto.md
+
+# Archivos de sesión de herramientas de BD (DBeaver, DataGrip, etc.)
+*.session.sql
+*.sql.session
+SID Local.session.sql
+
+# Archivos temporales / locales
+*.tmp
+*.bak
+*.local
