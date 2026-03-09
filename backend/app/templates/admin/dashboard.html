@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Admin — SID</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tec-blue': '#003865',
+                        'tec-light': '#0075C9',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .badge-lleno {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .badge-casi {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fcd34d;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .badge-ok {
+            background: rgba(34, 197, 94, 0.15);
+            color: #86efac;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #0075C9;
+            color: #60a5fa;
+        }
+
+        .tab-inactive {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .tab-inactive:hover {
+            color: rgba(255, 255, 255, 0.7);
+        }
+    </style>
+</head>
+
+<body class="text-white font-sans">
+
+    <!-- Navbar -->
+    <nav class="card border-b border-white/10 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-tec-light/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-tec-light" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="font-bold text-white">Panel de Administración</span>
+                    <span class="text-white/30 text-sm ml-2">SID — Servicio Social</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-white/50 text-sm">{{ usuario.nombre }}</span>
+                <a href="/logout"
+                    class="px-4 py-1.5 text-sm text-white/60 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all">
+                    Cerrar sesión
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Tabs -->
+    <div class="max-w-7xl mx-auto px-6 mt-6">
+        <div class="flex border-b border-white/10 gap-6">
+            <button onclick="showTab('proyectos')" id="tab-proyectos"
+                class="pb-3 text-sm font-medium transition-all tab-active">
+                Proyectos
+            </button>
+            <button onclick="showTab('empresas')" id="tab-empresas"
+                class="pb-3 text-sm font-medium transition-all tab-inactive">
+                Empresas
+            </button>
+            <button onclick="showTab('eventos')" id="tab-eventos"
+                class="pb-3 text-sm font-medium transition-all tab-inactive">
+                Eventos
+            </button>
+        </div>
+    </div>
+
+    <!-- ─── PESTAÑA: PROYECTOS ─────────────────────────────────────────────────── -->
+    <div id="panel-proyectos" class="max-w-7xl mx-auto px-6 py-6">
+
+        <!-- Header + Botón crear -->
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl font-bold text-white">Gestión de Proyectos</h2>
+                <p class="text-white/40 text-sm mt-1">{{ proyectos|length }} proyectos registrados</p>
+            </div>
+            <button onclick="document.getElementById('modal-crear').classList.remove('hidden')"
+                class="px-5 py-2.5 bg-tec-light text-white text-sm font-semibold rounded-xl hover:bg-tec-blue transition-all transform hover:scale-[1.02] active:scale-[0.98]">
+                + Nuevo Proyecto
+            </button>
+        </div>
+
+        <!-- Tabla proyectos -->
+        <div class="card rounded-2xl overflow-hidden">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-white/5 text-white/50 text-left">
+                        <th class="px-6 py-3 font-medium">Proyecto</th>
+                        <th class="px-6 py-3 font-medium">Empresa</th>
+                        <th class="px-6 py-3 font-medium">Evento</th>
+                        <th class="px-6 py-3 font-medium text-center">Cupo</th>
+                        <th class="px-6 py-3 font-medium text-center">Estado</th>
+                        <th class="px-6 py-3 font-medium text-center">Credenciales</th>
+                        <th class="px-6 py-3 font-medium text-center">Cupo</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5">
+                    {% for p in proyectos %}
+                    <tr class="hover:bg-white/[0.02] transition-colors">
+                        <td class="px-6 py-4 text-white font-medium">{{ p.nombre_proyecto }}</td>
+                        <td class="px-6 py-4 text-white/60">{{ p.empresa }}</td>
+                        <td class="px-6 py-4 text-white/50 text-xs">{{ p.evento }}</td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="flex items-center justify-center gap-1">
+                                <span class="text-white font-mono">{{ p.cupo_actual }}/{{ p.capacidad_max }}</span>
+                                <div class="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden ml-2">
+                                    <div class="h-full rounded-full transition-all
+                                    {% if p.cupo_actual >= p.capacidad_max %}bg-red-400
+                                    {% elif p.cupo_actual >= p.capacidad_max * 0.8 %}bg-yellow-400
+                                    {% else %}bg-green-400{% endif %}"
+                                        style="width: {{ [((p.cupo_actual / p.capacidad_max) * 100)|int, 100]|min }}%">
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                            {% if p.estado == 'LLENO' %}badge-lleno
+                            {% elif p.estado == 'CASI LLENO' %}badge-casi
+                            {% else %}badge-ok{% endif %}">
+                                {{ p.estado }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if p.tiene_credenciales %}
+                            <button onclick="regenerarCredenciales({{ p.id_proyecto }}, '{{ p.nombre_proyecto }}')"
+                                class="text-xs px-3 py-1 bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500/20 rounded-lg transition-all">
+                                🔑 Ver / Regenerar
+                            </button>
+                            {% else %}
+                            <button onclick="regenerarCredenciales({{ p.id_proyecto }}, '{{ p.nombre_proyecto }}')"
+                                class="text-xs px-3 py-1 border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 rounded-lg transition-all">
+                                ⚡ Generar
+                            </button>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <button
+                                onclick="abrirAmpliarCupo({{ p.id_proyecto }}, '{{ p.nombre_proyecto }}', {{ p.capacidad_max }})"
+                                class="text-xs px-3 py-1 border border-white/20 rounded-lg text-white/60 hover:text-white hover:border-white/40 transition-all">
+                                Ampliar cupo
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-white/30">
+                            No hay proyectos registrados. Crea el primero →
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ─── PESTAÑA: EMPRESAS ──────────────────────────────────────────────────── -->
+    <div id="panel-empresas" class="max-w-7xl mx-auto px-6 py-6 hidden">
+        <h2 class="text-xl font-bold text-white mb-6">Empresas Participantes</h2>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for e in empresas %}
+            <div class="card rounded-xl p-4 flex items-center gap-3">
+                <div
+                    class="w-9 h-9 bg-tec-light/10 rounded-lg flex items-center justify-center text-tec-light font-bold text-sm">
+                    {{ e.nombre_empresa[0] }}
+                </div>
+                <div>
+                    <p class="text-white text-sm font-medium">{{ e.nombre_empresa }}</p>
+                    <p class="text-white/30 text-xs">ID: {{ e.id_empresa }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ─── PESTAÑA: EVENTOS ───────────────────────────────────────────────────── -->
+    <div id="panel-eventos" class="max-w-7xl mx-auto px-6 py-6 hidden">
+        <h2 class="text-xl font-bold text-white mb-6">Eventos del Sistema</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for ev in eventos %}
+            <div class="card rounded-xl p-5 {% if ev.activo %}border-tec-light/40{% endif %}">
+                <div class="flex items-center justify-between mb-2">
+                    <h3 class="text-white font-semibold">{{ ev.nombre }}</h3>
+                    {% if ev.activo %}
+                    <span
+                        class="px-2 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 rounded-full text-xs font-medium">
+                        ACTIVO
+                    </span>
+                    {% else %}
+                    <span class="px-2 py-0.5 bg-white/5 text-white/30 rounded-full text-xs">inactivo</span>
+                    {% endif %}
+                </div>
+                <p class="text-white/40 text-sm">{{ ev.periodo }} — {{ ev.anio }} | ID: {{ ev.id_evento }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ─── MODAL: CREAR PROYECTO ──────────────────────────────────────────────── -->
+    <div id="modal-crear" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onclick="document.getElementById('modal-crear').classList.add('hidden')"></div>
+        <div class="card rounded-2xl w-full max-w-lg relative z-10 shadow-2xl">
+            <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+                <h3 class="text-white font-bold text-lg">Nuevo Proyecto</h3>
+                <button onclick="document.getElementById('modal-crear').classList.add('hidden')"
+                    class="text-white/40 hover:text-white transition-colors">✕</button>
+            </div>
+            <form id="form-crear" class="px-6 py-5 space-y-4">
+                <div>
+                    <label class="block text-xs text-white/50 mb-1">Nombre del proyecto *</label>
+                    <input type="text" id="c-nombre" required
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                </div>
+                <div>
+                    <label class="block text-xs text-white/50 mb-1">Descripción</label>
+                    <textarea id="c-descripcion" rows="2"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light resize-none"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Empresa *</label>
+                        <select id="c-empresa" required
+                            class="w-full bg-slate-800 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                            <option value="">Seleccionar…</option>
+                            {% for e in empresas %}
+                            <option value="{{ e.id_empresa }}">{{ e.nombre_empresa }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Evento *</label>
+                        <select id="c-evento" required
+                            class="w-full bg-slate-800 border border-white/15 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                            <option value="">Seleccionar…</option>
+                            {% for ev in eventos %}
+                            <option value="{{ ev.id_evento }}" {% if ev.activo %}selected{% endif %}>{{ ev.nombre }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Capacidad máxima *</label>
+                        <input type="number" id="c-capacidad" min="1" required
+                            class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-white/50 mb-1">Cupos en lista de espera</label>
+                        <input type="number" id="c-espera" min="0" value="0"
+                            class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                    </div>
+                </div>
+                <div id="crear-error" class="hidden text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2"></div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="document.getElementById('modal-crear').classList.add('hidden')"
+                        class="flex-1 py-2.5 border border-white/20 rounded-xl text-white/60 hover:text-white text-sm transition-all">
+                        Cancelar
+                    </button>
+                    <button type="submit"
+                        class="flex-1 py-2.5 bg-tec-light text-white font-semibold rounded-xl hover:bg-tec-blue text-sm transition-all">
+                        Crear proyecto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ─── MODAL: AMPLIAR CUPO ────────────────────────────────────────────────── -->
+    <div id="modal-cupo" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onclick="document.getElementById('modal-cupo').classList.add('hidden')"></div>
+        <div class="card rounded-2xl w-full max-w-sm relative z-10 shadow-2xl">
+            <div class="px-6 py-5 border-b border-white/10">
+                <h3 class="text-white font-bold">Ampliar Cupo</h3>
+                <p id="cupo-proyecto-nombre" class="text-white/40 text-sm mt-0.5"></p>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                <div>
+                    <label class="block text-xs text-white/50 mb-1">Cupo actual: <span id="cupo-actual-label"
+                            class="text-white font-mono"></span></label>
+                    <label class="block text-xs text-white/50 mb-2 mt-2">Nueva capacidad máxima *</label>
+                    <input type="number" id="cupo-nueva" min="1"
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:ring-2 focus:ring-tec-light">
+                </div>
+                <div id="cupo-error" class="hidden text-red-400 text-xs bg-red-500/10 rounded-lg px-3 py-2"></div>
+                <div class="flex gap-3">
+                    <button onclick="document.getElementById('modal-cupo').classList.add('hidden')"
+                        class="flex-1 py-2.5 border border-white/20 rounded-xl text-white/60 hover:text-white text-sm transition-all">
+                        Cancelar
+                    </button>
+                    <button onclick="guardarCupo()"
+                        class="flex-1 py-2.5 bg-tec-light text-white font-semibold rounded-xl hover:bg-tec-blue text-sm transition-all">
+                        Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: CREDENCIALES -->
+    <div id="modal-creds" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="card rounded-2xl w-full max-w-md relative z-10 shadow-2xl border border-green-500/20">
+            <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+                <div>
+                    <h3 class="text-white font-bold">Credenciales de Acceso</h3>
+                    <p id="creds-proyecto-nombre" class="text-white/40 text-xs mt-0.5"></p>
+                </div>
+                <button onclick="document.getElementById('modal-creds').classList.add('hidden')"
+                    class="text-white/40 hover:text-white">X</button>
+            </div>
+            <div class="px-6 py-5 space-y-4">
+                <div class="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3">
+                    <p class="text-yellow-300 text-xs">Guarda estas credenciales. La contrasena no se puede recuperar
+                        una vez cerrado este modal.</p>
+                </div>
+                <div>
+                    <label class="block text-xs text-white/40 mb-1">Correo de acceso</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="creds-correo" readonly
+                            class="flex-1 bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-white text-sm font-mono">
+                        <button onclick="copiar('creds-correo')"
+                            class="text-xs px-2 py-1 border border-white/20 rounded-lg text-white/50 hover:text-white">Copiar</button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs text-white/40 mb-1">Contrasena</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" id="creds-password" readonly
+                            class="flex-1 bg-white/5 border border-white/15 rounded-lg px-3 py-2 text-green-300 text-sm font-mono">
+                        <button onclick="copiar('creds-password')"
+                            class="text-xs px-2 py-1 border border-white/20 rounded-lg text-white/50 hover:text-white">Copiar</button>
+                    </div>
+                </div>
+                <button onclick="document.getElementById('modal-creds').classList.add('hidden'); location.reload();"
+                    class="w-full py-2.5 bg-tec-light text-white font-semibold rounded-xl text-sm">
+                    Listo - cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = document.cookie.split(';').find(c => c.trim().startsWith('access_token='))?.split('=')[1];
+        let cupoProyectoId = null;
+
+        // ── Tabs ─────────────────────────────────────────────────────────────────────
+        function showTab(tab) {
+            ['proyectos', 'empresas', 'eventos'].forEach(t => {
+                document.getElementById('panel-' + t).classList.add('hidden');
+                document.getElementById('tab-' + t).className = 'pb-3 text-sm font-medium transition-all tab-inactive';
+            });
+            document.getElementById('panel-' + tab).classList.remove('hidden');
+            document.getElementById('tab-' + tab).className = 'pb-3 text-sm font-medium transition-all tab-active';
+        }
+
+        // ── Crear Proyecto ────────────────────────────────────────────────────────────
+        document.getElementById('form-crear').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const errDiv = document.getElementById('crear-error');
+            errDiv.classList.add('hidden');
+            const payload = {
+                id_empresa: parseInt(document.getElementById('c-empresa').value),
+                id_evento: parseInt(document.getElementById('c-evento').value),
+                nombre_proyecto: document.getElementById('c-nombre').value,
+                descripcion: document.getElementById('c-descripcion').value || null,
+                capacidad_max: parseInt(document.getElementById('c-capacidad').value),
+                capacidad_espera_max: parseInt(document.getElementById('c-espera').value) || 0,
+            };
+            const res = await fetch('/api/v1/admin/proyectos', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+                body: JSON.stringify(payload),
+            });
+            if (res.ok) {
+                const data = await res.json();
+                // Cerrar modal de crear
+                document.getElementById('modal-crear').classList.add('hidden');
+                // Mostrar credenciales generadas
+                mostrarCredenciales(data.nombre_proyecto, data.credenciales.correo, data.credenciales.password);
+            } else {
+                const data = await res.json();
+                errDiv.textContent = data.detail || 'Error al crear el proyecto';
+                errDiv.classList.remove('hidden');
+            }
+        });
+
+        // ── Credenciales ──────────────────────────────────────────────────────────────
+        function mostrarCredenciales(nombreProyecto, correo, password) {
+            document.getElementById('creds-proyecto-nombre').textContent = nombreProyecto;
+            document.getElementById('creds-correo').value = correo;
+            document.getElementById('creds-password').value = password;
+            document.getElementById('modal-creds').classList.remove('hidden');
+        }
+
+        async function regenerarCredenciales(id, nombre) {
+            const res = await fetch(`/api/v1/admin/proyectos/${id}/credenciales`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + TOKEN },
+            });
+            if (res.ok) {
+                const data = await res.json();
+                mostrarCredenciales(nombre, data.correo, data.password);
+            } else {
+                alert('Error generando credenciales');
+            }
+        }
+
+        function copiar(inputId) {
+            const input = document.getElementById(inputId);
+            navigator.clipboard.writeText(input.value).then(() => {
+                // Flash de confirmación
+                input.style.outline = '2px solid #0075C9';
+                setTimeout(() => input.style.outline = '', 1000);
+            });
+        }
+
+        function abrirAmpliarCupo(id, nombre, capacidadActual) {
+            cupoProyectoId = id;
+            document.getElementById('cupo-proyecto-nombre').textContent = nombre;
+            document.getElementById('cupo-actual-label').textContent = capacidadActual;
+            document.getElementById('cupo-nueva').value = capacidadActual + 1;
+            document.getElementById('cupo-nueva').min = capacidadActual + 1;
+            document.getElementById('cupo-error').classList.add('hidden');
+            document.getElementById('modal-cupo').classList.remove('hidden');
+        }
+
+        async function guardarCupo() {
+            const errDiv = document.getElementById('cupo-error');
+            errDiv.classList.add('hidden');
+            const nueva = parseInt(document.getElementById('cupo-nueva').value);
+            const res = await fetch(`/api/v1/admin/proyectos/${cupoProyectoId}/capacidad`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN },
+                body: JSON.stringify({ nueva_capacidad_max: nueva }),
+            });
+            if (res.ok) {
+                location.reload();
+            } else {
+                const data = await res.json();
+                errDiv.textContent = data.detail || 'Error al ampliar el cupo';
+                errDiv.classList.remove('hidden');
+            }
+        }
+    </script>
+</body>
+
+</html>

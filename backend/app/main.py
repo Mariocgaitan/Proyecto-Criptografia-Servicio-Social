@@ -9,7 +9,8 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.ssh_manager import ssh_tunnel_manager
-from app.routers import auth, alumno, empresa
+from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
+from app.routers import auth, alumno, admin, empresa
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -35,23 +36,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="SID — Sistema de Inscripción Dinámica",
-    description=(
-        "API REST para el sistema de pre-registro e inscripción con QR dinámico.\n\n"
-        "## Autenticación\n"
-        "Los endpoints protegidos requieren un `Bearer` token JWT en el header `Authorization`.\n"
-        "Obtenlo primero desde `POST /api/v1/auth/login`.\n\n"
-        "## Rate Limiting\n"
-        "El endpoint de registro está limitado a **5 peticiones/minuto** por IP."
-    ),
-    version="0.4.0",
+    description="API para el sistema de pre-registro e inscripción con QR dinámico",
+    version="0.5.0",
     lifespan=lifespan,
-    docs_url=None,
-    redoc_url="/redoc" if settings.SHOW_DOCS else None,
-    openapi_tags=[
-        {"name": "Autenticación", "description": "Registro, login, refresh y logout de alumnos."},
-        {"name": "Alumno",        "description": "QR dinámico y estado de inscripción del alumno."},
-        {"name": "Empresa",       "description": "Escáner QR y datos del proyecto para empresas."},
-    ],
+    docs_url="/docs" if settings.DEBUG else None,
+    redoc_url="/redoc" if settings.DEBUG else None,
 )
 
 # ── Security Headers Middleware ────────────────────────────────────────────────
@@ -105,6 +94,7 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 # Routers
 app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
+app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
 
 

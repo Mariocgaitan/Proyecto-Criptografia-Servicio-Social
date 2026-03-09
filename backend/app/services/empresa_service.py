@@ -1,65 +1,31 @@
 """
-Servicio del módulo Empresa — lógica transaccional para validar QR e inscribir alumnos.
-
-El flujo completo de validar_qr_e_inscribir:
-  1. Verificar TOTP (RFC 6238, valid_window=1)
-  2. Obtener el id_evento del proyecto
-  3. Verificar que el alumno esté registrado para ese evento
-  4. Verificar que el alumno no esté ya inscrito en ese evento
-  5. BEGIN TRANSACTION con SELECT FOR UPDATE en el proyecto
-  6a. Si hay cupo → INSERT inscripcion + UPDATE cupo_actual + DELETE lista_espera del evento
-  6b. Si no hay cupo pero hay lista espera → INSERT lista_espera
-  6c. Si no hay cupo ni lista espera → HTTP 409
-  7. Log de auditoría
+Servicio del módulo Empresa — validación de QR y procesamiento de inscripciones.
 """
+import json
+import time
+
 import pyotp
-from sqlalchemy import delete, func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.empresa import Empresa
-from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
-from app.models.lista_espera import ListaEspera
-from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
 
 
-# ── Errores de negocio ────────────────────────────────────────────────────────
-
-class ValidacionError(Exception):
+class EscanerError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
 
 
-# ── Auditoría interna ─────────────────────────────────────────────────────────
+async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
+    """Devuelve la info del proyecto asignado al representante de empresa."""
+    from app.models.empresa import Empresa
+    from app.models.evento import Evento
 
-async def _log(
-    db: AsyncSession,
-    tipo_evento: str,
-    id_matricula: str | None = None,
-    id_proyecto: int | None = None,
-    ip_origen: str | None = None,
-    detalle: str | None = None,
-) -> None:
-    db.add(LogAuditoria(
-        tipo_evento=tipo_evento,
-        id_matricula=id_matricula,
-        ip_origen=ip_origen,
-        detalle=detalle,
-    ))
-
-
-# ── Datos del proyecto para la vista del escáner ──────────────────────────────
-
-async def obtener_datos_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
-    """
-    Retorna los datos del proyecto y su evento para renderizar la vista del escáner.
-    Raises ValidacionError (404) si el proyecto no existe.
-    """
     result = await db.execute(
         select(Proyecto, Empresa, Evento)
         .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
@@ -68,207 +34,130 @@ async def obtener_datos_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
     )
     row = result.first()
     if not row:
-        raise ValidacionError("Proyecto no encontrado", 404)
+        raise EscanerError("Proyecto no encontrado", 404)
 
     proyecto, empresa, evento = row
 
-    # Posiciones en lista de espera
-    espera_count_result = await db.execute(
-        select(func.count()).where(ListaEspera.id_proyecto == id_proyecto)
+    # Contar inscripciones confirmadas
+    ins_result = await db.execute(
+        select(Inscripcion).where(Inscripcion.id_proyecto == id_proyecto)
     )
-    en_espera = espera_count_result.scalar() or 0
+    inscripciones = ins_result.scalars().all()
 
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
-        "descripcion": proyecto.descripcion,
-        "capacidad_max": proyecto.capacidad_max,
-        "cupo_actual": proyecto.cupo_actual,
-        "cupo_disponible": max(0, proyecto.capacidad_max - proyecto.cupo_actual),
-        "capacidad_espera_max": proyecto.capacidad_espera_max,
-        "en_espera": en_espera,
         "empresa": empresa.nombre_empresa,
         "evento": evento.nombre,
-        "id_evento": evento.id_evento,
+        "id_evento": proyecto.id_evento,
+        "capacidad_max": proyecto.capacidad_max,
+        "cupo_actual": proyecto.cupo_actual,
+        "inscripciones_totales": len(inscripciones),
+        "cupos_disponibles": max(0, proyecto.capacidad_max - proyecto.cupo_actual),
     }
 
 
-# ── Validación y inscripción ───────────────────────────────────────────────────
-
-async def validar_qr_e_inscribir(
+async def validar_y_inscribir(
     db: AsyncSession,
-    matricula: str,
-    totp_leido: str,
     id_proyecto: int,
-    ip_origen: str | None = None,
+    qr_raw: str,
 ) -> dict:
     """
-    Endpoint transaccional crítico. Valida el QR e inscribe al alumno.
+    Valida el QR escaneado y, si es válido, inscribe al alumno en el proyecto.
 
-    Returns dict con:
-        status: "inscrito" | "lista_espera"
-        message: str
-        alumno: str
-        proyecto: str
-        evento: str
-        posicion: int | None  (solo si lista_espera)
+    El QR contiene: {"matricula": "A01234567", "totp": "123456", "id_evento": 2}
 
-    Raises ValidacionError con el status_code correcto en cada caso de error.
+    Returns:
+        {"ok": True/False, "mensaje": str, "nombre_alumno": str|None}
     """
+    # 1. Parsear el QR
+    try:
+        data = json.loads(qr_raw)
+        matricula = str(data["matricula"])
+        totp_code = str(data["totp"])
+        id_evento_qr = int(data["id_evento"])
+    except (json.JSONDecodeError, KeyError, TypeError):
+        raise EscanerError("QR inválido o con formato incorrecto", 400)
 
-    # ── 1. Verificar TOTP ────────────────────────────────────────────────────
-    usr_result = await db.execute(
+    # 2. Verificar que el proyecto es del mismo evento que el QR
+    proyecto = await db.get(Proyecto, id_proyecto)
+    if not proyecto:
+        raise EscanerError("Proyecto no encontrado", 404)
+
+    if proyecto.id_evento != id_evento_qr:
+        raise EscanerError(
+            f"El QR es para el evento {id_evento_qr}, pero este proyecto es del evento {proyecto.id_evento}",
+            400,
+        )
+
+    # 3. Buscar el alumno
+    result = await db.execute(
         select(Usuario).where(Usuario.id_matricula == matricula)
     )
-    usuario = usr_result.scalar_one_or_none()
+    alumno = result.scalar_one_or_none()
+    if not alumno:
+        raise EscanerError(f"Alumno {matricula} no encontrado", 404)
 
-    if not usuario:
-        await _log(db, "TOTP_INVALIDO", id_matricula=matricula, ip_origen=ip_origen,
-                   detalle="Matrícula no encontrada")
-        await db.commit()
-        raise ValidacionError("Código QR expirado o inválido", 400)
-
-    totp = pyotp.TOTP(usuario.totp_secret)
-    if not totp.verify(totp_leido, valid_window=1):
-        await _log(db, "TOTP_INVALIDO", id_matricula=matricula, ip_origen=ip_origen,
-                   id_proyecto=id_proyecto, detalle="TOTP incorrecto")
-        await db.commit()
-        raise ValidacionError("Código QR expirado o inválido", 400)
-
-    # ── 2. Obtener el evento del proyecto ────────────────────────────────────
-    proj_result = await db.execute(
-        select(Proyecto, Empresa, Evento)
-        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
-        .join(Evento, Proyecto.id_evento == Evento.id_evento)
-        .where(Proyecto.id_proyecto == id_proyecto)
-    )
-    proj_row = proj_result.first()
-    if not proj_row:
-        raise ValidacionError("Proyecto no encontrado", 404)
-
-    proyecto, empresa, evento = proj_row
-
-    # ── 3. Verificar que el alumno esté registrado para ese evento ───────────
+    # 4. Verificar que el alumno está registrado para este evento
     ue_result = await db.execute(
         select(UsuarioEvento).where(
             UsuarioEvento.id_matricula == matricula,
-            UsuarioEvento.id_evento == evento.id_evento,
+            UsuarioEvento.id_evento == id_evento_qr,
         )
     )
     if not ue_result.scalar_one_or_none():
-        await _log(db, "INSCRIPCION_RECHAZADA", id_matricula=matricula, ip_origen=ip_origen,
-                   detalle=f"Alumno no registrado para evento {evento.id_evento}")
-        await db.commit()
-        raise ValidacionError("El alumno no está registrado para este evento", 403)
+        return {
+            "ok": False,
+            "mensaje": f"{alumno.nombre} no está registrado para este evento",
+            "nombre_alumno": alumno.nombre,
+        }
 
-    # ── 4. Verificar que no esté ya inscrito en ese evento ───────────────────
+    # 5. Verificar que no esté ya inscrito en ALGÚN proyecto de este evento
     ins_result = await db.execute(
         select(Inscripcion).where(
             Inscripcion.id_matricula == matricula,
-            Inscripcion.id_evento == evento.id_evento,
+            Inscripcion.id_evento == id_evento_qr,
         )
     )
     if ins_result.scalar_one_or_none():
-        await _log(db, "YA_INSCRITO", id_matricula=matricula, ip_origen=ip_origen,
-                   detalle=f"Ya inscrito en evento {evento.id_evento}")
-        await db.commit()
-        raise ValidacionError("El alumno ya está inscrito en un proyecto de este evento", 403)
+        return {
+            "ok": False,
+            "mensaje": f"{alumno.nombre} ya está inscrito en un proyecto de este evento",
+            "nombre_alumno": alumno.nombre,
+        }
 
-    # ── 5. Transacción: SELECT FOR UPDATE + acción ───────────────────────────
-    # SELECT FOR UPDATE bloquea la fila del proyecto para evitar race conditions
-    # (dos empresas escaneando al mismo alumno al mismo tiempo)
-    locked_result = await db.execute(
-        select(Proyecto)
-        .where(Proyecto.id_proyecto == id_proyecto)
-        .with_for_update()
+    # 6. Verificar el TOTP (ventana de ±1 para tolerancia de reloj)
+    totp = pyotp.TOTP(alumno.totp_secret)
+    if not totp.verify(totp_code, valid_window=1):
+        return {
+            "ok": False,
+            "mensaje": "Código QR expirado o inválido — pide al alumno que refresque",
+            "nombre_alumno": alumno.nombre,
+        }
+
+    # 7. Verificar cupo disponible
+    if proyecto.cupo_actual >= proyecto.capacidad_max:
+        return {
+            "ok": False,
+            "mensaje": f"Proyecto lleno ({proyecto.cupo_actual}/{proyecto.capacidad_max})",
+            "nombre_alumno": alumno.nombre,
+        }
+
+    # 8. Todo ok — inscribir
+    inscripcion = Inscripcion(
+        id_matricula=matricula,
+        id_proyecto=id_proyecto,
+        id_evento=id_evento_qr,
     )
-    proyecto_locked = locked_result.scalar_one()
+    proyecto.cupo_actual += 1
+    db.add(inscripcion)
+    await db.commit()
+    await db.refresh(proyecto)
 
-    hay_cupo = proyecto_locked.cupo_actual < proyecto_locked.capacidad_max
-
-    if hay_cupo:
-        # ── 6a. Inscribir ────────────────────────────────────────────────────
-        db.add(Inscripcion(
-            id_matricula=matricula,
-            id_proyecto=id_proyecto,
-            id_evento=evento.id_evento,
-        ))
-        proyecto_locked.cupo_actual += 1
-
-        # Eliminar al alumno de TODAS las listas de espera de este evento
-        await db.execute(
-            delete(ListaEspera).where(
-                ListaEspera.id_matricula == matricula,
-                ListaEspera.id_evento == evento.id_evento,
-            )
-        )
-
-        await _log(db, "INSCRIPCION_OK", id_matricula=matricula, ip_origen=ip_origen,
-                   id_proyecto=id_proyecto,
-                   detalle=f"Inscrito en {proyecto.nombre_proyecto} / {empresa.nombre_empresa}")
-        await db.commit()
-
-        return {
-            "status": "inscrito",
-            "message": "Inscripción exitosa",
-            "alumno": usuario.nombre,
-            "matricula": matricula,
-            "proyecto": proyecto.nombre_proyecto,
-            "empresa": empresa.nombre_empresa,
-            "evento": evento.nombre,
-            "posicion": None,
-        }
-
-    else:
-        # ── 6b / 6c. Sin cupo ────────────────────────────────────────────────
-        hay_lista = proyecto_locked.capacidad_espera_max > 0
-
-        if not hay_lista:
-            await _log(db, "CUPO_LLENO", id_matricula=matricula, ip_origen=ip_origen,
-                       id_proyecto=id_proyecto, detalle="Sin lista de espera")
-            await db.commit()
-            raise ValidacionError("Proyecto lleno y sin lista de espera disponible", 409)
-
-        # Verificar si ya está en lista de espera de este proyecto
-        espera_result = await db.execute(
-            select(ListaEspera).where(
-                ListaEspera.id_matricula == matricula,
-                ListaEspera.id_proyecto == id_proyecto,
-            )
-        )
-        if espera_result.scalar_one_or_none():
-            raise ValidacionError("Ya estás en la lista de espera de este proyecto", 409)
-
-        # Verificar que la lista de espera no esté llena
-        count_result = await db.execute(
-            select(func.count()).where(ListaEspera.id_proyecto == id_proyecto)
-        )
-        en_espera = count_result.scalar() or 0
-
-        if en_espera >= proyecto_locked.capacidad_espera_max:
-            await _log(db, "CUPO_LLENO", id_matricula=matricula, ip_origen=ip_origen,
-                       id_proyecto=id_proyecto, detalle="Lista de espera llena")
-            await db.commit()
-            raise ValidacionError("Proyecto lleno y lista de espera también llena", 409)
-
-        db.add(ListaEspera(
-            id_matricula=matricula,
-            id_proyecto=id_proyecto,
-            id_evento=evento.id_evento,
-        ))
-
-        await _log(db, "LISTA_ESPERA", id_matricula=matricula, ip_origen=ip_origen,
-                   id_proyecto=id_proyecto,
-                   detalle=f"Posición {en_espera + 1} en lista de {proyecto.nombre_proyecto}")
-        await db.commit()
-
-        return {
-            "status": "lista_espera",
-            "message": "Proyecto lleno. Alumno agregado a lista de espera",
-            "alumno": usuario.nombre,
-            "matricula": matricula,
-            "proyecto": proyecto.nombre_proyecto,
-            "empresa": empresa.nombre_empresa,
-            "evento": evento.nombre,
-            "posicion": en_espera + 1,
-        }
+    return {
+        "ok": True,
+        "mensaje": f"¡{alumno.nombre} inscrito exitosamente!",
+        "nombre_alumno": alumno.nombre,
+        "cupo_actual": proyecto.cupo_actual,
+        "capacidad_max": proyecto.capacidad_max,
+    }

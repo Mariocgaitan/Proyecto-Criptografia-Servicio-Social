@@ -1,313 +1,256 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="es">
 
-{% block title %}Escáner QR — {{ proyecto.empresa }}{% endblock %}
-
-{% block extra_head %}
-<!-- html5-qrcode — acceso a cámara y decodificación de QR -->
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-{% endblock %}
-
-{% block content %}
-<div class="max-w-2xl mx-auto px-4 sm:px-6 py-10 animate-slide-up">
-
-    <!-- ── Cabecera del proyecto ─────────────────────────────────────────── -->
-    <div class="mb-6">
-        <p class="text-white/40 text-xs uppercase tracking-widest mb-1">Escáner de Inscripción</p>
-        <h1 class="text-2xl font-bold text-white leading-tight">
-            {{ proyecto.nombre_proyecto }}
-        </h1>
-        <p class="text-white/50 text-sm mt-1">
-            {{ proyecto.empresa }}
-            &nbsp;·&nbsp;
-            {{ proyecto.evento }}
-        </p>
-    </div>
-
-    <!-- ── Contador de cupo ──────────────────────────────────────────────── -->
-    <div class="grid grid-cols-3 gap-3 mb-6">
-        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p class="text-white/40 text-xs mb-1">Inscritos</p>
-            <p class="text-white font-bold text-2xl tabular-nums" id="cupo-actual">
-                {{ proyecto.cupo_actual }}
-            </p>
-        </div>
-        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p class="text-white/40 text-xs mb-1">Capacidad</p>
-            <p class="text-white font-bold text-2xl tabular-nums">
-                {{ proyecto.capacidad_max }}
-            </p>
-        </div>
-        <div class="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p class="text-white/40 text-xs mb-1">En espera</p>
-            <p class="text-white font-bold text-2xl tabular-nums" id="en-espera">
-                {{ proyecto.en_espera }}
-            </p>
-        </div>
-    </div>
-
-    <!-- ── Área del escáner ──────────────────────────────────────────────── -->
-    <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden mb-6">
-
-        <!-- Visor de la cámara -->
-        <div id="qr-reader" class="w-full"></div>
-
-        <!-- Controles -->
-        <div class="px-6 py-4 flex gap-3">
-            <button id="btn-iniciar"
-                class="flex-1 py-2.5 bg-tec-blue hover:bg-tec-light text-white text-sm font-semibold rounded-xl transition-all duration-200">
-                Iniciar cámara
-            </button>
-            <button id="btn-detener"
-                class="hidden flex-1 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl transition-all duration-200">
-                Detener
-            </button>
-        </div>
-    </div>
-
-    <!-- ── Panel de resultado ────────────────────────────────────────────── -->
-    <div id="resultado-panel" class="hidden rounded-2xl border p-6 mb-4 transition-all duration-300">
-        <div class="flex items-start gap-4">
-            <div id="resultado-icono" class="w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl">
-            </div>
-            <div class="flex-1 min-w-0">
-                <p id="resultado-titulo" class="font-semibold text-lg text-white"></p>
-                <p id="resultado-alumno" class="text-white/70 text-sm mt-0.5"></p>
-                <p id="resultado-detalle" class="text-white/40 text-xs mt-1"></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Historial de escaneos ─────────────────────────────────────────── -->
-    <div class="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
-        <div class="px-5 py-3 border-b border-white/10">
-            <p class="text-white/50 text-xs uppercase tracking-widest font-semibold">
-                Últimos escaneos
-            </p>
-        </div>
-        <div id="historial" class="divide-y divide-white/5 max-h-64 overflow-y-auto">
-            <p class="text-white/30 text-sm text-center py-6" id="historial-vacio">
-                Aún no hay escaneos.
-            </p>
-        </div>
-    </div>
-
-</div>
-{% endblock %}
-
-
-{% block extra_scripts %}
-<script>
-const ID_PROYECTO = {{ proyecto.id_proyecto }};
-let html5QrCode = null;
-let escaneando = false;
-let ultimoQrLeido = null;   // Evita procesar el mismo QR dos veces seguidas
-let timerReset = null;
-
-// ── UI helpers ──────────────────────────────────────────────────────────────
-
-function mostrarResultado(tipo, titulo, alumno, detalle) {
-    const panel  = document.getElementById('resultado-panel');
-    const icono  = document.getElementById('resultado-icono');
-    const tituloEl = document.getElementById('resultado-titulo');
-    const alumnoEl = document.getElementById('resultado-alumno');
-    const detalleEl = document.getElementById('resultado-detalle');
-
-    const estilos = {
-        ok:      { bg: 'bg-green-500/20 border-green-500/40',  iconBg: 'bg-green-500/20', icono: '✅' },
-        espera:  { bg: 'bg-yellow-500/10 border-yellow-500/30', iconBg: 'bg-yellow-500/20', icono: '⏳' },
-        error:   { bg: 'bg-red-500/10 border-red-500/30',      iconBg: 'bg-red-500/20', icono: '❌' },
-    };
-
-    const e = estilos[tipo] || estilos.error;
-    panel.className = `rounded-2xl border p-6 mb-4 transition-all duration-300 ${e.bg}`;
-    icono.className = `w-12 h-12 shrink-0 rounded-xl flex items-center justify-center text-2xl ${e.iconBg}`;
-    icono.textContent = e.icono;
-    tituloEl.textContent = titulo;
-    alumnoEl.textContent = alumno || '';
-    detalleEl.textContent = detalle || '';
-    panel.classList.remove('hidden');
-}
-
-function agregarHistorial(tipo, alumno, proyecto, timestamp) {
-    const contenedor = document.getElementById('historial');
-    const vacio = document.getElementById('historial-vacio');
-    if (vacio) vacio.remove();
-
-    const iconos = { ok: '✅', espera: '⏳', error: '❌' };
-    const colores = {
-        ok:    'text-green-400',
-        espera:'text-yellow-400',
-        error: 'text-red-400',
-    };
-
-    const fila = document.createElement('div');
-    fila.className = 'flex items-center gap-3 px-5 py-3';
-    fila.innerHTML = `
-        <span class="text-lg">${iconos[tipo] || '❌'}</span>
-        <div class="flex-1 min-w-0">
-            <p class="text-white text-sm font-medium truncate">${alumno}</p>
-            <p class="text-white/40 text-xs truncate">${proyecto}</p>
-        </div>
-        <span class="text-white/30 text-xs shrink-0">${timestamp}</span>
-    `;
-    contenedor.insertBefore(fila, contenedor.firstChild);
-}
-
-function actualizarCupo(cupoActual, enEspera) {
-    document.getElementById('cupo-actual').textContent = cupoActual;
-    document.getElementById('en-espera').textContent = enEspera;
-}
-
-// ── Lógica de escaneo ────────────────────────────────────────────────────────
-
-async function procesarQr(textoQr) {
-    // Evitar procesar el mismo QR repetidamente mientras apunta a él
-    if (textoQr === ultimoQrLeido) return;
-    ultimoQrLeido = textoQr;
-
-    // Limpiar reset previo
-    if (timerReset) clearTimeout(timerReset);
-    timerReset = setTimeout(() => { ultimoQrLeido = null; }, 5000);
-
-    let payload;
-    try {
-        payload = JSON.parse(textoQr);
-    } catch {
-        mostrarResultado('error', 'QR inválido', '', 'El código escaneado no es un QR de SID.');
-        return;
-    }
-
-    if (!payload.matricula || !payload.totp || !payload.id_evento) {
-        mostrarResultado('error', 'QR inválido', '', 'El QR no contiene los campos esperados.');
-        return;
-    }
-
-    try {
-        const resp = await fetch('/api/v1/inscripciones/validar', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                matricula: payload.matricula,
-                totp_leido: payload.totp,
-                id_proyecto: ID_PROYECTO,
-            }),
-        });
-
-        const data = await resp.json();
-        const hora = new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        if (resp.status === 200) {
-            mostrarResultado('ok',
-                '¡Inscripción exitosa!',
-                `${data.alumno} (${data.matricula})`,
-                `${data.proyecto} · ${data.empresa}`
-            );
-            agregarHistorial('ok', `${data.alumno} (${data.matricula})`, data.proyecto, hora);
-        } else if (resp.status === 202) {
-            mostrarResultado('espera',
-                `Lista de espera — Posición ${data.posicion}`,
-                `${data.alumno} (${data.matricula})`,
-                `Proyecto: ${data.proyecto}`
-            );
-            agregarHistorial('espera', `${data.alumno} (${data.matricula})`, data.proyecto, hora);
-        } else {
-            mostrarResultado('error',
-                data.detail || 'Error al inscribir',
-                payload.matricula,
-                `Código: ${resp.status}`
-            );
-            agregarHistorial('error', payload.matricula, 'Error', hora);
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Escáner QR — {{ proyecto.nombre_proyecto }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- html5-qrcode: librería para escanear QR con cámara -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #0d1f1a 0%, #1a2e27 50%, #0d1f1a 100%);
+            min-height: 100vh;
         }
 
-        // Actualizar contadores de cupo
-        try {
-            const cupoResp = await fetch(`/api/v1/empresa/proyecto/${ID_PROYECTO}`);
-            if (cupoResp.ok) {
-                const cupoData = await cupoResp.json();
-                actualizarCupo(cupoData.cupo_actual, cupoData.en_espera);
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .result-ok {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.35);
+            color: #86efac;
+        }
+
+        .result-error {
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #fca5a5;
+        }
+
+        .result-warn {
+            background: rgba(245, 158, 11, 0.12);
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            color: #fcd34d;
+        }
+
+        #reader {
+            width: 100%;
+        }
+
+        #reader video {
+            border-radius: 12px;
+        }
+
+        /* Ocultar UI extra de html5-qrcode */
+        #reader__scan_region {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        #reader__dashboard_section_swaplink {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body class="text-white font-sans">
+
+    <!-- Navbar -->
+    <nav class="card border-b border-white/10 sticky top-0 z-50">
+        <div class="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 3.5V16m-8 0h.01" />
+                    </svg>
+                </div>
+                <div>
+                    <span class="font-bold text-white text-sm">{{ proyecto.empresa }}</span>
+                    <p class="text-white/40 text-xs">{{ proyecto.nombre_proyecto }}</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <!-- Cupo en vivo -->
+                <div class="text-right">
+                    <p class="text-white/40 text-xs">Cupo</p>
+                    <p id="cupo-display" class="font-mono text-sm font-bold text-emerald-400">
+                        {{ proyecto.cupo_actual }}/{{ proyecto.capacidad_max }}
+                    </p>
+                </div>
+                <a href="/logout"
+                    class="px-3 py-1.5 text-xs text-white/50 hover:text-white border border-white/20 hover:border-white/40 rounded-lg transition-all">
+                    Salir
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-3xl mx-auto px-4 py-6 space-y-4">
+
+        <!-- Stats rápidas -->
+        <div class="grid grid-cols-3 gap-3">
+            <div class="card rounded-xl p-4 text-center">
+                <p class="text-white/40 text-xs mb-1">Inscritos</p>
+                <p id="stat-inscritos" class="text-2xl font-bold text-white">{{ proyecto.cupo_actual }}</p>
+            </div>
+            <div class="card rounded-xl p-4 text-center">
+                <p class="text-white/40 text-xs mb-1">Disponibles</p>
+                <p id="stat-disponibles" class="text-2xl font-bold text-emerald-400">{{ proyecto.cupos_disponibles }}
+                </p>
+            </div>
+            <div class="card rounded-xl p-4 text-center">
+                <p class="text-white/40 text-xs mb-1">Capacidad</p>
+                <p class="text-2xl font-bold text-white/60">{{ proyecto.capacidad_max }}</p>
+            </div>
+        </div>
+
+        <!-- Resultado del último escaneo -->
+        <div id="resultado" class="hidden card rounded-xl p-4">
+            <div class="flex items-center gap-3">
+                <span id="result-icon" class="text-2xl"></span>
+                <div>
+                    <p id="result-nombre" class="font-bold text-white text-sm"></p>
+                    <p id="result-msg" class="text-sm mt-0.5"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Escáner -->
+        <div class="card rounded-2xl overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/10 flex items-center justify-between">
+                <div>
+                    <h2 class="text-white font-bold">Cámara</h2>
+                    <p id="scan-status" class="text-white/40 text-xs mt-0.5">Iniciando cámara…</p>
+                </div>
+                <button id="btn-toggle" onclick="toggleScanner()"
+                    class="px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all font-medium">
+                    Detener
+                </button>
+            </div>
+            <div class="p-4">
+                <div id="reader"></div>
+            </div>
+        </div>
+
+        <!-- Info del evento -->
+        <div class="card rounded-xl px-5 py-4">
+            <p class="text-white/40 text-xs">Evento activo</p>
+            <p class="text-white font-medium mt-0.5">{{ proyecto.evento }} — ID {{ proyecto.id_evento }}</p>
+        </div>
+    </div>
+
+    <script>
+        const TOKEN = document.cookie.split(';').find(c => c.trim().startsWith('access_token='))?.split('=')[1];
+        let scanning = true;
+        let procesando = false;
+        let html5QrCode = null;
+
+        const qrConfig = {
+            fps: 10,
+            qrbox: { width: 280, height: 280 },
+            aspectRatio: 1.0,
+            rememberLastUsedCamera: true,
+        };
+
+        async function onScanSuccess(decodedText) {
+            if (procesando) return;
+            procesando = true;
+
+            mostrarResultado('warn', '⏳', 'Procesando…', '');
+
+            try {
+                const res = await fetch('/api/v1/empresa/escanear', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + TOKEN,
+                    },
+                    body: JSON.stringify({ qr_data: decodedText }),
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.ok) {
+                    // Exito
+                    mostrarResultado('ok', '✅', data.nombre_alumno || 'Alumno', data.mensaje);
+                    // Actualizar cupo en vivo
+                    if (data.cupo_actual !== undefined) {
+                        const disponibles = data.capacidad_max - data.cupo_actual;
+                        document.getElementById('stat-inscritos').textContent = data.cupo_actual;
+                        document.getElementById('stat-disponibles').textContent = disponibles;
+                        document.getElementById('cupo-display').textContent = `${data.cupo_actual}/${data.capacidad_max}`;
+                    }
+                } else {
+                    // Fallo de negocio (QR expirado, ya inscrito, etc.)
+                    const msg = data.detail || data.mensaje || 'Error desconocido';
+                    mostrarResultado('error', '❌', data.nombre_alumno || 'Alumno', msg);
+                }
+            } catch (e) {
+                mostrarResultado('error', '⚠️', 'Error', 'No se pudo conectar al servidor');
             }
-        } catch (_) { /* silencioso */ }
 
-    } catch (err) {
-        mostrarResultado('error', 'Error de red', '', 'No se pudo conectar con el servidor.');
-    }
-}
-
-// ── Controles de la cámara ───────────────────────────────────────────────────
-
-document.getElementById('btn-iniciar').addEventListener('click', async () => {
-    // ── Paso 1: verificar que mediaDevices esté disponible ──────────────────
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        mostrarResultado('error', 'Cámara no disponible',
-            '', 'Tu navegador no soporta acceso a cámara. Usa Chrome o Edge actualizados.');
-        return;
-    }
-
-    // ── Paso 2: probar acceso directo con getUserMedia ───────────────────────
-    let stream;
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        // Liberar el stream de prueba antes de que html5-qrcode abra el suyo
-        stream.getTracks().forEach(t => t.stop());
-    } catch (permErr) {
-        console.error('[SID] getUserMedia error:', permErr);
-        const msg = permErr?.message || permErr?.name || String(permErr);
-        mostrarResultado('error', 'Permiso de cámara denegado',
-            '', `El navegador bloqueó la cámara. (${msg})`);
-        return;
-    }
-
-    // ── Paso 3: enumerar cámaras y arrancar html5-qrcode ────────────────────
-    try {
-        const camaras = await Html5Qrcode.getCameras();
-        console.log('[SID] Cámaras encontradas:', camaras);
-
-        if (!camaras || camaras.length === 0) {
-            mostrarResultado('error', 'No se encontró ninguna cámara',
-                '', 'El navegador no listó cámaras disponibles.');
-            return;
+            // Esperar 3s antes de permitir siguiente escaneo
+            setTimeout(() => {
+                procesando = false;
+                document.getElementById('resultado').classList.add('hidden');
+            }, 3500);
         }
 
-        // Preferir cámara trasera (móvil) o la única disponible (laptop)
-        const camara = camaras.length > 1 ? camaras[camaras.length - 1] : camaras[0];
-        const camaraId = camara.id || '';
-        console.log('[SID] Usando cámara:', camara);
+        function mostrarResultado(tipo, icon, nombre, mensaje) {
+            const div = document.getElementById('resultado');
+            div.className = `card rounded-xl p-4 result-${tipo}`;
+            document.getElementById('result-icon').textContent = icon;
+            document.getElementById('result-nombre').textContent = nombre;
+            document.getElementById('result-msg').textContent = mensaje;
+            div.classList.remove('hidden');
+        }
 
-        html5QrCode = new Html5Qrcode('qr-reader');
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            Html5Qrcode.getCameras().then(cameras => {
+                if (!cameras || cameras.length === 0) {
+                    document.getElementById('scan-status').textContent = 'Sin acceso a la cámara';
+                    return;
+                }
+                // Preferir cámara trasera
+                const cam = cameras.find(c => c.label.toLowerCase().includes('back')) || cameras[cameras.length - 1];
+                html5QrCode.start(cam.id, qrConfig, onScanSuccess)
+                    .then(() => {
+                        document.getElementById('scan-status').textContent = 'Escánner activo — apunta al QR del alumno';
+                    })
+                    .catch(err => {
+                        document.getElementById('scan-status').textContent = 'Error: ' + err;
+                    });
+            }).catch(err => {
+                document.getElementById('scan-status').textContent = 'Permiso de cámara denegado';
+            });
+        }
 
-        // Si el ID está vacío, usar constraint de facingMode como fallback
-        const cameraInput = camaraId
-            ? camaraId
-            : { facingMode: 'user' };
+        async function toggleScanner() {
+            const btn = document.getElementById('btn-toggle');
+            if (scanning) {
+                await html5QrCode.stop();
+                scanning = false;
+                btn.textContent = 'Reanudar';
+                btn.className = 'px-4 py-1.5 text-sm bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all font-medium';
+                document.getElementById('scan-status').textContent = 'Escáner detenido';
+            } else {
+                scanning = true;
+                btn.textContent = 'Detener';
+                btn.className = 'px-4 py-1.5 text-sm bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-all font-medium';
+                startScanner();
+            }
+        }
 
-        await html5QrCode.start(
-            cameraInput,
-            { fps: 10, qrbox: { width: 280, height: 280 } },
-            procesarQr,
-            () => {}
-        );
+        // Iniciar al cargar
+        window.addEventListener('load', startScanner);
+    </script>
+</body>
 
-        escaneando = true;
-        document.getElementById('btn-iniciar').classList.add('hidden');
-        document.getElementById('btn-detener').classList.remove('hidden');
-
-    } catch (err) {
-        console.error('[SID] html5QrCode error:', err);
-        const msg = err?.message || err?.name
-            || (typeof err === 'string' ? err : null)
-            || JSON.stringify(err)
-            || 'Error desconocido';
-        mostrarResultado('error', 'No se pudo iniciar la cámara', '', msg);
-    }
-});
-
-document.getElementById('btn-detener').addEventListener('click', async () => {
-    if (html5QrCode && escaneando) {
-        await html5QrCode.stop();
-        escaneando = false;
-        document.getElementById('btn-iniciar').classList.remove('hidden');
-        document.getElementById('btn-detener').classList.add('hidden');
-    }
-});
-</script>
-{% endblock %}
+</html>
