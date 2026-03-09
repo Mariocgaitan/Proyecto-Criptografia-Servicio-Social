@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Empresa — Iniciar Sesión | SID{% endblock %}
+{% block description %}Acceso para representantes de empresa al escáner QR del Servicio Social{% endblock %}
+
+{% block content %}
+<div class="flex items-center justify-center min-h-screen py-12 px-4">
+    <div class="w-full max-w-md animate-slide-up">
+
+        <!-- Card -->
+        <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-emerald-800 to-teal-700 px-8 py-8">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                        <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 3.5V16m-8 0h.01M4 8h.01M20 8h.01M8 4h8a2 2 0 012 2v12a2 2 0 01-2 2H8a2 2 0 01-2-2V6a2 2 0 012-2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">Escáner QR</h1>
+                        <p class="text-emerald-200 text-sm mt-1">Representante de Empresa — Servicio Social</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Error -->
+            {% if error %}
+            <div class="mx-8 mt-6 bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                <div class="flex items-center gap-3">
+                    <svg class="w-5 h-5 text-red-400 flex-shrink-0" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <p class="text-red-300 text-sm">{{ error }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Formulario -->
+            <form method="POST" action="/empresa/login" class="px-8 py-6 space-y-5">
+
+                <div>
+                    <label for="correo" class="block text-sm font-medium text-white/80 mb-1.5">
+                        Correo del proyecto
+                    </label>
+                    <input type="email" id="correo" name="correo" value="{{ correo or '' }}"
+                        placeholder="optimizacion-logistica@cemex.sid.mx" required autofocus
+                        class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-200 hover:border-white/25">
+                </div>
+
+                <div>
+                    <label for="password" class="block text-sm font-medium text-white/80 mb-1.5">
+                        Contraseña
+                    </label>
+                    <div class="relative">
+                        <input type="password" id="password" name="password" placeholder="Contraseña del proyecto"
+                            required
+                            class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 pr-12 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-transparent transition-all duration-200 hover:border-white/25">
+                        <button type="button" onclick="togglePass()"
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
+                            <svg id="eye-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 pt-2"></div>
+
+                <button type="submit"
+                    class="w-full px-8 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-semibold rounded-xl hover:from-emerald-500 hover:to-teal-500 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg">
+                    Abrir escáner →
+                </button>
+
+            </form>
+        </div>
+
+        <p class="text-center text-white/30 text-xs mt-6">
+            Acceso exclusivo para representantes de empresa del Servicio Social TEC
+        </p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function togglePass() {
+        const input = document.getElementById('password');
+        input.type = input.type === 'password' ? 'text' : 'password';
+    }
+</script>
+{% endblock %}

@@ -21,6 +21,7 @@ Uso:
 
 import argparse
 import asyncio
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -280,6 +281,104 @@ async def seed_usuarios(evento_activo: "Evento") -> None:
     print(f"✅ {len(usuario_eventos)} registros usuario_eventos creados para '{evento_activo.nombre}'.")
 
 
+async def seed_admin_user() -> None:
+    """Crea el usuario administrador ServicioSocialMaster si no existe."""
+    ADMIN_CORREO = "master@sid.tec.mx"
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(select(Usuario).where(Usuario.correo == ADMIN_CORREO))
+        if result.scalar_one_or_none():
+            print("ℹ️  Usuario admin ya existe. Omitiendo.")
+            return
+
+        password = secrets.token_urlsafe(16)  # contraseña segura aleatoria
+        admin = Usuario(
+            id_matricula="MASTER001",
+            nombre="ServicioSocialMaster",
+            correo=ADMIN_CORREO,
+            carrera="Administración",
+            semestre=0,
+            password_hash=_hash(password),
+            totp_secret="A" * 32,  # placeholder — admin no usa TOTP
+            rol="admin",
+        )
+        db.add(admin)
+        await db.commit()
+        print(f"✅ Usuario admin creado:")
+        print(f"   Correo:     {ADMIN_CORREO}")
+        print(f"   Contraseña: {password}")
+        print(f"   ⚠️  Guarda esta contraseña — no se podrá recuperar.")
+
+
+async def seed_usuarios_empresa() -> None:
+    """
+    Genera usuarios empresa para todos los proyectos que aún no tienen uno.
+    Se ejecuta de forma idempotente: omite proyectos que ya tienen usuario empresa.
+    """
+    import re
+    import unicodedata
+
+    def slugify(text: str) -> str:
+        nfkd = unicodedata.normalize("NFKD", text)
+        ascii_text = nfkd.encode("ascii", "ignore").decode("ascii")
+        return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")[:30]
+
+    async with AsyncSessionLocal() as db:
+        # Proyectos que ya tienen usuario empresa
+        result_existentes = await db.execute(
+            select(Usuario.id_proyecto).where(Usuario.rol == "empresa")
+        )
+        ids_con_usuario = {r for r in result_existentes.scalars().all() if r}
+
+        # Todos los proyectos con su empresa
+        from app.db.models_import import Empresa
+        result_proyectos = await db.execute(
+            select(Proyecto, Empresa)
+            .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        )
+        rows = result_proyectos.all()
+
+        nuevos = 0
+        credenciales_log = []
+        for proyecto, empresa in rows:
+            if proyecto.id_proyecto in ids_con_usuario:
+                continue
+
+            password = secrets.token_urlsafe(12)
+            slug_p = slugify(proyecto.nombre_proyecto)
+            slug_e = slugify(empresa.nombre_empresa)
+            correo = f"{slug_p}@{slug_e}.sid.mx"
+
+            # Evitar correos duplicados
+            dup = await db.execute(select(Usuario).where(Usuario.correo == correo))
+            if dup.scalar_one_or_none():
+                correo = f"proj{proyecto.id_proyecto}@{slug_e}.sid.mx"
+
+            usuario = Usuario(
+                id_matricula=f"PROJ_{proyecto.id_proyecto:04d}",
+                nombre=proyecto.nombre_proyecto,
+                correo=correo,
+                carrera="Empresa",
+                semestre=0,
+                password_hash=_hash(password),
+                totp_secret="A" * 32,
+                rol="empresa",
+                id_proyecto=proyecto.id_proyecto,
+            )
+            db.add(usuario)
+            credenciales_log.append((proyecto.nombre_proyecto, correo, password))
+            nuevos += 1
+
+        if nuevos == 0:
+            print("ℹ️  Todos los proyectos ya tienen usuario empresa.")
+            return
+
+        await db.commit()
+        print(f"✅ {nuevos} usuarios empresa creados:")
+        for nombre, correo, pw in credenciales_log:
+            print(f"   [{nombre}]  correo={correo}  pass={pw}")
+        print("   ⚠️  Guarda estas credenciales — no se podrán recuperar.")
+
+
 async def seed_log_sistema() -> None:
     """Inserta un log de auditoría que documenta la ejecución del seed."""
     async with AsyncSessionLocal() as db:
@@ -357,7 +456,15 @@ async def main(force: bool = False) -> None:
         print("\n── Usuarios & usuario_eventos ───────────")
         await seed_usuarios(evento_activo)
 
-    # 6. Log de auditoría
+    # 6. Usuario administrador
+    print("\n── Usuario Administrador ────────────────")
+    await seed_admin_user()
+
+    # 7. Usuarios empresa (uno por proyecto)
+    print("\n── Usuarios Empresa (por proyecto) ──────")
+    await seed_usuarios_empresa()
+
+    # 8. Log de auditoría
     print("\n── Log de auditoría ─────────────────────")
     await seed_log_sistema()
 
