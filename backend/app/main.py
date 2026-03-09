@@ -9,6 +9,7 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.ssh_manager import ssh_tunnel_manager
+from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
 from app.routers import auth, alumno, admin, empresa
 
 
