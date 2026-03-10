@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
@@ -41,6 +42,15 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
+)
+
+# ── CORS Middleware ────────────────────────────────────────────────────────────
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Security Headers Middleware ────────────────────────────────────────────────
@@ -88,8 +98,11 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Archivos estáticos (CSS, JS)
-app.mount("/static", StaticFiles(directory="app/static"), name="static")
+# Archivos estáticos heredados (si hay imágenes/assets puros del backend)
+import os
+static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.exists(static_dir):
+    app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Routers
 app.include_router(auth.router, tags=["Autenticación"])
@@ -97,8 +110,11 @@ app.include_router(alumno.router, tags=["Alumno"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
 
-
-@app.get("/", include_in_schema=False)
-async def root():
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/registro")
+# Servir Frontend compilado (React SPA) en la raíz
+frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
+if os.path.exists(frontend_dist):
+    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+else:
+    @app.get("/", include_in_schema=False)
+    async def root():
+        return {"message": "API Activa. Frontend de React no encontrado en /frontend/dist."}

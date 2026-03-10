@@ -165,7 +165,7 @@ async def login_alumno(
     # 2. Emitir Access Token (JWT)
     access_token = create_access_token({
         "sub": usuario.id_matricula,
-        "rol": "alumno",
+        "rol": usuario.rol,
         "nombre": usuario.nombre,
     })
 
@@ -219,7 +219,7 @@ async def refresh_session(db: AsyncSession, raw_token: str) -> str:
 
     new_access_token = create_access_token({
         "sub": usuario.id_matricula,
-        "rol": "alumno",
+        "rol": usuario.rol,
         "nombre": usuario.nombre,
     })
     return new_access_token

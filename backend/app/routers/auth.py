@@ -222,3 +222,21 @@ async def api_logout(
     response = JSONResponse(content={"message": "Sesión cerrada exitosamente"})
     response.delete_cookie("refresh_token")
     return response
+
+
+@router.get("/api/v1/auth/me", tags=["Autenticación"], summary="Obtener usuario actual")
+async def api_me(
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    from app.core.dependencies import get_current_user
+    user = await get_current_user(request, db)
+    return {
+        "id_matricula": user.id_matricula,
+        "nombre": user.nombre,
+        "correo": user.correo,
+        "carrera": user.carrera,
+        "semestre": user.semestre,
+        "rol": user.rol,
+        "id_proyecto": getattr(user, "id_proyecto", None)
+    }
