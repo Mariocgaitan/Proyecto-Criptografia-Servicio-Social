@@ -75,18 +75,18 @@ const EventCard = ({ evento }) => {
     <div className="flex flex-col gap-6">
       {/* Credencial QR Card */}
       <Card className="bg-white/[0.03] backdrop-blur-xl border-white/10 shadow-2xl flex flex-col md:flex-row overflow-hidden relative group rounded-3xl hover:bg-white/[0.05] transition-colors p-6 gap-8">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-[50px] -mr-16 -mt-16 group-hover:bg-blue-400/30 transition-colors"></div>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-tec-primary/20 rounded-full blur-[50px] -mr-16 -mt-16 group-hover:bg-tec-denim/30 transition-colors"></div>
         
         {/* QR Section */}
         <div className="shrink-0 flex justify-center items-center">
-          <div className="relative z-20 w-64 h-64 bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 p-5 flex flex-col items-center justify-center overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent"></div>
+          <div className="relative z-20 w-64 h-64 bg-tec-surface/80 backdrop-blur-md rounded-2xl shadow-[0_0_40px_rgba(0,0,0,0.5)] border border-white/10 p-5 flex flex-col items-center justify-center overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-tec-primary/10 to-transparent"></div>
             {qrPayload ? (
               <div className="bg-white p-3 rounded-xl relative z-10 animate-in zoom-in duration-500 shadow-xl">
                 <QRCodeSVG value={qrPayload} size={200} level="H" />
               </div>
             ) : (
-              <div className="animate-pulse flex flex-col items-center gap-4 text-blue-400/50">
+              <div className="animate-pulse flex flex-col items-center gap-4 text-tec-light/50">
                 <QrCode className="w-16 h-16 stroke-[1]" />
                 <p className="text-xs font-bold tracking-widest uppercase">Generando Llave...</p>
               </div>
@@ -109,7 +109,7 @@ const EventCard = ({ evento }) => {
           </div>
 
           <div className="flex justify-center md:justify-start">
-            <Badge variant="outline" className={`font-mono tracking-widest text-xs px-5 py-2 border-0 shadow-lg ${timeLeft <= 5 ? 'bg-red-500 text-white shadow-red-500/20 animate-pulse' : 'bg-blue-600/30 text-blue-300 font-bold border border-blue-500/30'}`}>
+            <Badge variant="outline" className={`font-mono tracking-widest text-xs px-5 py-2 border-0 shadow-lg ${timeLeft <= 5 ? 'bg-red-500 text-white shadow-red-500/20 animate-pulse' : 'bg-tec-primary/30 text-blue-300 font-bold border border-tec-primary/30'}`}>
               EXPIRA EN: {timeLeft.toString().padStart(2, '0')}s
             </Badge>
           </div>
@@ -120,7 +120,7 @@ const EventCard = ({ evento }) => {
       {evento.proyectos && evento.proyectos.length > 0 && (
         <div className="mt-4">
           <h4 className="text-blue-200/60 text-xs font-bold uppercase tracking-widest mb-4 flex items-center gap-2">
-            <HardHat className="w-4 h-4 text-blue-400" /> Catálogo de Proyectos
+            <HardHat className="w-4 h-4 text-tec-light" /> Catálogo de Proyectos
           </h4>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {evento.proyectos.map(p => (
@@ -129,7 +129,7 @@ const EventCard = ({ evento }) => {
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-bold text-white text-sm truncate">{p.nombre_proyecto}</p>
-                      <p className="text-blue-300 text-[10px] mt-0.5 font-bold tracking-wider uppercase">{p.empresa}</p>
+                      <p className="text-tec-light text-[10px] mt-0.5 font-bold tracking-wider uppercase">{p.empresa}</p>
                       {p.descripcion && <p className="text-white/40 text-xs mt-2 line-clamp-2 leading-snug">{p.descripcion}</p>}
                     </div>
                     <div className="shrink-0 text-right">
@@ -180,9 +180,9 @@ export default function Dashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#001D4A] flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.15)_0,rgba(0,0,0,0)_50%)]"></div>
-        <QrCode className="w-12 h-12 text-blue-400 animate-pulse stroke-[1.5]" />
+      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,57,166,0.15)_0,rgba(0,0,0,0)_50%)]"></div>
+        <QrCode className="w-12 h-12 text-tec-light animate-pulse stroke-[1.5]" />
         <p className="font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Cargando credencial...</p>
       </div>
     );
@@ -190,23 +190,23 @@ export default function Dashboard() {
 
   if (apiError) {
     return (
-      <div className="min-h-screen bg-[#001D4A] flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center p-4">
         <div className="bg-red-500/10 border border-red-500/30 rounded-2xl p-8 max-w-md text-center backdrop-blur-md">
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-white mb-2">Error de Sesión</h2>
           <p className="text-red-200/80 text-sm mb-6">{apiError}</p>
-          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold">Volver al Login</Button>
+          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-bold">Volver al Login</Button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#001D4A] relative overflow-hidden">
+    <div className="min-h-screen bg-tec-deep relative overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[120px]" />
-        <motion.div animate={{ scale: [1, 1.3, 1], x: [0, -40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-indigo-500/10 blur-[100px]" />
+        <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-tec-primary/10 blur-[120px]" />
+        <motion.div animate={{ scale: [1, 1.3, 1], x: [0, -40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10 pb-16">
@@ -215,13 +215,13 @@ export default function Dashboard() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-20 items-center">
               <div className="flex items-center gap-4">
-                <motion.div whileHover={{ scale: 1.05 }} className="w-12 h-12 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 border border-white/10">
+                <motion.div whileHover={{ scale: 1.05 }} className="w-12 h-12 bg-gradient-to-tr from-tec-primary to-tec-denim rounded-xl flex items-center justify-center shadow-lg shadow-tec-primary/20 border border-white/10">
                   <User className="w-6 h-6 text-white" />
                 </motion.div>
                 <div className="hidden sm:block">
                   <span className="font-bold text-white text-lg block leading-tight">{data?.nombre || "Alumno No Identificado"}</span>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border border-blue-500/20">{data?.carrera || "N/A"}</span>
+                    <span className="bg-tec-primary/20 text-blue-300 px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-widest border border-tec-primary/20">{data?.carrera || "N/A"}</span>
                     <span className="text-white/40 text-xs font-medium">Semestre {data?.semestre || "-"}</span>
                     <span className="text-white/20">|</span>
                     <span className="font-mono text-white/50 text-xs">{data?.matricula || ""}</span>

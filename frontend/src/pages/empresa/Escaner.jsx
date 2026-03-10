@@ -69,7 +69,7 @@ export default function EmpresaEscaner() {
 
   if (!proyecto) {
     return (
-      <div className="min-h-screen bg-[#001D4A] flex flex-col items-center justify-center text-white space-y-4">
+      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center text-white space-y-4">
         <ScanLine className="w-12 h-12 animate-pulse text-emerald-400" />
         <p className="font-bold tracking-widest text-emerald-200/50 uppercase text-sm animate-pulse">Iniciando Terminal Óptica...</p>
       </div>
@@ -77,11 +77,11 @@ export default function EmpresaEscaner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#001D4A] pb-10 relative overflow-hidden">
+    <div className="min-h-screen bg-tec-deep pb-10 relative overflow-hidden">
        {/* Background Dynamics */}
        <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
         <motion.div animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "linear" }} className="absolute -top-[20%] -right-[10%] w-[80%] h-[80%] rounded-full bg-emerald-600/10 blur-[130px]" />
-        <motion.div animate={{ scale: [1, 1.1, 1], x: [0, 50, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[100px]" />
+        <motion.div animate={{ scale: [1, 1.1, 1], x: [0, 50, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10">
@@ -163,14 +163,14 @@ export default function EmpresaEscaner() {
 
           {/* Scanner Viewport */}
           <Card className="bg-white/[0.02] border-white/5 backdrop-blur-2xl overflow-hidden shadow-2xl rounded-3xl">
-            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-black/40">
+            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-tec-surface/60">
               <div>
                 <h2 className="text-white font-bold flex items-center gap-3">
                   <span className="relative flex h-3.5 w-3.5">
                     {scanning && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
                     <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${scanning ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`}></span>
                   </span>
-                  Sensor Óptico Lidar
+                  Sensor Óptico
                 </h2>
               </div>
               <Button 
@@ -183,7 +183,7 @@ export default function EmpresaEscaner() {
             <div className="p-6 bg-black/60 flex justify-center">
               <div id="reader" className="rounded-2xl overflow-hidden [&_video]:rounded-2xl [&_video]:w-full border-none shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] max-w-sm w-full mx-auto"></div>
             </div>
-            <div className="bg-black/80 py-3 text-center border-t border-white/5">
+            <div className="bg-tec-surface/80 py-3 text-center border-t border-white/5">
                 <p className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Apunte el código QR dinámico del alumno hacia el cuadro central</p>
             </div>
           </Card>

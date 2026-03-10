@@ -133,11 +133,11 @@ export default function AdminDashboard() {
   const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: i => ({ opacity: 1, y: 0, transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" } }) };
 
   return (
-    <div className="min-h-screen bg-[#001D4A] relative overflow-hidden pb-12">
+    <div className="min-h-screen bg-tec-deep relative overflow-hidden pb-12">
       {/* Dynamic Background */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[120px]" />
-        <motion.div animate={{ scale: [1, 1.2, 1], x: [0, -50, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[40%] -left-[20%] w-[60%] h-[60%] rounded-full bg-cyan-500/10 blur-[100px]" />
+        <motion.div animate={{ scale: [1, 1.1, 1], rotate: [0, 5, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-tec-primary/10 blur-[120px]" />
+        <motion.div animate={{ scale: [1, 1.2, 1], x: [0, -50, 0] }} transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }} className="absolute top-[40%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/10 blur-[100px]" />
       </div>
 
       <div className="relative z-10">
@@ -146,14 +146,14 @@ export default function AdminDashboard() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between h-20 items-center">
               <div className="flex items-center gap-4">
-                <motion.div whileHover={{ rotate: 180 }} transition={{ duration: 0.5 }} className="w-12 h-12 bg-gradient-to-tr from-blue-500 to-cyan-400 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <motion.div whileHover={{ rotate: 180 }} transition={{ duration: 0.5 }} className="w-12 h-12 bg-gradient-to-tr from-tec-primary to-tec-denim rounded-xl flex items-center justify-center shadow-lg shadow-tec-primary/20">
                   <LayoutDashboard className="w-6 h-6 text-white" />
                 </motion.div>
                 <div>
                   <h1 className="font-bold text-white text-xl tracking-tight leading-none bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-200">
-                    Centro de Control Máster
+                    Centro de Control
                   </h1>
-                  <p className="text-blue-300 text-xs font-medium tracking-widest uppercase mt-1">Servicio Social SID</p>
+                  <p className="text-blue-300 text-xs font-medium tracking-widest uppercase mt-1">Servicio Social — Tec de Monterrey</p>
                 </div>
               </div>
               <div className="flex items-center gap-6">
@@ -204,7 +204,7 @@ export default function AdminDashboard() {
         </Dialog>
 
         <Dialog open={!!cupoModalInfo} onOpenChange={open => !open && setCupoModalInfo(null)}>
-          <DialogContent className="sm:max-w-sm bg-slate-900 border border-white/10 text-white">
+          <DialogContent className="sm:max-w-sm bg-tec-surface border border-white/10 text-white">
             <DialogHeader>
               <DialogTitle>Ampliar Cupo</DialogTitle>
               <DialogDescription className="text-white/50">{cupoModalInfo?.nombre}</DialogDescription>
@@ -217,10 +217,10 @@ export default function AdminDashboard() {
               </div>
               <div className="space-y-2">
                 <Label className="text-white">Nueva Capacidad</Label>
-                <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-white/10 border-blue-500/50 text-white focus-visible:ring-blue-500 text-lg font-bold" />
+                <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-white/10 border-tec-primary/50 text-white focus-visible:ring-tec-primary text-lg font-bold" />
               </div>
             </div>
-            <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white border-0">Salvar Ajuste</Button>
+            <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full bg-gradient-to-r from-tec-primary to-tec-denim text-white border-0">Salvar Ajuste</Button>
           </DialogContent>
         </Dialog>
 
@@ -228,13 +228,13 @@ export default function AdminDashboard() {
         <motion.main initial="initial" animate="in" exit="out" variants={pageVariants} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
             <TabsList className="bg-white/5 border border-white/10 p-1.5 rounded-2xl flex w-fit max-w-full overflow-x-auto shadow-xl backdrop-blur-md">
-              <TabsTrigger value="proyectos" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500 data-[state=active]:text-white text-white/60 hover:text-white transition-all">
+              <TabsTrigger value="proyectos" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-tec-primary data-[state=active]:to-tec-denim data-[state=active]:text-white text-white/60 hover:text-white transition-all">
                 <LayoutDashboard className="w-4 h-4 mr-2" /> Proyectos
               </TabsTrigger>
-              <TabsTrigger value="empresas" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500 data-[state=active]:text-white text-white/60 hover:text-white transition-all">
+              <TabsTrigger value="empresas" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-tec-primary data-[state=active]:to-tec-denim data-[state=active]:text-white text-white/60 hover:text-white transition-all">
                 <Building2 className="w-4 h-4 mr-2" /> Empresas
               </TabsTrigger>
-              <TabsTrigger value="eventos" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-blue-500 data-[state=active]:text-white text-white/60 hover:text-white transition-all">
+              <TabsTrigger value="eventos" className="rounded-xl px-6 py-2.5 data-[state=active]:bg-gradient-to-r data-[state=active]:from-tec-primary data-[state=active]:to-tec-denim data-[state=active]:text-white text-white/60 hover:text-white transition-all">
                 <Calendar className="w-4 h-4 mr-2" /> Eventos Semestrales
               </TabsTrigger>
             </TabsList>
@@ -250,13 +250,13 @@ export default function AdminDashboard() {
                     
                     <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-white text-blue-900 hover:bg-blue-50 font-bold px-6 py-6 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all hover:scale-105">
+                        <Button className="bg-white text-tec-deep hover:bg-blue-50 font-bold px-6 py-6 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all hover:scale-105">
                           <Plus className="w-5 h-5 mr-2"/> Aperturar Puesto
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-xl bg-slate-900 border border-white/10 text-white shadow-2xl">
+                      <DialogContent className="sm:max-w-xl bg-tec-surface border border-white/10 text-white shadow-2xl">
                         <DialogHeader>
-                          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">Nuevo Puesto de Proyecto</DialogTitle>
+                          <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-tec-light to-blue-300">Nuevo Puesto de Proyecto</DialogTitle>
                           <DialogDescription className="text-white/50">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
                         </DialogHeader>
                         <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
@@ -266,8 +266,8 @@ export default function AdminDashboard() {
                               <Label className="text-white/70">Empresa Receptora</Label>
                               <Select required onValueChange={v => setFormProyecto({...formProyecto, id_empresa: v})}>
                                 <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                                  {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()} className="hover:bg-slate-700 cursor-pointer">{e.nombre_empresa}</SelectItem>)}
+                                <SelectContent className="bg-tec-surface border-white/10 text-white">
+                                  {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()} className="hover:bg-white/10 cursor-pointer">{e.nombre_empresa}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -275,8 +275,8 @@ export default function AdminDashboard() {
                               <Label className="text-white/70">Evento Activo</Label>
                               <Select required onValueChange={v => setFormProyecto({...formProyecto, id_evento: v})}>
                                 <SelectTrigger className="bg-white/5 border-white/10"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                                  {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()} className="hover:bg-slate-700 cursor-pointer">{ev.nombre}</SelectItem>)}
+                                <SelectContent className="bg-tec-surface border-white/10 text-white">
+                                  {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()} className="hover:bg-white/10 cursor-pointer">{ev.nombre}</SelectItem>)}
                                 </SelectContent>
                               </Select>
                             </div>
@@ -320,9 +320,9 @@ export default function AdminDashboard() {
                           {proyectos?.map((p, idx) => (
                             <TableRow key={p.id_proyecto} className="border-white/5 hover:bg-white/[0.04] transition-colors group">
                               <TableCell className="pl-6 py-5">
-                                <p className="font-bold text-white text-base leading-tight group-hover:text-blue-300 transition-colors">{p.nombre_proyecto}</p>
+                                <p className="font-bold text-white text-base leading-tight group-hover:text-tec-light transition-colors">{p.nombre_proyecto}</p>
                                 <div className="flex items-center gap-2 mt-1">
-                                  <Building2 className="w-3 h-3 text-blue-400" />
+                                  <Building2 className="w-3 h-3 text-tec-light" />
                                   <p className="text-xs text-blue-200/60 font-medium">{p.empresa}</p>
                                 </div>
                               </TableCell>
@@ -340,7 +340,7 @@ export default function AdminDashboard() {
                                 )}
                               </TableCell>
                               <TableCell className="text-right pr-6 space-x-2">
-                                <Button variant="ghost" size="sm" className="h-9 bg-blue-500/10 text-blue-300 hover:bg-blue-500/20 hover:text-white border border-blue-500/20 text-xs px-4 rounded-xl"
+                                <Button variant="ghost" size="sm" className="h-9 bg-tec-primary/10 text-blue-300 hover:bg-tec-primary/20 hover:text-white border border-tec-primary/20 text-xs px-4 rounded-xl"
                                   onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }}>
                                   + Cupo Extra
                                 </Button>
@@ -374,7 +374,7 @@ export default function AdminDashboard() {
                           <Building2 className="w-5 h-5 mr-2"/> Dar de Alta Organización
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg bg-slate-900 border border-white/10 text-white">
+                      <DialogContent className="sm:max-w-lg bg-tec-surface border border-white/10 text-white">
                         <DialogHeader><DialogTitle className="text-xl">Registrar Socio Formador</DialogTitle></DialogHeader>
                         <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
                           {errorText && <div className="text-sm text-red-400 text-center bg-red-900/20 p-2 rounded">{errorText}</div>}
@@ -406,14 +406,14 @@ export default function AdminDashboard() {
                         <Card className="h-full bg-white/[0.03] hover:bg-white/[0.08] backdrop-blur-xl border border-white/10 hover:border-white/20 transition-all rounded-3xl overflow-hidden shadow-2xl">
                           <CardHeader className="pb-3 border-b border-white/5">
                             <CardTitle className="flex justify-between items-start">
-                              <span className="font-extrabold text-lg text-white group-hover:text-cyan-300 transition-colors">{emp.nombre_empresa}</span>
+                              <span className="font-extrabold text-lg text-white group-hover:text-tec-light transition-colors">{emp.nombre_empresa}</span>
                               <Badge variant="outline" className="bg-white/5 border-white/10 text-white/50 font-mono text-[10px] px-2.5">#{emp.id_asociado}</Badge>
                             </CardTitle>
                           </CardHeader>
                           <CardContent className="pt-4">
                             <p className="text-sm text-blue-100/60 leading-relaxed min-h-[40px]">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
                             <div className="mt-5 pt-4 border-t border-white/5">
-                              <Badge variant="secondary" className="bg-blue-500/10 text-blue-300 border-0 hover:bg-blue-500/20">{emp.razon_social}</Badge>
+                              <Badge variant="secondary" className="bg-tec-primary/10 text-blue-300 border-0 hover:bg-tec-primary/20">{emp.razon_social}</Badge>
                             </div>
                           </CardContent>
                         </Card>
@@ -432,11 +432,11 @@ export default function AdminDashboard() {
                     </div>
                     <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
                       <DialogTrigger asChild>
-                        <Button className="bg-indigo-500 hover:bg-indigo-400 text-white font-bold px-6 py-6 rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.2)] transition-all hover:scale-105">
+                        <Button className="bg-tec-denim hover:bg-tec-primary text-white font-bold px-6 py-6 rounded-xl shadow-[0_0_20px_rgba(0,57,166,0.2)] transition-all hover:scale-105">
                           <Calendar className="w-5 h-5 mr-2"/> Aperturar Periodo
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="sm:max-w-md bg-slate-900 border border-white/10 text-white">
+                      <DialogContent className="sm:max-w-md bg-tec-surface border border-white/10 text-white">
                         <DialogHeader><DialogTitle className="text-xl">Inaugurar Semestre</DialogTitle></DialogHeader>
                         <form onSubmit={handleCrearEvento} className="space-y-4 mt-2">
                           <div className="space-y-1">
@@ -448,7 +448,7 @@ export default function AdminDashboard() {
                               <Label className="text-white/70">Ciclo</Label>
                               <Select value={formEvento.periodo} onValueChange={v => setFormEvento({...formEvento, periodo: v})}>
                                 <SelectTrigger className="bg-white/5 border-white/10"><SelectValue/></SelectTrigger>
-                                <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                                <SelectContent className="bg-tec-surface border-white/10 text-white">
                                   {["FEBRERO-JUNIO", "AGOSTO-DICIEMBRE", "VERANO", "INVIERNO"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                                 </SelectContent>
                               </Select>
@@ -458,7 +458,7 @@ export default function AdminDashboard() {
                               <Input type="number" required className="bg-white/5 border-white/10 text-center font-bold" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
                             </div>
                           </div>
-                          <Button type="submit" disabled={isSubmitting} className="w-full bg-indigo-500 hover:bg-indigo-400 mt-4 font-bold text-white">Emitir Apertura Global</Button>
+                          <Button type="submit" disabled={isSubmitting} className="w-full bg-tec-denim hover:bg-tec-primary mt-4 font-bold text-white">Emitir Apertura Global</Button>
                         </form>
                       </DialogContent>
                     </Dialog>
@@ -468,7 +468,7 @@ export default function AdminDashboard() {
                     {eventos?.map((ev, i) => (
                       <motion.div key={ev.id_evento} custom={i} variants={cardVariants} initial="hidden" animate="visible" className="relative group">
                         <Card className="h-full bg-white/[0.03] backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden rounded-3xl relative">
-                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-500 ${ev.activo ? 'bg-gradient-to-b from-emerald-400 to-cyan-500 shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}></div>
+                          <div className={`absolute left-0 top-0 bottom-0 w-1.5 transition-all duration-500 ${ev.activo ? 'bg-gradient-to-b from-emerald-400 to-tec-denim shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-slate-700'}`}></div>
                           <CardHeader className="pl-8 border-b border-white/5 pb-4">
                             <CardTitle className="flex justify-between items-start">
                               <span className="text-xl font-bold text-white tracking-tight">{ev.nombre}</span>

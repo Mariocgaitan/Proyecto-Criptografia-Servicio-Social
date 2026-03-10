@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { UserPlus, Loader2, ArrowRight, ShieldCheck } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import tecLogo from "@/assets/logo_tec.png";
+import campus1 from "@/assets/campus_1.png";
+import campus2 from "@/assets/campus_2.png";
+import campus3 from "@/assets/campus_3.png";
+
+const images = [campus1, campus2, campus3];
 
 export default function Registro() {
   const navigate = useNavigate();
   const [eventos, setEventos] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [currentImage, setCurrentImage] = useState(0);
   const [formData, setFormData] = useState({
     nombre: "", correo: "", matricula: "", carrera: "", semestre: "", password: "", password_confirm: "", eventos_seleccionados: [],
   });
@@ -21,6 +28,13 @@ export default function Registro() {
       .then(res => res.json())
       .then(data => setEventos(data))
       .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentImage(prev => (prev + 1) % images.length);
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -42,12 +56,10 @@ export default function Registro() {
     setIsLoading(true); setError(null);
 
     if (formData.password !== formData.password_confirm) {
-      setError("Las contraseñas no coinciden. Intenta de nuevo.");
-      setIsLoading(false); return;
+      setError("Las contraseñas no coinciden."); setIsLoading(false); return;
     }
     if (formData.eventos_seleccionados.length === 0) {
-      setError("Requiere la selección de al menos un evento académico oficial.");
-      setIsLoading(false); return;
+      setError("Selecciona al menos un evento."); setIsLoading(false); return;
     }
 
     try {
@@ -56,156 +68,183 @@ export default function Registro() {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Error en el alta del sistema.");
-      navigate("/login", { state: { message: "Alta en el sistema exitosa. Autentícate." } });
-    } catch (err) { setError(err.message); } 
+      if (!res.ok) throw new Error(data.detail || "Error en el registro.");
+      navigate("/login", { state: { message: "Registro exitoso. Inicia sesión." } });
+    } catch (err) { setError(err.message); }
     finally { setIsLoading(false); }
   };
 
   return (
-    <div className="min-h-screen bg-[#001D4A] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      
-      {/* Background Dynamics */}
+    <div className="min-h-screen bg-tec-deep flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background */}
       <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, -5, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-blue-600/10 blur-[130px]" />
-        <motion.div animate={{ scale: [1, 1.3, 1], x: [0, 40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-indigo-500/10 blur-[100px]" />
+        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-tec-primary/10 blur-[130px]" />
+        <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/8 blur-[100px]" />
       </div>
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px]" />
 
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:32px_32px]"></div>
+      {/* Main Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 40, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.7, ease: "easeOut" }}
+        className="relative z-10 w-full max-w-[1050px] bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_25px_80px_rgba(0,0,0,0.6)] overflow-hidden flex min-h-[640px]"
+      >
+        {/* Left Panel - Image Carousel */}
+        <div className="hidden lg:block w-[40%] relative overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={currentImage}
+              src={images[currentImage]}
+              alt="Tec de Monterrey"
+              initial={{ opacity: 0, scale: 1.1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 1, ease: "easeInOut" }}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          </AnimatePresence>
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-tec-deep/40" />
+          <div className="absolute inset-0 bg-tec-deep/20" />
 
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="w-full max-w-3xl relative z-10 py-10">
-        
-        <div className="text-center mb-8">
-          <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }} className="mx-auto w-16 h-16 bg-white/5 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/10 mb-4 shadow-[0_0_30px_rgba(59,130,246,0.3)]">
-            <ShieldCheck className="w-8 h-8 text-blue-400" />
-          </motion.div>
-          <h1 className="text-4xl sm:text-5xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-blue-200 tracking-tight">Alta en el Sistema</h1>
-          <p className="text-blue-200/50 mt-3 text-lg font-medium tracking-wide">Plataforma Oficial de Servicio Social y Extensión</p>
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
+            {images.map((_, i) => (
+              <button key={i} onClick={() => setCurrentImage(i)}
+                className={`h-2 rounded-full transition-all duration-500 ${i === currentImage ? "w-8 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "w-2 bg-white/40 hover:bg-white/60"}`}
+              />
+            ))}
+          </div>
         </div>
 
-        <Card className="border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.5)] bg-white/[0.02] backdrop-blur-2xl overflow-hidden rounded-[2rem]">
-          <CardHeader className="bg-black/20 p-8 border-b border-white/5">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center border border-blue-500/30">
-                <UserPlus className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-2xl font-bold text-white tracking-tight">Expediente Alumno</CardTitle>
-                <CardDescription className="text-blue-200/50 mt-1">
-                  Tu información debe coincidir exactamente con tus registros de MiTec.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
+        {/* Right Panel - Form */}
+        <div className="flex-1 px-8 sm:px-10 py-10 overflow-y-auto max-h-[90vh]">
+          {/* Logo + Heading */}
+          <div className="mb-6">
+            <motion.img initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+              src={tecLogo} alt="Tec de Monterrey" className="h-20 w-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]"
+            />
+            <h1 className="text-2xl font-extrabold text-white tracking-tight leading-tight">
+              Alta de <span className="bg-clip-text text-transparent bg-gradient-to-r from-tec-light to-blue-300">Alumno</span>
+            </h1>
+          </div>
 
-          <CardContent className="p-8">
+          {/* Tabs */}
+          <div className="flex gap-1 mb-6">
+            <Link to="/login" className="px-5 py-2 text-sm font-medium text-white/40 border-b-2 border-transparent hover:text-white/70 hover:border-white/20 transition-colors">
+              Ingresar
+            </Link>
+            <Link to="/registro" className="px-5 py-2 text-sm font-bold text-white border-b-2 border-tec-light transition-colors">
+              Registro
+            </Link>
+          </div>
+
+          {/* Error */}
+          <AnimatePresence mode="wait">
             {error && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mb-8 bg-red-500/10 border border-red-500/30 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-1.5 h-full absolute left-0 top-0 bottom-0 bg-red-500 rounded-l-xl"></div>
-                <p className="text-red-300 text-sm font-bold pl-2">{error}</p>
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 relative overflow-hidden">
+                <div className="w-1 h-full absolute left-0 top-0 bottom-0 bg-red-500 rounded-l-xl" />
+                <p className="text-red-300 text-sm font-semibold pl-2">{error}</p>
               </motion.div>
             )}
+          </AnimatePresence>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Izquierda */}
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="nombre" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Nombre Completo</Label>
-                    <Input id="nombre" name="nombre" value={formData.nombre} onChange={handleChange} required className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-blue-500" placeholder="Ej. Juan Pérez" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="matricula" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Matrícula Institucional</Label>
-                    <Input id="matricula" name="matricula" value={formData.matricula} onChange={handleChange} required className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-blue-500" placeholder="A0..." />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="correo" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Correo Electrónico Oficial</Label>
-                    <Input id="correo" type="email" name="correo" value={formData.correo} onChange={handleChange} required className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-blue-500" placeholder="A0...@tec.mx" />
-                  </div>
-                </div>
-
-                {/* Derecha */}
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="carrera" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Carrera (Siglas)</Label>
-                    <Input id="carrera" name="carrera" value={formData.carrera} onChange={handleChange} required className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-blue-500 uppercase" placeholder="Ej. ITC" />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="semestre" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Semestre Actual (Numérico)</Label>
-                    <Input id="semestre" type="number" min="1" max="15" name="semestre" value={formData.semestre} onChange={handleChange} required className="bg-white/5 border-white/10 text-white placeholder:text-white/20 focus-visible:ring-blue-500" placeholder="1-12" />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="password" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Llave Segura</Label>
-                      <Input id="password" type="password" name="password" value={formData.password} onChange={handleChange} required className="bg-black/40 border-white/10 text-white focus-visible:ring-blue-500" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="password_confirm" className="text-blue-200/60 font-bold uppercase tracking-widest text-[10px]">Verificar Llave</Label>
-                      <Input id="password_confirm" type="password" name="password_confirm" value={formData.password_confirm} onChange={handleChange} required className="bg-black/40 border-white/10 text-white focus-visible:ring-blue-500" />
-                    </div>
-                  </div>
-                </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Row 1 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Nombre Completo</Label>
+                <Input name="nombre" value={formData.nombre} onChange={handleChange} required
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="Juan Pérez" />
               </div>
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Matrícula</Label>
+                <Input name="matricula" value={formData.matricula} onChange={handleChange} required
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="A0..." />
+              </div>
+            </div>
 
-              {/* Eventos */}
-              <div className="pt-8 border-t border-white/5">
-                <Label className="text-white text-lg font-bold mb-4 block">Autorización de Eventos (Máximo 2)</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {eventos.map(ev => {
-                    const isSelected = formData.eventos_seleccionados.includes(ev.id_evento);
-                    const isDisabled = !isSelected && formData.eventos_seleccionados.length >= 2;
-                    return (
-                      <motion.div 
-                        whileHover={!isDisabled ? { scale: 1.02 } : {}}
-                        whileTap={!isDisabled ? { scale: 0.98 } : {}}
-                        key={ev.id_evento}
-                        onClick={() => !isDisabled && handleEventoToggle(ev.id_evento)}
-                        className={`
-                          p-5 rounded-2xl border-2 transition-all cursor-pointer relative overflow-hidden backdrop-blur-md
-                          ${isSelected ? "border-blue-500 bg-blue-500/20 shadow-[0_0_20px_rgba(59,130,246,0.3)]" : "border-white/10 hover:border-white/30 bg-white/5"}
-                          ${isDisabled ? "opacity-40 cursor-not-allowed grayscale" : ""}
-                        `}
-                      >
-                        {isSelected && <div className="absolute top-0 right-0 w-2 h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,1)]"></div>}
-                        <h3 className={`font-bold text-lg ${isSelected ? 'text-white' : 'text-blue-100/80'}`}>{ev.nombre}</h3>
-                        <p className={`text-xs mt-1 flex items-center gap-1 font-mono uppercase tracking-widest ${isSelected ? 'text-blue-300' : 'text-white/40'}`}>
-                          Semestre {ev.semestre} {ev.anio}
-                        </p>
-                      </motion.div>
-                    )
-                  })}
-                  {!eventos.length && <div className="col-span-full p-8 text-center text-white/30 font-medium border border-white/5 border-dashed rounded-2xl">Buscando eventos vigentes en el servidor...</div>}
+            {/* Row 2 */}
+            <div className="space-y-1">
+              <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Correo Institucional</Label>
+              <Input type="email" name="correo" value={formData.correo} onChange={handleChange} required
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="A0...@tec.mx" />
+            </div>
+
+            {/* Row 3 */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Carrera (Siglas)</Label>
+                <Input name="carrera" value={formData.carrera} onChange={handleChange} required
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 uppercase hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="ITC" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Semestre</Label>
+                <Input type="number" min="1" max="15" name="semestre" value={formData.semestre} onChange={handleChange} required
+                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="1-12" />
+              </div>
+            </div>
+
+            {/* Row 4 - Passwords */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Contraseña</Label>
+                <div className="relative">
+                  <Input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} required
+                    className="bg-white/5 border-white/10 text-white rounded-xl h-11 pr-10 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
-
-              {/* Acciones */}
-              <div className="pt-8 border-t border-white/5 flex flex-col sm:flex-row gap-6 items-center justify-between">
-                <p className="text-sm text-blue-200/50">
-                  ¿Ya estás afiliado? <br className="sm:hidden" />
-                  <Link to="/login" className="text-blue-400 font-bold hover:text-blue-300 underline-offset-4 hover:underline transition-colors ml-1">Regresa al portal de acceso</Link>
-                </p>
-                <Button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full sm:w-auto h-14 px-10 bg-gradient-to-r from-blue-600 to-indigo-500 hover:from-blue-500 hover:to-indigo-400 text-white rounded-xl font-bold transition-all shadow-[0_0_25px_rgba(59,130,246,0.4)] hover:shadow-[0_0_35px_rgba(59,130,246,0.6)] flex items-center gap-2 hover:scale-[1.02]"
-                >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin border-0" /> : (
-                    <>
-                      Procesar Alta Oficial
-                      <ArrowRight className="w-5 h-5 ml-2" />
-                    </>
-                  )}
-                </Button>
+              <div className="space-y-1">
+                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Confirmar</Label>
+                <Input type={showPassword ? "text" : "password"} name="password_confirm" value={formData.password_confirm} onChange={handleChange} required
+                  className="bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" />
               </div>
+            </div>
 
-            </form>
-          </CardContent>
-        </Card>
+            {/* Eventos */}
+            <div className="pt-3 border-t border-white/5">
+              <Label className="text-white text-sm font-bold mb-3 block">Eventos Disponibles <span className="text-white/40 font-normal">(máx. 2)</span></Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {eventos.map(ev => {
+                  const isSelected = formData.eventos_seleccionados.includes(ev.id_evento);
+                  const isDisabled = !isSelected && formData.eventos_seleccionados.length >= 2;
+                  return (
+                    <motion.div
+                      whileHover={!isDisabled ? { scale: 1.02 } : {}}
+                      whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                      key={ev.id_evento}
+                      onClick={() => !isDisabled && handleEventoToggle(ev.id_evento)}
+                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all backdrop-blur-sm relative overflow-hidden
+                        ${isSelected ? "border-tec-primary bg-tec-primary/15 shadow-[0_0_15px_rgba(0,57,166,0.3)]" : "border-white/10 hover:border-white/25 bg-white/[0.03]"}
+                        ${isDisabled ? "opacity-35 cursor-not-allowed grayscale" : ""}
+                      `}
+                    >
+                      {isSelected && <div className="absolute top-0 right-0 w-1.5 h-full bg-tec-primary" />}
+                      <h3 className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-blue-100/70'}`}>{ev.nombre}</h3>
+                      <p className={`text-[10px] mt-1 font-mono uppercase tracking-widest ${isSelected ? 'text-blue-300' : 'text-white/35'}`}>
+                        Semestre {ev.semestre} {ev.anio}
+                      </p>
+                    </motion.div>
+                  );
+                })}
+                {!eventos.length && <div className="col-span-full py-6 text-center text-white/25 text-sm border border-dashed border-white/10 rounded-2xl">Buscando eventos vigentes...</div>}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5">
+              <Button type="submit" disabled={isLoading}
+                className="w-full sm:w-auto h-12 px-8 bg-gradient-to-r from-tec-primary to-tec-denim hover:from-tec-denim hover:to-tec-primary text-white rounded-xl font-bold transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,57,166,0.5)] flex items-center gap-2"
+              >
+                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                  <>Completar Registro <ArrowRight className="w-4 h-4" /></>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
       </motion.div>
     </div>
   );

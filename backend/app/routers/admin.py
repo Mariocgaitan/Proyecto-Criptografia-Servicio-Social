@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_admin
 from app.db.session import get_db
+from app.services import admin_service
 router = APIRouter()
 
 
