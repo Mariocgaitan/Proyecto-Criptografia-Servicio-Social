@@ -200,6 +200,14 @@ async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = De
         samesite="strict",
         max_age=REFRESH_COOKIE_MAX_AGE,
     )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=False,
+        secure=False,
+        samesite="strict",
+        max_age=15 * 60,
+    )
     return response
 
 
@@ -213,7 +221,16 @@ async def api_refresh(
         raise HTTPException(status_code=401, detail="Refresh token no encontrado")
     try:
         new_token = await refresh_session(db, refresh_token)
-        return {"access_token": new_token, "token_type": "bearer"}
+        response = JSONResponse(content={"access_token": new_token, "token_type": "bearer"})
+        response.set_cookie(
+            key="access_token",
+            value=new_token,
+            httponly=False,
+            secure=False,
+            samesite="strict",
+            max_age=15 * 60,
+        )
+        return response
     except LoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -227,6 +244,7 @@ async def api_logout(
         await logout_alumno(db, refresh_token)
     response = JSONResponse(content={"message": "Sesión cerrada exitosamente"})
     response.delete_cookie("refresh_token")
+    response.delete_cookie("access_token")
     return response
 
 
