@@ -20,6 +20,10 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/registro" element={<Registro />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
+      
+      {/* Legacy Login Redirects */}
+      <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+      <Route path="/empresa/login" element={<Navigate to="/login" replace />} />
 
       {/* Alumno Routes */}
       <Route element={<ProtectedRoute allowedRoles={["alumno"]} />}>
