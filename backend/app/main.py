@@ -98,11 +98,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Archivos estáticos heredados (si hay imágenes/assets puros del backend)
-import os
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-if os.path.exists(static_dir):
-    app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 
 # Routers
 app.include_router(auth.router, tags=["Autenticación"])

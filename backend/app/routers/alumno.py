@@ -8,12 +8,9 @@ Rutas API JSON (protegidas por JWT en header Authorization):
   GET  /api/v1/alumno/qr-payload          → Payload TOTP para el QR de un evento
   GET  /api/v1/alumno/estado-inscripcion  → Estado de inscripción en todos los eventos
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import get_current_user, get_current_user_optional
+from app.core.dependencies import get_current_user
 from app.db.session import get_db
 from app.services.alumno_service import (
     AlumnoError,
@@ -23,37 +20,6 @@ from app.services.alumno_service import (
 )
 
 router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
-
-
-# ═══════════════════════════════════════════════════════════════════════════════
-#  SSR — Dashboard
-# ═══════════════════════════════════════════════════════════════════════════════
-
-@router.get("/dashboard", response_class=HTMLResponse, name="alumno_dashboard", include_in_schema=False)
-async def dashboard(
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    current_user: dict | None = Depends(get_current_user_optional),
-):
-    """
-    Dashboard principal del alumno.
-    - Lee el JWT desde la cookie 'access_token' (establacida al hacer login).
-    - Si no hay token válido, redirige al login.
-    - Renderiza una sección de QR por cada evento registrado del alumno.
-    """
-    if not current_user:
-        return RedirectResponse(url="/login", status_code=303)
-
-    try:
-        datos = await obtener_datos_dashboard(db, current_user["sub"])
-    except AlumnoError:
-        return RedirectResponse(url="/login", status_code=303)
-
-    return templates.TemplateResponse(
-        "alumno/dashboard.html",
-        {"request": request, "usuario": datos},
-    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
