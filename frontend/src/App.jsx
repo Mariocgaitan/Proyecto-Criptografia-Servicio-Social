@@ -3,6 +3,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 
 import Login from "./pages/Login";
+import Registro from "./pages/Registro";
+import AlumnoDashboard from "./pages/alumno/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import EmpresaEscaner from "./pages/empresa/Escaner";
 
@@ -16,7 +18,13 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/registro" element={<Registro />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
+
+      {/* Alumno Routes */}
+      <Route element={<ProtectedRoute allowedRoles={["alumno"]} />}>
+        <Route path="/dashboard" element={<AlumnoDashboard />} />
+      </Route>
 
       {/* Admin Routes */}
       <Route element={<ProtectedRoute allowedRoles={["admin"]} />}>

@@ -60,6 +60,22 @@ async def dashboard(
 #  API JSON
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@router.get("/api/v1/alumno/dashboard", tags=["Alumno"], summary="Obtener datos del dashboard del alumno")
+async def api_dashboard(
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Retorna la información completa del dashboard del alumno:
+    datos de usuario, eventos registrados, estado de inscripción y catálogo de proyectos.
+    """
+    try:
+        return await obtener_datos_dashboard(db, current_user["sub"])
+    except AlumnoError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+
 @router.get("/api/v1/alumno/qr-payload", tags=["Alumno"], summary="Obtener payload QR del evento")
 async def qr_payload(
     id_evento: int,

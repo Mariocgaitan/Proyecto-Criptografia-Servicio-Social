@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ export default function Login() {
   if (user) {
     if (user.rol === "admin") navigate("/admin/dashboard", { replace: true });
     if (user.rol === "empresa") navigate("/empresa/escaner", { replace: true });
+    if (user.rol === "alumno") navigate("/dashboard", { replace: true });
   }
 
   const handleSubmit = async (e) => {
@@ -94,6 +95,14 @@ export default function Login() {
                 >
                   {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Iniciar Sesión"}
                 </Button>
+              </div>
+              <div className="text-center pt-2">
+                <p className="text-white/60 text-sm">
+                  ¿Eres alumno y no tienes cuenta?{" "}
+                  <Link to="/registro" className="text-blue-300 hover:text-white font-semibold transition-colors">
+                    Regístrate aquí
+                  </Link>
+                </p>
               </div>
             </form>
           </CardContent>

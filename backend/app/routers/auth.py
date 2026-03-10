@@ -176,6 +176,12 @@ async def api_registro(datos: RegistroRequest, db: AsyncSession = Depends(get_db
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
 
+@router.get("/api/v1/auth/eventos", tags=["Autenticación"], summary="Obtener eventos disponibles para registro")
+async def api_eventos_disponibles(db: AsyncSession = Depends(get_db)):
+    """Retorna la lista de eventos que pueden seleccionarse en el formulario de registro."""
+    return await obtener_eventos_disponibles(db)
+
+
 @router.post("/api/v1/auth/login", response_model=TokenResponse, tags=["Autenticación"], summary="Iniciar sesión")
 async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None

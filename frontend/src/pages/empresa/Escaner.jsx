@@ -170,7 +170,7 @@ export default function EmpresaEscaner() {
             </Button>
           </div>
           <div className="p-4 bg-black/40">
-            <div id="reader" className="rounded-xl overflow-hidden [&>video]:rounded-xl [&>video]:w-full border-none"></div>
+            <div id="reader" className="rounded-xl overflow-hidden [&_video]:rounded-xl [&_video]:w-full border-none"></div>
           </div>
         </Card>
 
