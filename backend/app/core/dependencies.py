@@ -63,6 +63,25 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+) -> Usuario | None:
+    """Dependency para rutas SSR: extrae el JWT desde la cookie 'access_token' y devuelve el Usuario."""
+    token = request.cookies.get("access_token")
+    if not token:
+        return None
+    try:
+        payload = _decode_access_token(token)
+        matricula: str = payload.get("sub")
+        if not matricula:
+            return None
+        result = await db.execute(select(Usuario).where(Usuario.id_matricula == matricula))
+        return result.scalar_one_or_none()
+    except HTTPException:
+        return None
+
+
 async def get_current_admin(
     request: Request,
     db: AsyncSession = Depends(get_db),

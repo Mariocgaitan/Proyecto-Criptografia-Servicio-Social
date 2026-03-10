@@ -13,7 +13,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.security import get_current_user, get_current_user_optional
+from app.core.dependencies import get_current_user, get_current_user_optional
 from app.db.session import get_db
 from app.services.alumno_service import (
     AlumnoError,
@@ -63,14 +63,14 @@ async def dashboard(
 @router.get("/api/v1/alumno/dashboard", tags=["Alumno"], summary="Obtener datos del dashboard del alumno")
 async def api_dashboard(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: "Usuario" = Depends(get_current_user),
 ):
     """
     Retorna la información completa del dashboard del alumno:
     datos de usuario, eventos registrados, estado de inscripción y catálogo de proyectos.
     """
     try:
-        return await obtener_datos_dashboard(db, current_user["sub"])
+        return await obtener_datos_dashboard(db, current_user.id_matricula)
     except AlumnoError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -80,7 +80,7 @@ async def api_dashboard(
 async def qr_payload(
     id_evento: int,
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: "Usuario" = Depends(get_current_user),
 ):
     """
     Genera el payload actual del QR para el evento indicado.
@@ -94,7 +94,7 @@ async def qr_payload(
         ya_inscrito: True si el alumno ya tiene inscripción confirmada en ese evento
     """
     try:
-        return await generar_qr_payload(db, current_user["sub"], id_evento)
+        return await generar_qr_payload(db, current_user.id_matricula, id_evento)
     except AlumnoError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -102,9 +102,9 @@ async def qr_payload(
 @router.get("/api/v1/alumno/estado-inscripcion", tags=["Alumno"], summary="Estado de inscripción en todos los eventos")
 async def estado_inscripcion(
     db: AsyncSession = Depends(get_db),
-    current_user: dict = Depends(get_current_user),
+    current_user: "Usuario" = Depends(get_current_user),
 ):
     """
     Consulta el estado de inscripción del alumno en todos sus eventos registrados.
     """
-    return await obtener_estado_inscripcion(db, current_user["sub"])
+    return await obtener_estado_inscripcion(db, current_user.id_matricula)
