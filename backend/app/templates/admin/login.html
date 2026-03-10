@@ -8,20 +8,22 @@
     <div class="w-full max-w-md animate-slide-up">
 
         <!-- Card -->
-        <div class="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+        <div class="glass-card rounded-2xl overflow-hidden">
 
             <!-- Header -->
-            <div class="bg-gradient-to-r from-slate-700 to-slate-600 px-8 py-8">
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+            <div class="bg-gradient-to-r from-tec-blue to-tec-light px-8 py-8 relative overflow-hidden">
+                <!-- Decorative element -->
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl"></div>
+                <div class="relative flex items-center gap-4">
+                    <div class="w-12 h-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 shadow-lg shadow-black/20">
                         <svg class="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </div>
                     <div>
-                        <h1 class="text-2xl font-bold text-white">Panel Administrador</h1>
-                        <p class="text-slate-300 text-sm mt-1">Servicio Social — TEC de Monterrey</p>
+                        <h1 class="text-2xl font-bold text-white tracking-tight">Panel Administrador</h1>
+                        <p class="text-white/80 text-sm mt-1 font-medium">Servicio Social — TEC de Monterrey</p>
                     </div>
                 </div>
             </div>
@@ -34,7 +36,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <p class="text-red-300 text-sm">{{ error }}</p>
+                    <p class="text-red-300 text-sm font-medium">{{ error }}</p>
                 </div>
             </div>
             {% endif %}
@@ -49,7 +51,7 @@
                     </label>
                     <input type="email" id="correo" name="correo" value="{{ correo or '' }}"
                         placeholder="master@sid.tec.mx" required autofocus
-                        class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all duration-200 hover:border-white/25">
+                        class="glass-input w-full rounded-xl px-4 py-3 placeholder-white/30">
                 </div>
 
                 <!-- Contraseña -->
@@ -59,9 +61,9 @@
                     </label>
                     <div class="relative">
                         <input type="password" id="password" name="password" placeholder="Contraseña de administrador" required
-                            class="w-full bg-white/5 border border-white/15 rounded-xl px-4 py-3 pr-12 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent transition-all duration-200 hover:border-white/25">
+                            class="glass-input w-full rounded-xl px-4 py-3 pr-12 placeholder-white/30">
                         <button type="button" onclick="togglePassword()"
-                            class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70 transition-colors">
+                            class="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/80 transition-colors">
                             <svg id="eye-icon" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -76,7 +78,7 @@
 
                 <!-- Botón -->
                 <button type="submit"
-                    class="w-full px-8 py-3 bg-gradient-to-r from-slate-600 to-slate-500 text-white font-semibold rounded-xl hover:from-slate-500 hover:to-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-400 focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg">
+                    class="w-full px-8 py-3.5 bg-gradient-to-r from-tec-blue to-tec-light text-white font-bold rounded-xl hover:from-[#002875] hover:to-[#004d9c] focus:outline-none focus:ring-2 focus:ring-tec-light focus:ring-offset-2 focus:ring-offset-transparent transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-xl hover:shadow-tec-light/20 active:scale-[0.98]">
                     Acceder al panel →
                 </button>
 

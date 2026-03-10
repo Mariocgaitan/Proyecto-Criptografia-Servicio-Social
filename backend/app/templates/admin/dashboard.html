@@ -1,72 +1,43 @@
-<!DOCTYPE html>
-<html lang="es">
+{% extends "base.html" %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin — SID</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'tec-blue': '#003865',
-                        'tec-light': '#0075C9',
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            min-height: 100vh;
-        }
+{% block title %}Panel Admin — SID{% endblock %}
+{% block description %}Panel de administración del SID — Servicio Social{% endblock %}
 
-        .card {
-            background: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-        }
+{% block extra_head %}
+<style>
+    .badge-lleno {
+        background: rgba(239, 68, 68, 0.15);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .badge-casi {
+        background: rgba(245, 158, 11, 0.15);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-ok {
+        background: rgba(34, 197, 94, 0.15);
+        color: #86efac;
+        border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .tab-active {
+        border-bottom: 2px solid #0057B8;
+        color: #60a5fa;
+    }
+    .tab-inactive {
+        color: rgba(255, 255, 255, 0.4);
+    }
+    .tab-inactive:hover {
+        color: rgba(255, 255, 255, 0.7);
+    }
+</style>
+{% endblock %}
 
-        .badge-lleno {
-            background: rgba(239, 68, 68, 0.15);
-            color: #fca5a5;
-            border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-
-        .badge-casi {
-            background: rgba(245, 158, 11, 0.15);
-            color: #fcd34d;
-            border: 1px solid rgba(245, 158, 11, 0.3);
-        }
-
-        .badge-ok {
-            background: rgba(34, 197, 94, 0.15);
-            color: #86efac;
-            border: 1px solid rgba(34, 197, 94, 0.3);
-        }
-
-        .tab-active {
-            border-bottom: 2px solid #0075C9;
-            color: #60a5fa;
-        }
-
-        .tab-inactive {
-            color: rgba(255, 255, 255, 0.4);
-        }
-
-        .tab-inactive:hover {
-            color: rgba(255, 255, 255, 0.7);
-        }
-    </style>
-</head>
-
-<body class="text-white font-sans">
+{% block content %}
+<div class="animate-fade-in pb-10">
 
     <!-- Navbar -->
-    <nav class="card border-b border-white/10 sticky top-0 z-50">
+    <nav class="glass-card sticky top-16 z-40 lg:top-0 lg:mt-6 mt-4 mx-4 lg:mx-auto max-w-7xl rounded-2xl mb-6">
         <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 bg-tec-light/20 rounded-lg flex items-center justify-center">
@@ -124,7 +95,7 @@
         </div>
 
         <!-- Tabla proyectos -->
-        <div class="card rounded-2xl overflow-hidden">
+        <div class="glass-card rounded-2xl overflow-hidden">
             <table class="w-full text-sm">
                 <thead>
                     <tr class="bg-white/5 text-white/50 text-left">
@@ -202,7 +173,7 @@
         <h2 class="text-xl font-bold text-white mb-6">Empresas Participantes</h2>
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {% for e in empresas %}
-            <div class="card rounded-xl p-4 flex items-center gap-3">
+            <div class="glass-card rounded-xl p-4 flex items-center gap-3">
                 <div
                     class="w-9 h-9 bg-tec-light/10 rounded-lg flex items-center justify-center text-tec-light font-bold text-sm">
                     {{ e.nombre_empresa[0] }}
@@ -221,7 +192,7 @@
         <h2 class="text-xl font-bold text-white mb-6">Eventos del Sistema</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             {% for ev in eventos %}
-            <div class="card rounded-xl p-5 {% if ev.activo %}border-tec-light/40{% endif %}">
+            <div class="glass-card rounded-xl p-5 {% if ev.activo %}border-tec-light/40{% endif %}">
                 <div class="flex items-center justify-between mb-2">
                     <h3 class="text-white font-semibold">{{ ev.nombre }}</h3>
                     {% if ev.activo %}
@@ -243,7 +214,7 @@
     <div id="modal-crear" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onclick="document.getElementById('modal-crear').classList.add('hidden')"></div>
-        <div class="card rounded-2xl w-full max-w-lg relative z-10 shadow-2xl">
+        <div class="glass-card rounded-2xl w-full max-w-lg relative z-10 shadow-2xl">
             <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
                 <h3 class="text-white font-bold text-lg">Nuevo Proyecto</h3>
                 <button onclick="document.getElementById('modal-crear').classList.add('hidden')"
@@ -314,7 +285,7 @@
     <div id="modal-cupo" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/60 backdrop-blur-sm"
             onclick="document.getElementById('modal-cupo').classList.add('hidden')"></div>
-        <div class="card rounded-2xl w-full max-w-sm relative z-10 shadow-2xl">
+        <div class="glass-card rounded-2xl w-full max-w-sm relative z-10 shadow-2xl">
             <div class="px-6 py-5 border-b border-white/10">
                 <h3 class="text-white font-bold">Ampliar Cupo</h3>
                 <p id="cupo-proyecto-nombre" class="text-white/40 text-sm mt-0.5"></p>
@@ -345,7 +316,7 @@
     <!-- MODAL: CREDENCIALES -->
     <div id="modal-creds" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
         <div class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="card rounded-2xl w-full max-w-md relative z-10 shadow-2xl border border-green-500/20">
+        <div class="glass-card rounded-2xl w-full max-w-md relative z-10 shadow-2xl border border-green-500/20">
             <div class="px-6 py-5 border-b border-white/10 flex items-center justify-between">
                 <div>
                     <h3 class="text-white font-bold">Credenciales de Acceso</h3>
@@ -384,7 +355,10 @@
             </div>
         </div>
     </div>
+</div>
+{% endblock %}
 
+{% block extra_scripts %}
     <script>
         const TOKEN = document.cookie.split(';').find(c => c.trim().startsWith('access_token='))?.split('=')[1];
         let cupoProyectoId = null;
@@ -488,6 +462,4 @@
             }
         }
     </script>
-</body>
-
-</html>
+{% endblock %}
