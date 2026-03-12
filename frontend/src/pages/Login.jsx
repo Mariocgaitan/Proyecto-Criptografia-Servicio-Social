@@ -148,7 +148,7 @@ export default function Login() {
               <img src={serSocialLogo} alt="Ser Social" className="h-24 sm:h-28 w-auto" />
             </div>
             <p className="mt-3 text-white/95 text-[11px] sm:text-xs font-semibold tracking-[0.15em] uppercase text-center">
-              Programa de Servicio Social
+              Feria de Servicio Social
             </p>
           </motion.div>
 
