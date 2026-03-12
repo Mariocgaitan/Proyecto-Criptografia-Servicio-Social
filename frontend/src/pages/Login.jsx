@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import tecLogo from "@/assets/tec_logo.png";
 import serSocialLogo from "@/assets/ser_social.png";
-import campusImg1 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg2 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg3 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
-import campusImg4 from "@/assets/login_images/ser_social_header.png";
+import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
+import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
+import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg1 from "@/assets/login_images/ser_social_header.png";
 
 // ─── Social icon button ─────────────────────────────────────────
 function SocialIcon({ children, href = "#" }) {
@@ -43,7 +43,7 @@ export default function Login() {
   useEffect(() => {
     const intervalId = setInterval(() => {
       setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
-    }, 5000);
+    }, 20000);
 
     return () => clearInterval(intervalId);
   }, [campusImages.length]);
@@ -91,23 +91,23 @@ export default function Login() {
   const fadeIn = (delay = 0) => ({
     initial: { opacity: 0, scale: 0.95 },
     animate: { opacity: 1, scale: 1 },
-    transition: { duration: 0.6, ease: "easeOut", delay },
+    transition: { duration: 0.8, ease: "easeOut", delay },
   });
 
   return (
     <div className="min-h-screen relative flex flex-col overflow-hidden">
       {/* ─── Full-screen Background Image ─── */}
-      <div className="absolute inset-0 z-0">
-        <AnimatePresence mode="wait">
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <AnimatePresence mode="sync" initial={false}>
           <motion.img
             key={currentBgIndex}
             src={campusImages[currentBgIndex]}
             alt="Campus"
             className="w-full h-full object-cover absolute inset-0"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.8 }}
+            initial={{ x: "100%" }}
+            animate={{ x: "0%" }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 3, ease: "easeInOut" }}
           />
         </AnimatePresence>
         {/* Dark overlay */}
