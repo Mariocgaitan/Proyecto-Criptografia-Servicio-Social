@@ -12,7 +12,7 @@ function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return <div className="h-screen bg-tec-deep flex items-center justify-center text-white">Iniciando plataforma...</div>;
+    return null;
   }
 
   return (

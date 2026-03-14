@@ -121,6 +121,9 @@ function ProjectGrid({ proyectos }) {
 
 // ─── QR Credential Tab Content ───────────────────────────────────
 function QRCredentialView({ evento, qrPayload, timeLeft }) {
+  const qrSize = 220;
+  const qrLogoSize = 48;
+
   return (
     <div className="w-full">
       <motion.div
@@ -129,15 +132,35 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
         transition={{ duration: 0.5 }}
         className="relative"
       >
-        <div className="flex flex-col lg:flex-row gap-8 items-center lg:items-start">
+        <div className="flex justify-center mb-6 sm:mb-8">
+          <motion.div
+            animate={timeLeft <= 5 ? { scale: [1, 1.05, 1] } : {}}
+            transition={{ duration: 0.5, repeat: timeLeft <= 5 ? Infinity : 0 }}
+          >
+            <Badge
+              variant="outline"
+              className={cn(
+                "font-mono tracking-widest text-sm px-6 py-3 border-0 shadow-lg rounded-xl",
+                timeLeft <= 5
+                  ? "bg-red-500 text-white shadow-red-500/30"
+                  : "bg-white/[0.05] text-blue-300 font-bold border border-blue-500/20 backdrop-blur-md"
+              )}
+            >
+              <Clock className="w-4 h-4 mr-2" />
+              EXPIRA EN: {timeLeft.toString().padStart(2, "0")}s
+            </Badge>
+          </motion.div>
+        </div>
+
+        <div className="flex flex-col items-center gap-8 text-center">
           {/* QR Section — 3D-ish Card */}
           <motion.div
             whileHover={{ rotateY: 5, rotateX: -3, scale: 1.02 }}
             transition={{ type: "spring", stiffness: 200 }}
-            className="shrink-0"
+            className="shrink-0 mx-auto"
             style={{ perspective: 1000 }}
           >
-            <div className="relative w-72 h-72 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.4)] border border-white/10 p-6 flex flex-col items-center justify-center overflow-hidden group">
+            <div className="relative w-72 h-72 sm:w-80 sm:h-80 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.4)] border border-white/10 p-6 flex flex-col items-center justify-center overflow-hidden group">
               {/* Animated accent */}
               <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/10 group-hover:from-blue-500/20 group-hover:to-indigo-500/20 transition-all duration-500" />
               <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/15 rounded-full blur-[50px] group-hover:bg-blue-400/25 transition-all" />
@@ -149,7 +172,17 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
                   transition={{ type: "spring", stiffness: 300 }}
                   className="bg-white p-4 rounded-2xl relative z-10 shadow-2xl"
                 >
-                  <QRCodeSVG value={qrPayload} size={200} level="H" />
+                  <QRCodeSVG
+                    value={qrPayload}
+                    size={qrSize}
+                    level="H"
+                    imageSettings={{
+                      src: "/ser_social.svg",
+                      width: qrLogoSize,
+                      height: qrLogoSize,
+                      excavate: true,
+                    }}
+                  />
                 </motion.div>
               ) : (
                 <div className="animate-pulse flex flex-col items-center gap-4 text-white/30 relative z-10">
@@ -161,46 +194,26 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
           </motion.div>
 
           {/* Event Info */}
-          <div className="flex-1 flex flex-col justify-center text-center lg:text-left py-4">
+          <div className="w-full max-w-2xl flex flex-col justify-center py-2">
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <h3 className="text-3xl font-extrabold text-white mb-2 tracking-tight">{evento.nombre}</h3>
-              <p className="text-blue-200/50 font-medium text-sm mb-8 flex items-center justify-center lg:justify-start gap-2">
+              <p className="text-blue-200/50 font-medium text-sm mb-8 flex items-center justify-center gap-2">
                 <Calendar className="w-4 h-4" /> Semestre {evento.periodo} {evento.anio}
               </p>
 
               <div className="space-y-4">
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-sm">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center justify-center gap-2 mb-2">
                     <Shield className="w-4 h-4 text-blue-400" />
                     <h4 className="text-white font-bold text-sm">QR Dinámico Encriptado</h4>
                   </div>
                   <p className="text-blue-200/40 text-xs leading-relaxed">
                     Muestra este código al representante de la empresa para separar tu lugar al instante. La llave cambia cada 30 segundos usando TOTP.
                   </p>
-                </div>
-
-                <div className="flex justify-center lg:justify-start">
-                  <motion.div
-                    animate={timeLeft <= 5 ? { scale: [1, 1.05, 1] } : {}}
-                    transition={{ duration: 0.5, repeat: timeLeft <= 5 ? Infinity : 0 }}
-                  >
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "font-mono tracking-widest text-sm px-6 py-3 border-0 shadow-lg rounded-xl",
-                        timeLeft <= 5
-                          ? "bg-red-500 text-white shadow-red-500/30"
-                          : "bg-white/[0.05] text-blue-300 font-bold border border-blue-500/20 backdrop-blur-md"
-                      )}
-                    >
-                      <Clock className="w-4 h-4 mr-2" />
-                      EXPIRA EN: {timeLeft.toString().padStart(2, "0")}s
-                    </Badge>
-                  </motion.div>
                 </div>
               </div>
             </motion.div>
