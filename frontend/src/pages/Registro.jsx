@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2, ArrowRight, Eye, EyeOff, User, Mail, Lock, Hash, GraduationCap, BookOpen } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, User, Lock, Hash, GraduationCap, BookOpen, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
@@ -42,18 +42,24 @@ const fadeIn = (delay = 0) => ({
 export default function Registro() {
   const navigate = useNavigate();
   const [eventos, setEventos] = useState([]);
+  const [carreras, setCarreras] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [formData, setFormData] = useState({
-    nombre: "", correo: "", matricula: "", carrera: "", semestre: "", password: "", password_confirm: "", eventos_seleccionados: [],
+    nombre: "", matricula: "", carrera: "", semestre: "", password: "", password_confirm: "", eventos_seleccionados: [],
   });
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/auth/eventos")
-      .then(res => res.json())
-      .then(data => setEventos(data))
+    Promise.all([
+      fetch("http://localhost:8000/api/v1/auth/eventos").then(res => res.json()),
+      fetch("http://localhost:8000/api/v1/auth/carreras").then(res => res.json()),
+    ])
+      .then(([eventosData, carrerasData]) => {
+        setEventos(eventosData);
+        setCarreras(Array.isArray(carrerasData) ? carrerasData : []);
+      })
       .catch(err => console.error(err));
   }, []);
 
@@ -87,6 +93,9 @@ export default function Registro() {
     }
     if (formData.eventos_seleccionados.length === 0) {
       setError("Selecciona al menos un evento."); setIsLoading(false); return;
+    }
+    if (!formData.carrera) {
+      setError("Selecciona una carrera."); setIsLoading(false); return;
     }
 
     try {
@@ -191,23 +200,28 @@ export default function Registro() {
                 </div>
               </div>
 
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
-                  <Mail className="w-4 h-4 text-slate-700/90" />
-                </div>
-                <Input type="email" name="correo" value={formData.correo} onChange={handleChange} required
-                  placeholder="Correo institucional (A0...@tec.mx)"
-                  className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
                     <GraduationCap className="w-4 h-4 text-slate-700/90" />
                   </div>
-                  <Input name="carrera" value={formData.carrera} onChange={handleChange} required
-                    placeholder="Carrera (ITC...)"
-                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 uppercase focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                  <select
+                    name="carrera"
+                    value={formData.carrera}
+                    onChange={handleChange}
+                    required
+                    className="w-full appearance-none bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-10 focus:outline-none focus:ring-2 focus:ring-white/45 focus:border-white/60 text-sm font-medium backdrop-blur-md"
+                  >
+                    <option value="" className="text-slate-700">Selecciona carrera</option>
+                    {carreras.map((carrera) => (
+                      <option key={carrera} value={carrera} className="text-slate-900">
+                        {carrera}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <ChevronDown className="w-4 h-4 text-slate-700/90" />
+                  </div>
                 </div>
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">

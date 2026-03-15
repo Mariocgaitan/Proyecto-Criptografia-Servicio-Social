@@ -33,6 +33,14 @@ export default function Login() {
   const navigate = useNavigate();
   const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
+  const normalizeLoginIdentifier = (value) => {
+    const trimmed = value.trim();
+    if (/^[aA]0\d{7}$/.test(trimmed)) {
+      return `${trimmed.toLowerCase()}@tec.mx`;
+    }
+    return trimmed;
+  };
+
   const triggerErrorAnimation = () => {
     shakeControls.start({
       x: [0, -6, 6, -4, 4, 0],
@@ -56,13 +64,17 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const normalizedEmail = correo.trim();
+    const normalizedEmail = normalizeLoginIdentifier(correo);
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
     if (!isValidEmail) {
-      setError("Ingresa un correo válido.");
+      setError("Ingresa un correo válido o una matrícula con formato A0 + 7 dígitos.");
       triggerErrorAnimation();
       return;
+    }
+
+    if (normalizedEmail !== correo) {
+      setCorreo(normalizedEmail);
     }
 
     setIsLoading(true);
@@ -169,7 +181,7 @@ export default function Login() {
             </AnimatePresence>
 
             <form onSubmit={handleSubmit} noValidate className="space-y-3">
-              {/* Email input */}
+              {/* Login input */}
               <motion.div {...fadeIn(0.5)}>
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10">
@@ -177,12 +189,13 @@ export default function Login() {
                   </div>
                   <Input
                     id="correo"
-                    type="email"
+                    type="text"
                     value={correo}
                     onChange={(e) => setCorreo(e.target.value)}
+                    onBlur={() => setCorreo((prev) => normalizeLoginIdentifier(prev))}
                     required
                     className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
-                    placeholder="Correo institucional"
+                    placeholder="Correo o matrícula (A01234567)"
                   />
                 </div>
               </motion.div>
