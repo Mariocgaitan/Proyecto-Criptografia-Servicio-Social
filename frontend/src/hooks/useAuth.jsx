@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { apiUrl } from "@/lib/api";
 
 const AuthContext = createContext();
 
@@ -8,7 +9,7 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUser = async () => {
     try {
-      const res = await fetch("http://localhost:8000/api/v1/auth/me", {
+      const res = await fetch(apiUrl("/api/v1/auth/me"), {
         credentials: "include",
       });
       if (res.ok) {
@@ -31,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (correo, password) => {
     try {
-      const res = await fetch("http://localhost:8000/api/v1/auth/login", {
+      const res = await fetch(apiUrl("/api/v1/auth/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, password }),
@@ -48,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      await fetch("http://localhost:8000/api/v1/auth/logout", { 
+      await fetch(apiUrl("/api/v1/auth/logout"), {
         method: "POST",
         credentials: "include" 
       });

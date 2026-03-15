@@ -6,10 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from "@/components/ui/card";
 import { Tabs } from "@/components/ui/tabs";
-import { Spotlight } from "@/components/ui/spotlight";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { apiUrl } from "@/lib/api";
+import tecLogo from "@/assets/tec_logo.png";
+import serSocialLogo from "@/assets/ser_social.png";
+import campusImg1 from "@/assets/login_images/ser_social_header.png";
+import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
+import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
+import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+
+function SocialIcon({ children, href = "#" }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-white/50 hover:bg-white/10 transition-all duration-200">
+      {children}
+    </a>
+  );
+}
+
+const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
 // ─── Project Card (shadcn Card style) ────────────────────────────
 function ProjectCard({ project, index }) {
@@ -278,7 +294,7 @@ const EventCard = ({ evento }) => {
   const fetchQR = useCallback(async () => {
     if (evento.inscrito) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/alumno/qr-payload?id_evento=${evento.id_evento}`, { credentials: "include" });
+      const res = await fetch(apiUrl(`/api/v1/alumno/qr-payload?id_evento=${evento.id_evento}`), { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         if (data.ya_inscrito) {
@@ -363,10 +379,11 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/alumno/dashboard", { credentials: "include" })
+    fetch(apiUrl("/api/v1/alumno/dashboard"), { credentials: "include" })
       .then(res => {
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) throw new Error("Acceso denegado. Por favor, re-autentícate.");
@@ -381,24 +398,33 @@ export default function Dashboard() {
       });
   }, []);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
+    }, 20000);
+
+    return () => clearInterval(intervalId);
+  }, []);
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,57,166,0.15)_0,rgba(0,0,0,0)_50%)]" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black" />
         <motion.div
           animate={{ rotate: [0, 360] }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="relative z-10"
         >
           <QrCode className="w-12 h-12 text-tec-light stroke-[1.5]" />
         </motion.div>
-        <p className="font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Cargando credencial...</p>
+        <p className="relative z-10 font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Cargando credencial...</p>
       </div>
     );
   }
 
   if (apiError) {
     return (
-      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -416,73 +442,100 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-tec-deep relative overflow-hidden">
-      {/* Spotlight */}
-      <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="#0039A6" />
-
-      {/* Background Orbs */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.2, 1], rotate: [0, 10, 0] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-tec-primary/10 blur-[120px]" />
-        <motion.div animate={{ scale: [1, 1.3, 1], x: [0, -40, 0] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/10 blur-[100px]" />
+    <div className="min-h-screen relative flex flex-col overflow-hidden">
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <AnimatePresence mode="sync" initial={false}>
+          <motion.img
+            key={currentBgIndex}
+            src={campusImages[currentBgIndex]}
+            alt="Campus"
+            className="w-full h-full object-cover absolute inset-0"
+            initial={{ x: "100%" }}
+            animate={{ x: "0%" }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 3, ease: "easeInOut" }}
+          />
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-black/60" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
 
-      <div className="relative z-10 pb-16">
-        {/* Navbar */}
-        <nav className="bg-white/[0.03] backdrop-blur-2xl border-b border-white/[0.06] sticky top-0 z-40 shadow-xl">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-20 items-center">
-              <div className="flex items-center gap-4">
-                <motion.div whileHover={{ scale: 1.05, rotate: 3 }} className="w-12 h-12 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-600/20 border border-white/10">
-                  <User className="w-6 h-6 text-white" />
-                </motion.div>
-                <div className="hidden sm:block">
-                  <span className="font-bold text-white text-lg block leading-tight">{data?.nombre || "Alumno No Identificado"}</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="bg-blue-600/20 text-blue-300 px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-widest border border-blue-500/20">{data?.carrera || "N/A"}</span>
-                    <span className="text-white/40 text-xs font-medium">Semestre {data?.semestre || "-"}</span>
-                    <span className="text-white/20">|</span>
-                    <span className="font-mono text-white/50 text-xs">{data?.matricula || ""}</span>
-                  </div>
-                </div>
-              </div>
-
-              <Button variant="ghost" className="text-white/60 hover:text-white hover:bg-white/10 transition-colors rounded-xl" onClick={logout}>
-                <LogOut className="w-5 h-5 sm:mr-2" /> <span className="hidden sm:inline">Cerrar Sesión</span>
-              </Button>
+      <motion.nav
+        initial={{ y: -70, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 14 }}
+        className="relative z-20 flex items-center justify-between px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
+      >
+        <div className="flex items-center gap-4">
+          <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
+          <div className="hidden md:flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm">
+            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+              <User className="w-4 h-4 text-white" />
+            </div>
+            <div className="leading-tight">
+              <p className="text-white text-sm font-semibold">{data?.nombre || "Alumno"}</p>
+              <p className="text-white/60 text-[11px] font-medium">{data?.carrera || "N/A"} · Semestre {data?.semestre || "-"}</p>
             </div>
           </div>
-        </nav>
+        </div>
 
-        {/* Content */}
-        <motion.main initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="hidden sm:flex items-center gap-2">
+            <SocialIcon href="https://www.facebook.com/TecCCM">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
+            </SocialIcon>
+            <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </SocialIcon>
+          </div>
+          <Button
+            variant="ghost"
+            className="text-white/70 hover:text-white hover:bg-white/10 transition-colors rounded-xl"
+            onClick={logout}
+          >
+            <LogOut className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+          </Button>
+        </div>
+      </motion.nav>
 
-          <div className="mb-10 text-center sm:text-left">
-            <motion.h2
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-4xl sm:text-5xl font-extrabold tracking-tight"
-            >
-              <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-blue-300">
-                Expediente Digital
-              </span>
-            </motion.h2>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-blue-200/50 mt-3 text-sm max-w-xl mx-auto sm:mx-0 leading-relaxed"
-            >
-              Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
-            </motion.p>
+      <div className="relative z-10 flex-1 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto">
+        <motion.main
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-6xl mx-auto"
+        >
+          <div className="mb-8 rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
+            <div>
+              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full border border-white/20 bg-white/10">
+                <span className="text-white/80 text-[11px] font-semibold uppercase tracking-[0.18em]">Panel de Alumno</span>
+              </div>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Expediente Digital</h2>
+              <p className="text-white/65 mt-2 text-sm max-w-2xl leading-relaxed">
+                Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
+                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/85 font-medium">{data?.carrera || "N/A"}</span>
+                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/85 font-medium">Semestre {data?.semestre || "-"}</span>
+                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/70 font-mono">{data?.matricula || ""}</span>
+              </div>
+            </div>
+            <div className="flex items-center justify-center sm:justify-end">
+              <div className="px-4 py-3 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl">
+                <div className="px-3 py-2 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-lg">
+                  <img src={serSocialLogo} alt="Ser Social" className="h-12 sm:h-14 w-auto" />
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="flex flex-col gap-12">
+          <div className="flex flex-col gap-8">
             {!data?.eventos || data.eventos.length === 0 ? (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white/[0.02] backdrop-blur-md rounded-3xl border border-white/5 p-16 flex flex-col items-center justify-center text-center shadow-inner">
-                <Calendar className="w-16 h-16 text-white/15 mb-6" />
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black/35 backdrop-blur-md rounded-3xl border border-white/15 p-16 flex flex-col items-center justify-center text-center shadow-2xl">
+                <Calendar className="w-16 h-16 text-white/20 mb-6" />
                 <h3 className="text-xl font-bold text-white tracking-wide mb-2">Sin Asignación a Eventos</h3>
-                <p className="text-blue-200/40 max-w-sm text-sm">No estás habilitado para ningún evento de Servicio Social en curso. Consulta con tu coordinador de carrera.</p>
+                <p className="text-white/65 max-w-sm text-sm">No estás habilitado para ningún evento de Servicio Social en curso. Consulta con tu coordinador de carrera.</p>
               </motion.div>
             ) : (
               data.eventos.map((evento, i) => (
@@ -492,9 +545,28 @@ export default function Dashboard() {
               ))
             )}
           </div>
-
         </motion.main>
       </div>
+
+      <motion.footer
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 14, delay: 0.15 }}
+        className="relative z-20 flex items-center justify-between px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+      >
+        <div className="flex items-center gap-4 sm:gap-6">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Aviso de Privacidad
+          </a>
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Ethos
+          </a>
+        </div>
+        <p className="text-white/40 text-[11px] font-medium">
+          © {new Date().getFullYear()} {" "}
+          <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey</a>
+        </p>
+      </motion.footer>
     </div>
   );
 }

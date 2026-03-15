@@ -35,5 +35,14 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SHOW_DOCS: bool = True  # False en producción para ocultar ReDoc
 
+    # CORS — orígenes permitidos explícitos (producción). En desarrollo se
+    # acepta automáticamente cualquier IP de red privada + localhost.
+    ALLOWED_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:4173",
+        "http://127.0.0.1:4173",
+    ]
+
 
 settings = Settings()

@@ -46,9 +46,21 @@ app = FastAPI(
 )
 
 # ── CORS Middleware ────────────────────────────────────────────────────────────
+# En desarrollo: acepta cualquier origen en red privada local (LAN) para
+# poder probar desde celular u otras máquinas sin hardcodear IPs.
+# En producción: solo los orígenes de settings.ALLOWED_ORIGINS.
+_LOCAL_ORIGIN_REGEX = (
+    r"http://(localhost|127\.0\.0\.1"
+    r"|192\.168\.\d{1,3}\.\d{1,3}"
+    r"|10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+    r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+    r"):(5173|4173|3000|8080)"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origin_regex=_LOCAL_ORIGIN_REGEX if settings.APP_ENV == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

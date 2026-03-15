@@ -4,6 +4,7 @@ import { Loader2, ArrowRight, Eye, EyeOff, User, Lock, Hash, GraduationCap, Book
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
 import serSocialLogo from "@/assets/ser_social.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
@@ -53,8 +54,8 @@ export default function Registro() {
 
   useEffect(() => {
     Promise.all([
-      fetch("http://localhost:8000/api/v1/auth/eventos").then(res => res.json()),
-      fetch("http://localhost:8000/api/v1/auth/carreras").then(res => res.json()),
+      fetch(apiUrl("/api/v1/auth/eventos")).then(res => res.json()),
+      fetch(apiUrl("/api/v1/auth/carreras")).then(res => res.json()),
     ])
       .then(([eventosData, carrerasData]) => {
         setEventos(eventosData);
@@ -100,7 +101,7 @@ export default function Registro() {
 
     try {
       const payload = { ...formData, semestre: parseInt(formData.semestre, 10) };
-      const res = await fetch("http://localhost:8000/api/v1/auth/registro", {
+      const res = await fetch(apiUrl("/api/v1/auth/registro"), {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
       });
       const data = await res.json();

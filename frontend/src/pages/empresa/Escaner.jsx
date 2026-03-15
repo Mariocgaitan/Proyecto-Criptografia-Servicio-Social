@@ -5,6 +5,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUrl } from "@/lib/api";
 
 export default function EmpresaEscaner() {
   const { user, logout } = useAuth();
@@ -14,7 +15,7 @@ export default function EmpresaEscaner() {
   const scannerRef = useRef(null);
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/empresa/proyecto", { credentials: "include" })
+    fetch(apiUrl("/api/v1/empresa/proyecto"), { credentials: "include" })
       .then(res => res.json())
       .then(data => setProyecto(data))
       .catch(err => console.error(err));
@@ -25,7 +26,7 @@ export default function EmpresaEscaner() {
     setResult({ status: 'loading', message: 'Verificando firmas criptográficas...', icon: '⌛' });
 
     try {
-      const res = await fetch("http://localhost:8000/api/v1/empresa/escanear", {
+      const res = await fetch(apiUrl("/api/v1/empresa/escanear"), {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ qr_data: decodedText }), credentials: "include"
       });

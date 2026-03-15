@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUrl } from "@/lib/api";
 
 // ─── Sidebar Nav Item ────────────────────────────────────────────
 function SidebarItem({ icon: Icon, label, active, onClick, badge }) {
@@ -145,9 +146,9 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       const [ps, es, evs] = await Promise.all([
-        fetch("http://localhost:8000/api/v1/admin/proyectos", { credentials: "include" }).then(res => res.json()),
-        fetch("http://localhost:8000/api/v1/admin/empresas", { credentials: "include" }).then(res => res.json()),
-        fetch("http://localhost:8000/api/v1/admin/eventos", { credentials: "include" }).then(res => res.json())
+        fetch(apiUrl("/api/v1/admin/proyectos"), { credentials: "include" }).then(res => res.json()),
+        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()),
+        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json())
       ]);
       setProyectos(ps); setEmpresas(es); setEventos(evs);
     } catch (err) { console.error(err); }
@@ -165,7 +166,7 @@ export default function AdminDashboard() {
   const handleCrearProyecto = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/proyectos", {
+      const res = await fetch(apiUrl("/api/v1/admin/proyectos"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           id_empresa: parseInt(formProyecto.id_empresa), id_evento: parseInt(formProyecto.id_evento),
@@ -185,7 +186,7 @@ export default function AdminDashboard() {
   const handleCrearEmpresa = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/empresas", {
+      const res = await fetch(apiUrl("/api/v1/admin/empresas"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ id_asociado: formEmpresa.id_asociado, nombre_empresa: formEmpresa.nombre, razon_social: formEmpresa.razon, descripcion: formEmpresa.desc || null, calle: formEmpresa.calle || null })
       });
@@ -199,7 +200,7 @@ export default function AdminDashboard() {
   const handleCrearEvento = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/eventos", {
+      const res = await fetch(apiUrl("/api/v1/admin/eventos"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ nombre: formEvento.nombre, periodo: formEvento.periodo, anio: parseInt(formEvento.anio), semestre: formEvento.semestre, activo: formEvento.activo })
       });
@@ -214,7 +215,7 @@ export default function AdminDashboard() {
     if (!cupoModalInfo) return;
     setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/proyectos/${cupoModalInfo.id}/capacidad`, {
+      const res = await fetch(apiUrl(`/api/v1/admin/proyectos/${cupoModalInfo.id}/capacidad`), {
         method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ nueva_capacidad_max: parseInt(nuevaCapacidad) })
       });
@@ -226,7 +227,7 @@ export default function AdminDashboard() {
   const handleRegenerarCreds = async (id, nombre) => {
     if (!confirm(`¿Regenerar contraseña para: ${nombre}? La anterior dejará de funcionar.`)) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/proyectos/${id}/credenciales`, { method: "POST", credentials: "include" });
+      const res = await fetch(apiUrl(`/api/v1/admin/proyectos/${id}/credenciales`), { method: "POST", credentials: "include" });
       if (!res.ok) throw new Error("Fallo de red");
       const data = await res.json();
       setCredsModalInfo({ nombre, correo: data.correo, password: data.password });
