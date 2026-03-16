@@ -87,10 +87,19 @@
   }
   body {
     @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overflow-x: hidden;
   }
   html {
     @apply font-sans;
   }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-height: 100dvh;
 }
 
 /* Aceternity UI - Hide scrollbar for tabs */

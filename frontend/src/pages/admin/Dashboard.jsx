@@ -4,7 +4,7 @@ import {
   LogOut, LayoutDashboard, Building2, Calendar, Plus, RefreshCw,
   Copy, Check, QrCode, Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, Bell,
-  Settings, Sun, Moon, List
+  Sun, Moon, Menu, X, List
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -121,6 +121,7 @@ export default function AdminDashboard() {
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
   const [darkMode, setDarkMode] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [proyectosView, setProyectosView] = useState("all"); // "all" | "byEmpresa"
   const [expandedEmpresa, setExpandedEmpresa] = useState(null);
@@ -256,34 +257,58 @@ export default function AdminDashboard() {
   // Dark mode classes
   const dm = darkMode;
 
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+    setMobileMenuOpen(false);
+  };
+
   // ─── RENDER ──────────────────────────────────────────────────
   return (
-    <div className={`flex h-screen overflow-hidden transition-colors duration-300 ${dm ? 'dark-dashboard' : ''}`} style={{ fontFamily: "'Geist Variable', sans-serif" }}>
+    <div className={`relative flex min-h-screen lg:h-screen overflow-hidden transition-colors duration-300 ${dm ? 'dark-dashboard' : ''}`} style={{ fontFamily: "'Geist Variable', sans-serif" }}>
+
+      {mobileMenuOpen && (
+        <button
+          type="button"
+          aria-label="Cerrar menú"
+          onClick={() => setMobileMenuOpen(false)}
+          className="fixed inset-0 z-40 bg-black/55 backdrop-blur-[1px] lg:hidden"
+        />
+      )}
 
       {/* ═══════════ SIDEBAR ═══════════ */}
-      <aside className={`w-[260px] flex-shrink-0 flex flex-col border-r transition-colors duration-300 ${dm ? 'bg-[#0a0e1a] border-slate-800' : 'bg-[#0f172a] border-slate-800'}`}>
+      <aside className={`fixed inset-y-0 left-0 z-50 w-[260px] flex flex-col border-r transform transition-all duration-300 lg:static lg:translate-x-0 lg:z-auto ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} ${dm ? 'bg-[#0a0e1a] border-slate-800' : 'bg-[#0f172a] border-slate-800'}`}>
         {/* Brand */}
         <div className="px-5 pt-6 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <LayoutDashboard className="w-5 h-5 text-white" />
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                <LayoutDashboard className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h1 className="font-bold text-white text-base leading-none">Centro de Control</h1>
+                <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase mt-0.5">Servicio Social</p>
+              </div>
             </div>
-            <div>
-              <h1 className="font-bold text-white text-base leading-none">Centro de Control</h1>
-              <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase mt-0.5">Servicio Social</p>
-            </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="lg:hidden p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+              aria-label="Cerrar navegación"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
           <p className="px-4 pt-4 pb-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Principal</p>
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeSection === "overview"} onClick={() => setActiveSection("overview")} />
-          <SidebarItem icon={BarChart3} label="Proyectos" active={activeSection === "proyectos"} onClick={() => setActiveSection("proyectos")} badge={proyectos.length || null} />
+          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeSection === "overview"} onClick={() => handleSectionChange("overview")} />
+          <SidebarItem icon={BarChart3} label="Proyectos" active={activeSection === "proyectos"} onClick={() => handleSectionChange("proyectos")} badge={proyectos.length || null} />
 
           <p className="px-4 pt-6 pb-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Administración</p>
-          <SidebarItem icon={Building2} label="Empresas" active={activeSection === "empresas"} onClick={() => setActiveSection("empresas")} badge={empresas.length || null} />
-          <SidebarItem icon={Calendar} label="Eventos" active={activeSection === "eventos"} onClick={() => setActiveSection("eventos")} badge={eventosActivos || null} />
+          <SidebarItem icon={Building2} label="Empresas" active={activeSection === "empresas"} onClick={() => handleSectionChange("empresas")} badge={empresas.length || null} />
+          <SidebarItem icon={Calendar} label="Eventos" active={activeSection === "eventos"} onClick={() => handleSectionChange("eventos")} badge={eventosActivos || null} />
         </nav>
 
         {/* User Card */}
@@ -310,9 +335,18 @@ export default function AdminDashboard() {
       {/* ═══════════ MAIN CONTENT ═══════════ */}
       <main className={`flex-1 overflow-y-auto transition-colors duration-300 ${dm ? 'bg-[#111827]' : ''}`} style={!dm ? { backgroundColor: "#f8f6f1" } : undefined}>
         {/* Top Bar */}
-        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-8 py-4 transition-colors duration-300 ${dm ? 'bg-[#1f2937]/80 border-slate-700' : 'bg-white/80 border-slate-100'}`}>
-          <div className="flex items-center justify-between">
-            <div>
+        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-4 sm:px-6 lg:px-8 py-3 sm:py-4 transition-colors duration-300 ${dm ? 'bg-[#1f2937]/80 border-slate-700' : 'bg-white/80 border-slate-100'}`}>
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <button
+                type="button"
+                onClick={() => setMobileMenuOpen(true)}
+                className={`lg:hidden mt-0.5 p-2 rounded-xl border transition-colors ${dm ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'}`}
+                aria-label="Abrir navegación"
+              >
+                <Menu className="w-4 h-4" />
+              </button>
+              <div>
               <h2 className={`text-xl font-bold ${dm ? 'text-white' : 'text-slate-800'}`}>
                 {activeSection === "overview" && "Dashboard"}
                 {activeSection === "proyectos" && "Directorio de Proyectos"}
@@ -325,16 +359,17 @@ export default function AdminDashboard() {
                 {activeSection === "empresas" && "Socios formadores autorizados"}
                 {activeSection === "eventos" && "Control de semestres e inscripciones"}
               </p>
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="relative flex-1 min-w-0">
                 <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${dm ? 'text-slate-500' : 'text-slate-400'}`} />
                 <input
                   type="text"
                   placeholder="Buscar proyectos, empresas..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className={`pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 w-64 transition-all ${dm ? 'bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500' : 'bg-slate-50 border border-slate-200 text-slate-700 placeholder:text-slate-400'}`}
+                  className={`pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 w-full sm:w-64 transition-all ${dm ? 'bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500' : 'bg-slate-50 border border-slate-200 text-slate-700 placeholder:text-slate-400'}`}
                 />
               </div>
               <button
@@ -353,7 +388,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* Content Area */}
-        <div className="p-8">
+        <div className="p-4 sm:p-6 lg:p-8">
           <AnimatePresence mode="wait">
             {/* ─── OVERVIEW ────────────────────── */}
             {activeSection === "overview" && (
@@ -442,7 +477,7 @@ export default function AdminDashboard() {
             {activeSection === "proyectos" && (
               <motion.div key="proyectos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="space-y-6">
                 {/* Header with view toggle and create button */}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className={`flex items-center gap-1 p-1 rounded-xl border ${dm ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
                     <button onClick={() => setProyectosView('all')} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${proyectosView === 'all' ? (dm ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 shadow-sm') : (dm ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}`}>
                       <List className="w-3.5 h-3.5" /> Todos
@@ -453,7 +488,7 @@ export default function AdminDashboard() {
                   </div>
                   <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
+                      <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
                         <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
                       </Button>
                     </DialogTrigger>

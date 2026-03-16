@@ -116,24 +116,24 @@ export default function EmpresaEscaner() {
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-3xl mx-auto px-4 mt-8 space-y-6">
 
           {/* Stats Bar */}
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
             <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl shadow-xl rounded-2xl">
-              <CardContent className="p-5 text-center flex flex-col items-center justify-center">
+              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center">
                 <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Confirmados</p>
-                <p className="text-4xl font-extrabold text-white">{proyecto.cupo_actual}</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-white">{proyecto.cupo_actual}</p>
               </CardContent>
             </Card>
             <Card className="bg-emerald-500/10 border-emerald-500/20 backdrop-blur-xl shadow-xl rounded-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-400/20 rounded-full blur-[20px] -mr-8 -mt-8"></div>
-              <CardContent className="p-5 text-center flex flex-col items-center justify-center relative z-10">
+              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center relative z-10">
                 <p className="text-emerald-400/70 text-[10px] uppercase font-bold tracking-widest mb-1">Vacantes</p>
-                <p className="text-4xl font-extrabold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">{proyecto.capacidad_max - proyecto.cupo_actual}</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">{proyecto.capacidad_max - proyecto.cupo_actual}</p>
               </CardContent>
             </Card>
             <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl shadow-xl rounded-2xl">
-              <CardContent className="p-5 text-center flex flex-col items-center justify-center">
+              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center">
                 <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Capacidad Total</p>
-                <p className="text-4xl font-extrabold text-white/30">{proyecto.capacidad_max}</p>
+                <p className="text-3xl sm:text-4xl font-extrabold text-white/30">{proyecto.capacidad_max}</p>
               </CardContent>
             </Card>
           </div>

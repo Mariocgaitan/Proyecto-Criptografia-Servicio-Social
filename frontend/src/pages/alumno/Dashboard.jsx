@@ -5,7 +5,6 @@ import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from "@/components/ui/card";
-import { Tabs } from "@/components/ui/tabs";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -290,6 +289,7 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 const EventCard = ({ evento }) => {
   const [qrPayload, setQrPayload] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [activeTab, setActiveTab] = useState("credencial");
 
   const fetchQR = useCallback(async () => {
     if (evento.inscrito) return;
@@ -325,48 +325,57 @@ const EventCard = ({ evento }) => {
     return <EnrolledView inscripcion={evento.inscripcion} eventoNombre={evento.nombre} />;
   }
 
-  // Build tabs
-  const tabs = [
-    {
-      title: "QR Dinámico",
-      value: "credencial",
-      content: (
-        <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 sm:p-8">
-          <QRCredentialView evento={evento} qrPayload={qrPayload} timeLeft={timeLeft} />
-        </div>
-      ),
-    },
-    {
-      title: "Oferta de Servicios",
-      value: "proyectos",
-      content: (
-        <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <HardHat className="w-4 h-4 text-blue-400" />
-              <h4 className="text-sm font-bold text-white/70 uppercase tracking-wider">Ofertas Disponibles</h4>
-            </div>
-            {evento.proyectos && (
-              <Badge variant="outline" className="bg-white/5 text-blue-300 border-blue-500/20 text-xs font-mono">
-                <Users className="w-3 h-3 mr-1" /> {evento.proyectos.length} proyectos
-              </Badge>
-            )}
-          </div>
-          <ProjectGrid proyectos={evento.proyectos} />
-        </div>
-      ),
-    },
-  ];
-
   return (
     <div className="[perspective:1000px] relative flex flex-col w-full items-start justify-start">
-      <Tabs
-        tabs={tabs}
-        containerClassName="justify-center sm:justify-start mb-0"
-        activeTabClassName="bg-blue-600/30 backdrop-blur-md"
-        tabClassName="text-white/60 hover:text-white text-sm font-semibold px-5 py-2.5"
-        contentClassName="mt-8"
-      />
+      <div className="w-full flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setActiveTab("credencial")}
+          className={cn(
+            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            activeTab === "credencial"
+              ? "bg-blue-600/30 border-blue-500/40 text-white"
+              : "bg-white/5 border-white/10 text-white/70 hover:text-white"
+          )}
+        >
+          QR Dinamico
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("proyectos")}
+          className={cn(
+            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            activeTab === "proyectos"
+              ? "bg-blue-600/30 border-blue-500/40 text-white"
+              : "bg-white/5 border-white/10 text-white/70 hover:text-white"
+          )}
+        >
+          Oferta de Servicios
+        </button>
+      </div>
+
+      <div className="w-full mt-8">
+        {activeTab === "credencial" ? (
+          <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 sm:p-8">
+            <QRCredentialView evento={evento} qrPayload={qrPayload} timeLeft={timeLeft} />
+          </div>
+        ) : (
+          <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <HardHat className="w-4 h-4 text-blue-400" />
+                <h4 className="text-sm font-bold text-white/70 uppercase tracking-wider">Ofertas Disponibles</h4>
+              </div>
+              {evento.proyectos && (
+                <Badge variant="outline" className="bg-white/5 text-blue-300 border-blue-500/20 text-xs font-mono">
+                  <Users className="w-3 h-3 mr-1" /> {evento.proyectos.length} proyectos
+                </Badge>
+              )}
+            </div>
+            <ProjectGrid proyectos={evento.proyectos} />
+          </div>
+        )}
+      </div>
     </div>
   );
 };
@@ -442,7 +451,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen relative flex flex-col overflow-hidden">
+    <div className="h-dvh min-h-screen relative flex flex-col overflow-hidden">
       <div className="absolute inset-0 z-0 overflow-hidden">
         <AnimatePresence mode="sync" initial={false}>
           <motion.img
@@ -464,28 +473,31 @@ export default function Dashboard() {
         initial={{ y: -70, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 14 }}
-        className="relative z-20 flex items-center justify-between px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
+        className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
-          <div className="hidden md:flex items-center gap-3 rounded-xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm">
-            <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-2.5 py-2 backdrop-blur-sm min-w-0">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
               <User className="w-4 h-4 text-white" />
             </div>
-            <div className="leading-tight">
-              <p className="text-white text-sm font-semibold">{data?.nombre || "Alumno"}</p>
-              <p className="text-white/60 text-[11px] font-medium">{data?.carrera || "N/A"} · Semestre {data?.semestre || "-"}</p>
+            <div className="leading-tight min-w-0">
+              <p className="text-white text-xs sm:text-sm font-semibold truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
+              <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[170px] sm:max-w-none">{data?.carrera || "N/A"} · Semestre {data?.semestre || "-"}</p>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <div className="hidden sm:flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             <SocialIcon href="https://www.facebook.com/TecCCM">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
             </SocialIcon>
             <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
               <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            </SocialIcon>
+            <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
             </SocialIcon>
           </div>
           <Button
@@ -499,7 +511,7 @@ export default function Dashboard() {
         </div>
       </motion.nav>
 
-      <div className="relative z-10 flex-1 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto">
+      <div className="relative z-10 flex-1 min-h-0 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto overscroll-contain">
         <motion.main
           initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
@@ -552,9 +564,9 @@ export default function Dashboard() {
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 14, delay: 0.15 }}
-        className="relative z-20 flex items-center justify-between px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+        className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
-        <div className="flex items-center gap-4 sm:gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
           <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
@@ -562,7 +574,7 @@ export default function Dashboard() {
             Ethos
           </a>
         </div>
-        <p className="text-white/40 text-[11px] font-medium">
+        <p className="text-white/40 text-[11px] font-medium text-center">
           © {new Date().getFullYear()} {" "}
           <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey</a>
         </p>

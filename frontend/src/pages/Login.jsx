@@ -129,10 +129,10 @@ export default function Login() {
       {/* ─── Top Navigation Bar (bounces from top) ─── */}
       <motion.nav
         {...bounceIn(0)}
-        className="relative z-20 flex items-center justify-between px-6 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
+        className="relative z-20 flex items-center justify-between px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
       >
         <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-10 sm:h-12 w-auto brightness-0 invert drop-shadow-md" />
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <SocialIcon href="https://www.facebook.com/TecCCM">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
           </SocialIcon>
@@ -250,9 +250,9 @@ export default function Login() {
       {/* ─── Bottom Footer Bar (bounces from bottom) ─── */}
       <motion.footer
         {...bounceUp(0.2)}
-        className="relative z-20 flex items-center justify-between px-6 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+        className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
           <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
@@ -260,7 +260,7 @@ export default function Login() {
             Ethos
           </a>
         </div>
-        <p className="text-white/40 text-[11px] font-medium">
+        <p className="text-white/40 text-[11px] font-medium text-center">
           © {new Date().getFullYear()} <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey.</a>
         </p>
       </motion.footer>
