@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Shield, Clock, Users } from "lucide-react";
+import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Clock, Users, Search, SlidersHorizontal, Flame } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -26,96 +26,159 @@ function SocialIcon({ children, href = "#" }) {
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
-// ─── Project Card (shadcn Card style) ────────────────────────────
-function ProjectCard({ project, index }) {
+function getProjectMetrics(project) {
   const pct = project.capacidad_max > 0 ? Math.round((project.cupo_actual / project.capacidad_max) * 100) : 0;
+  const remaining = Math.max((project.capacidad_max || 0) - (project.cupo_actual || 0), 0);
+  const demandScore = project.lleno ? 1000 : (pct * 2) + (remaining <= 2 ? 40 : remaining <= 5 ? 20 : 0);
+
+  let demandLabel = "Disponible";
+  let demandTone = "text-emerald-300 border-emerald-500/30 bg-emerald-500/10";
+
+  if (project.lleno) {
+    demandLabel = "Agotado";
+    demandTone = "text-red-300 border-red-500/30 bg-red-500/10";
+  } else if (remaining <= 2 || pct >= 85) {
+    demandLabel = "Alta demanda";
+    demandTone = "text-amber-300 border-amber-500/30 bg-amber-500/10";
+  } else if (pct >= 60) {
+    demandLabel = "Interes alto";
+    demandTone = "text-sky-300 border-sky-500/30 bg-sky-500/10";
+  }
+
+  return { pct, remaining, demandScore, demandLabel, demandTone };
+}
+
+// ─── Project Card (catalog style) ────────────────────────────────
+function ProjectCard({ project, index, rankByDemand }) {
+  const { pct, remaining, demandLabel, demandTone } = getProjectMetrics(project);
   const barColor = project.lleno ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
-  const empresaInitial = project.empresa ? project.empresa.charAt(0).toUpperCase() : "?";
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.06, duration: 0.4 }}
+      transition={{ delay: index * 0.05, duration: 0.35 }}
     >
       <Card className={cn(
-        "relative overflow-hidden pt-0 bg-white/[0.03] border-white/[0.08] text-white ring-0 hover:bg-white/[0.06] hover:border-blue-500/20 transition-all duration-300 group",
+        "relative overflow-hidden pt-0 bg-black/30 border-white/15 text-white hover:bg-black/35 hover:border-blue-400/35 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.2)]",
         project.lleno && "opacity-40 grayscale pointer-events-none"
       )}>
-        {/* Color banner at top */}
-        <div className={cn(
-          "h-2 w-full",
-          project.lleno ? "bg-red-500/60" : pct >= 70 ? "bg-amber-500/60" : "bg-gradient-to-r from-blue-500/60 to-indigo-500/60"
-        )} />
 
-        <CardHeader>
+        <CardHeader className="pb-3">
           <CardAction>
-            {project.lleno ? (
-              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] font-black uppercase tracking-wider hover:bg-red-500/30">
-                Agotado
+            <div className="flex items-center gap-2">
+              {rankByDemand && !project.lleno && (
+                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-bold uppercase tracking-wider">
+                  #{rankByDemand}
+                </Badge>
+              )}
+              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider border", demandTone)}>
+                {demandLabel}
               </Badge>
-            ) : (
-              <Badge className="bg-emerald-500/10 text-emerald-300 border-emerald-500/20 font-mono text-xs hover:bg-emerald-500/20">
-                {project.cupo_actual}/{project.capacidad_max}
-              </Badge>
-            )}
+            </div>
           </CardAction>
-          <CardTitle className="text-white font-bold text-[15px] leading-tight group-hover:text-blue-300 transition-colors">
+
+          <CardTitle className="text-white font-bold text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
             {project.nombre_proyecto}
           </CardTitle>
-          <CardDescription className="text-white/40">
+          <CardDescription className="text-white/50 pt-1">
             <span className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-              <span className="text-blue-300/70 text-[11px] font-semibold tracking-wide uppercase truncate">
+              <Building2 className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
+              <span className="text-blue-200/75 text-[11px] font-semibold tracking-wide uppercase truncate">
                 {project.empresa}
               </span>
             </span>
           </CardDescription>
         </CardHeader>
 
-        {(project.descripcion || !project.lleno) && (
-          <CardContent className="space-y-3">
-            {project.descripcion && (
-              <p className="text-white/30 text-xs leading-relaxed line-clamp-2 group-hover:text-white/45 transition-colors">
-                {project.descripcion}
-              </p>
-            )}
-            {!project.lleno && (
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-white/30 uppercase tracking-wider font-semibold">Ocupación</span>
-                  <span className="text-[10px] text-white/50 font-mono font-bold">{pct}%</span>
-                </div>
-                <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
-                  <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(pct, 100)}%` }}
-                    transition={{ delay: index * 0.06 + 0.3, duration: 0.8, ease: "easeOut" }}
-                    className={`h-full ${barColor} rounded-full`}
-                  />
-                </div>
-              </div>
-            )}
-          </CardContent>
-        )}
+        <CardContent className="space-y-4 pb-4">
+          {project.descripcion && (
+            <p className="text-white/45 text-xs leading-relaxed line-clamp-2 group-hover:text-white/60 transition-colors">
+              {project.descripcion}
+            </p>
+          )}
 
-        <CardFooter className="border-white/[0.05] bg-white/[0.02] py-2.5">
-          <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-blue-500/20 flex items-center justify-center text-[10px] font-bold text-blue-300">
-              {empresaInitial}
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white/45 uppercase tracking-wider font-semibold">Ocupacion</span>
+              <span className="text-[10px] text-white/70 font-mono font-bold">{pct}%</span>
             </div>
-            <span className="text-[10px] text-white/30 font-medium">
-              {project.lleno ? "Sin lugares disponibles" : `${project.capacidad_max - project.cupo_actual} lugar(es) disponible(s)`}
-            </span>
+            <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${Math.min(pct, 100)}%` }}
+                transition={{ delay: index * 0.05 + 0.2, duration: 0.7, ease: "easeOut" }}
+                className={`h-full ${barColor} rounded-full`}
+              />
+            </div>
+            <div className="mt-2 text-[11px] text-white/55">
+              {project.cupo_actual}/{project.capacidad_max} ocupados
+            </div>
           </div>
+        </CardContent>
+
+        <CardFooter className="border-white/10 bg-white/[0.03] py-3 flex items-center justify-between">
+          <span className="text-[11px] text-white/55 font-medium">
+            {project.lleno ? "Sin lugares disponibles" : `${remaining} lugar(es) disponible(s)`}
+          </span>
+          {!project.lleno && remaining <= 2 && (
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-300">
+              <Flame className="w-3 h-3" /> Ultimos lugares
+            </span>
+          )}
         </CardFooter>
       </Card>
     </motion.div>
   );
 }
 
-// ─── Project Grid ────────────────────────────────────────────────
+// ─── Project Grid V2 ─────────────────────────────────────────────
 function ProjectGrid({ proyectos }) {
+  const [query, setQuery] = useState("");
+  const [availability, setAvailability] = useState("todas");
+  const [empresaFilter, setEmpresaFilter] = useState("todas");
+  const [sortMode, setSortMode] = useState("demanda");
+
+  const empresas = useMemo(() => {
+    if (!proyectos) return [];
+    return [...new Set(proyectos.map((p) => p.empresa).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [proyectos]);
+
+  const filteredProjects = useMemo(() => {
+    if (!proyectos) return [];
+
+    const normalizedQuery = query.trim().toLowerCase();
+
+    const result = proyectos.filter((project) => {
+      const { remaining } = getProjectMetrics(project);
+      const matchesQuery = !normalizedQuery
+        || project.nombre_proyecto?.toLowerCase().includes(normalizedQuery)
+        || project.empresa?.toLowerCase().includes(normalizedQuery)
+        || project.descripcion?.toLowerCase().includes(normalizedQuery);
+
+      const matchesAvailability =
+        availability === "todas"
+        || (availability === "disponibles" && !project.lleno)
+        || (availability === "ultimos" && !project.lleno && remaining <= 2)
+        || (availability === "llenos" && project.lleno);
+
+      const matchesEmpresa = empresaFilter === "todas" || project.empresa === empresaFilter;
+      return matchesQuery && matchesAvailability && matchesEmpresa;
+    });
+
+    result.sort((a, b) => {
+      if (sortMode === "alfabetico") {
+        return (a.nombre_proyecto || "").localeCompare(b.nombre_proyecto || "");
+      }
+      if (sortMode === "disponibilidad") {
+        return getProjectMetrics(a).remaining - getProjectMetrics(b).remaining;
+      }
+      return getProjectMetrics(b).demandScore - getProjectMetrics(a).demandScore;
+    });
+
+    return result;
+  }, [proyectos, query, availability, empresaFilter, sortMode]);
+
   if (!proyectos || proyectos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -126,10 +189,111 @@ function ProjectGrid({ proyectos }) {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {proyectos.map((p, i) => (
-        <ProjectCard key={p.id_proyecto} project={p} index={i} />
-      ))}
+    <div className="space-y-5">
+      <div className="rounded-2xl border border-white/15 bg-black/20 p-3 sm:p-4 backdrop-blur-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="w-4 h-4 text-white/45 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar proyecto o empresa"
+              className="w-full h-10 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/45 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+            />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-semibold mr-1">
+              <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
+            </div>
+
+            {["todas", "disponibles", "ultimos", "llenos"].map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => setAvailability(item)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs border transition-colors",
+                  availability === item
+                    ? "bg-blue-500/25 border-blue-400/40 text-white"
+                    : "bg-white/5 border-white/15 text-white/70 hover:text-white"
+                )}
+              >
+                {item === "todas" && "Todas"}
+                {item === "disponibles" && "Disponibles"}
+                {item === "ultimos" && "Ultimos lugares"}
+                {item === "llenos" && "Llenos"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="overflow-x-auto pb-1 no-visible-scrollbar">
+              <div className="flex gap-2 w-max">
+                <button
+                  type="button"
+                  onClick={() => setEmpresaFilter("todas")}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap",
+                    empresaFilter === "todas"
+                      ? "bg-white/20 border-white/30 text-white"
+                      : "bg-white/5 border-white/15 text-white/70 hover:text-white"
+                  )}
+                >
+                  Todas las empresas
+                </button>
+                {empresas.map((empresa) => (
+                  <button
+                    key={empresa}
+                    type="button"
+                    onClick={() => setEmpresaFilter(empresa)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap",
+                      empresaFilter === empresa
+                        ? "bg-cyan-500/20 border-cyan-400/35 text-cyan-100"
+                        : "bg-white/5 border-white/15 text-white/70 hover:text-white"
+                    )}
+                  >
+                    {empresa}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value)}
+            className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+          >
+            <option value="demanda" className="text-slate-900">Ordenar: Demanda</option>
+            <option value="disponibilidad" className="text-slate-900">Ordenar: Ultimos lugares</option>
+            <option value="alfabetico" className="text-slate-900">Ordenar: A-Z</option>
+          </select>
+        </div>
+      </div>
+
+
+
+      {filteredProjects.length === 0 ? (
+        <div className="rounded-2xl border border-white/15 bg-black/20 p-8 text-center text-white/65 text-sm">
+          No encontramos proyectos con esos filtros. Prueba otra combinacion.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+          {filteredProjects.map((p, i) => (
+            <ProjectCard
+              key={p.id_proyecto}
+              project={p}
+              index={i}
+              rankByDemand={sortMode === "demanda" && !p.lleno ? i + 1 : null}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -216,21 +380,6 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
               transition={{ delay: 0.2, duration: 0.5 }}
             >
               <h3 className="text-3xl font-extrabold text-white mb-2 tracking-tight">{evento.nombre}</h3>
-              <p className="text-blue-200/50 font-medium text-sm mb-8 flex items-center justify-center gap-2">
-                <Calendar className="w-4 h-4" /> Semestre {evento.periodo} {evento.anio}
-              </p>
-
-              <div className="space-y-4">
-                <div className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-4 backdrop-blur-sm">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <Shield className="w-4 h-4 text-blue-400" />
-                    <h4 className="text-white font-bold text-sm">QR Dinámico Encriptado</h4>
-                  </div>
-                  <p className="text-blue-200/40 text-xs leading-relaxed">
-                    Muestra este código al representante de la empresa para separar tu lugar al instante. La llave cambia cada 30 segundos usando TOTP.
-                  </p>
-                </div>
-              </div>
             </motion.div>
           </div>
         </div>
@@ -327,7 +476,7 @@ const EventCard = ({ evento }) => {
 
   return (
     <div className="[perspective:1000px] relative flex flex-col w-full items-start justify-start">
-      <div className="w-full flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+      <div className="w-full flex items-center justify-center gap-2 flex-wrap">
         <button
           type="button"
           onClick={() => setActiveTab("credencial")}
@@ -360,14 +509,12 @@ const EventCard = ({ evento }) => {
             <QRCredentialView evento={evento} qrPayload={qrPayload} timeLeft={timeLeft} />
           </div>
         ) : (
-          <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-6">
+          <div className="w-full rounded-3xl bg-black/25 border border-white/15 backdrop-blur-md p-4 sm:p-6">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
               <div className="flex items-center gap-2">
-                <HardHat className="w-4 h-4 text-blue-400" />
-                <h4 className="text-sm font-bold text-white/70 uppercase tracking-wider">Ofertas Disponibles</h4>
               </div>
               {evento.proyectos && (
-                <Badge variant="outline" className="bg-white/5 text-blue-300 border-blue-500/20 text-xs font-mono">
+                <Badge variant="outline" className="bg-white/5 text-cyan-200 border-cyan-400/20 text-xs font-mono">
                   <Users className="w-3 h-3 mr-1" /> {evento.proyectos.length} proyectos
                 </Badge>
               )}
@@ -483,7 +630,9 @@ export default function Dashboard() {
             </div>
             <div className="leading-tight min-w-0">
               <p className="text-white text-xs sm:text-sm font-semibold truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
-              <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[170px] sm:max-w-none">{data?.carrera || "N/A"} · Semestre {data?.semestre || "-"}</p>
+              <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[220px] sm:max-w-none">
+                {(data?.carrera || "N/A")} | Semestre {data?.semestre || "-"} | {data?.matricula || "N/A"}
+              </p>
             </div>
           </div>
         </div>
@@ -523,15 +672,10 @@ export default function Dashboard() {
               <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full border border-white/20 bg-white/10">
                 <span className="text-white/80 text-[11px] font-semibold uppercase tracking-[0.18em]">Panel de Alumno</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Expediente Digital</h2>
+              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Feria de Servicio Social</h2>
               <p className="text-white/65 mt-2 text-sm max-w-2xl leading-relaxed">
                 Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-[11px]">
-                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/85 font-medium">{data?.carrera || "N/A"}</span>
-                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/85 font-medium">Semestre {data?.semestre || "-"}</span>
-                <span className="px-2.5 py-1 rounded-md bg-white/10 border border-white/15 text-white/70 font-mono">{data?.matricula || ""}</span>
-              </div>
             </div>
             <div className="flex items-center justify-center sm:justify-end">
               <div className="px-4 py-3 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl">
