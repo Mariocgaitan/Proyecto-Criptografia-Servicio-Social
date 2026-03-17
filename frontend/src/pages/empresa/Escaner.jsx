@@ -3,9 +3,7 @@ import { useAuth } from "../../hooks/useAuth";
 import {
   Activity,
   AlertCircle,
-  Calendar,
   CheckCircle2,
-  Gauge,
   LogOut,
   QrCode,
   ScanLine,
@@ -53,8 +51,7 @@ const CAMERA_ERRORS = {
   generic: "No se pudo iniciar la camara. Verifica permisos y vuelve a intentar.",
 };
 
-function StatCard({ icon, label, value, tone = "default" }) {
-  const IconComponent = icon;
+function StatCard({ label, value, tone = "default" }) {
   const toneMap = {
     default: "border-white/15 bg-black/30 text-white",
     accent: "border-blue-400/20 bg-blue-500/10 text-white",
@@ -65,14 +62,9 @@ function StatCard({ icon, label, value, tone = "default" }) {
   return (
     <Card className={cn("rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.2)]", toneMap[tone])}>
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">{label}</p>
-            <p className="mt-3 text-3xl font-bold tracking-tight text-white">{value}</p>
-          </div>
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white">
-            {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
-          </div>
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">{label}</p>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -165,6 +157,7 @@ function TabButton({ active, onClick, icon, children }) {
 export default function EmpresaEscaner() {
   const { logout } = useAuth();
   const [proyecto, setProyecto] = useState(null);
+  const [initializing, setInitializing] = useState(true);
   const [proyectosEmpresa, setProyectosEmpresa] = useState([]);
   const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [scanning, setScanning] = useState(false);
@@ -224,6 +217,8 @@ export default function EmpresaEscaner() {
     } catch (err) {
       console.error(err);
       await loadProyecto();
+    } finally {
+      setInitializing(false);
     }
   }, [loadProyecto]);
 
@@ -320,6 +315,16 @@ export default function EmpresaEscaner() {
 
   const startScanner = useCallback(async () => {
     if (scannerRef.current || scannerMountingRef.current) return;
+
+    if (!window.isSecureContext) {
+      setResult({
+        status: "error",
+        name: "Camara no disponible",
+        message: CAMERA_ERRORS.insecureContext,
+      });
+      setScanning(false);
+      return;
+    }
 
     scannerMountingRef.current = true;
 
@@ -447,18 +452,16 @@ export default function EmpresaEscaner() {
     );
   }, [proyecto, searchQuery]);
 
+  if (initializing) {
+    return null;
+  }
+
   if (!proyecto) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-white relative overflow-hidden px-4 text-center">
         <div className="absolute inset-0 bg-black" />
-        <Motion.div
-          animate={{ rotate: [0, 360] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="relative z-10"
-        >
-          <ScanLine className="w-12 h-12 text-blue-300 stroke-[1.5]" />
-        </Motion.div>
-        <p className="relative z-10 font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Inicializando panel de empresa...</p>
+        <AlertCircle className="relative z-10 w-9 h-9 text-blue-200/70" />
+        <p className="relative z-10 font-semibold tracking-wide uppercase text-blue-100/80 text-sm">No se encontro un proyecto activo para esta empresa</p>
       </div>
     );
   }
@@ -644,10 +647,10 @@ export default function EmpresaEscaner() {
                   />
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <StatCard icon={Users} label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
-                    <StatCard icon={Activity} label="Espacios libres" value={proyecto.cupos_disponibles} tone="success" />
-                    <StatCard icon={Gauge} label="Capacidad total" value={proyecto.capacidad_max} tone="accent" />
-                    <StatCard icon={Calendar} label="Lista de espera" value={proyecto.capacidad_espera_max ?? 0} tone="warn" />
+                    <StatCard label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
+                    <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} tone="success" />
+                    <StatCard label="Capacidad total" value={proyecto.capacidad_max} tone="accent" />
+                    <StatCard label="Lista de espera" value={proyecto.capacidad_espera_max ?? 0} tone="warn" />
                   </div>
                 </div>
               </div>

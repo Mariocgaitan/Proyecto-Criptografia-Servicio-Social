@@ -3,9 +3,11 @@ Servicio del módulo Admin — lógica de negocio para gestión de proyectos.
 """
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.empresa import Empresa
 from app.models.evento import Evento
+from app.models.inscripcion import Inscripcion
 from app.models.proyecto import Proyecto
 
 
@@ -21,6 +23,32 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
     )
     rows = result.all()
 
+    proyecto_ids = [p.id_proyecto for p, _, _ in rows]
+    inscripciones_por_proyecto: dict[int, list[dict]] = {pid: [] for pid in proyecto_ids}
+
+    if proyecto_ids:
+        inscripciones_result = await db.execute(
+            select(Inscripcion)
+            .options(selectinload(Inscripcion.usuario))
+            .where(Inscripcion.id_proyecto.in_(proyecto_ids))
+            .order_by(Inscripcion.timestamp.desc())
+        )
+        for inscripcion in inscripciones_result.scalars().all():
+            alumno = inscripcion.usuario
+            if not alumno:
+                continue
+            inscripciones_por_proyecto.setdefault(inscripcion.id_proyecto, []).append(
+                {
+                    "id_inscripcion": str(inscripcion.id_inscripcion),
+                    "matricula": alumno.id_matricula,
+                    "nombre": alumno.nombre,
+                    "correo": alumno.correo,
+                    "carrera": alumno.carrera,
+                    "semestre": alumno.semestre,
+                    "fecha_inscripcion": inscripcion.timestamp.isoformat() if inscripcion.timestamp else None,
+                }
+            )
+
     return [
         {
             "id_proyecto": p.id_proyecto,
@@ -34,6 +62,10 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
             "cupo_actual": p.cupo_actual,
             "capacidad_espera_max": p.capacidad_espera_max,
             "cupos_disponibles": max(0, p.capacidad_max - p.cupo_actual),
+            "ocupacion_porcentaje": round((p.cupo_actual / p.capacidad_max) * 100) if p.capacidad_max else 0,
+            "evento_activo": ev.activo,
+            "inscripciones_totales": len(inscripciones_por_proyecto.get(p.id_proyecto, [])),
+            "alumnos_inscritos": inscripciones_por_proyecto.get(p.id_proyecto, []),
             "estado": (
                 "LLENO" if p.cupo_actual >= p.capacidad_max
                 else "CASI LLENO" if p.cupo_actual >= p.capacidad_max * 0.8
