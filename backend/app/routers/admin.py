@@ -65,16 +65,6 @@ async def api_ampliar_cupo(
     return await admin_service.ampliar_cupo(db, id_proyecto, datos.nueva_capacidad_max)
 
 
-@router.post("/api/v1/admin/proyectos/{id_proyecto}/credenciales", tags=["Admin"])
-async def api_generar_credenciales(
-    id_proyecto: int,
-    db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_admin),
-):
-    """Genera o regenera credenciales de acceso para el representante de empresa del proyecto."""
-    return await admin_service.generar_credenciales_para_proyecto(db, id_proyecto)
-
-
 
 @router.get("/api/v1/admin/empresas", tags=["Admin"])
 async def api_listar_empresas(

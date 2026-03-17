@@ -8,7 +8,7 @@ from app.db.base import Base
 
 class Usuario(Base):
     """
-    Representa a un alumno del Tec de Monterrey registrado en el sistema.
+    Representa a un usuario del sistema (alumno, empresa o admin).
     """
     __tablename__ = "usuarios"
 
@@ -20,6 +20,9 @@ class Usuario(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     totp_secret: Mapped[str] = mapped_column(String(64), nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False, server_default="alumno")
+    id_empresa: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("empresas.id_empresa", ondelete="SET NULL"), nullable=True
+    )
     id_proyecto: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("proyectos.id_proyecto", ondelete="SET NULL"), nullable=True
     )
@@ -40,3 +43,4 @@ class Usuario(Base):
     lista_espera: Mapped[list["ListaEspera"]] = relationship(
         "ListaEspera", back_populates="usuario"
     )
+    empresa: Mapped["Empresa | None"] = relationship("Empresa", back_populates="usuarios")

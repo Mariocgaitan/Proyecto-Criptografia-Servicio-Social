@@ -23,3 +23,6 @@ class Empresa(Base):
     proyectos: Mapped[list["Proyecto"]] = relationship(
         "Proyecto", back_populates="empresa"
     )
+    usuarios: Mapped[list["Usuario"]] = relationship(
+        "Usuario", back_populates="empresa"
+    )

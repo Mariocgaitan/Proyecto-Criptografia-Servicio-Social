@@ -340,8 +340,8 @@ async def seed_admin_user() -> None:
 
 async def seed_usuarios_empresa() -> None:
     """
-    Genera usuarios empresa para todos los proyectos que aún no tienen uno.
-    Se ejecuta de forma idempotente: omite proyectos que ya tienen usuario empresa.
+    Genera un usuario empresa por empresa (contraseña única por empresa).
+    Es idempotente: omite empresas que ya tienen usuario empresa.
     """
     import re
     import unicodedata
@@ -352,59 +352,54 @@ async def seed_usuarios_empresa() -> None:
         return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")[:30]
 
     async with AsyncSessionLocal() as db:
-        # Proyectos que ya tienen usuario empresa
+        # Usuarios empresa existentes por empresa
         result_existentes = await db.execute(
-            select(Usuario.id_proyecto).where(Usuario.rol == "empresa")
+            select(Usuario.id_empresa).where(Usuario.rol == "empresa", Usuario.id_empresa.is_not(None))
         )
-        ids_con_usuario = {r for r in result_existentes.scalars().all() if r}
+        empresas_con_usuario = {r for r in result_existentes.scalars().all() if r}
 
-        # Todos los proyectos con su empresa
-        from app.db.models_import import Empresa
-        result_proyectos = await db.execute(
-            select(Proyecto, Empresa)
-            .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
-        )
-        rows = result_proyectos.all()
+        # Todas las empresas
+        result_empresas = await db.execute(select(Empresa))
+        empresas = result_empresas.scalars().all()
 
         nuevos = 0
         credenciales_log = []
-        for proyecto, empresa in rows:
-            if proyecto.id_proyecto in ids_con_usuario:
+        for empresa in empresas:
+            if empresa.id_empresa in empresas_con_usuario:
                 continue
 
             password = secrets.token_urlsafe(12)
-            slug_p = slugify(proyecto.nombre_proyecto)
             slug_e = slugify(empresa.nombre_empresa)
-            correo = f"{slug_p}@{slug_e}.sid.mx"
+            correo = f"contacto@{slug_e}.sid.mx"
 
             # Evitar correos duplicados
             dup = await db.execute(select(Usuario).where(Usuario.correo == correo))
             if dup.scalar_one_or_none():
-                correo = f"proj{proyecto.id_proyecto}@{slug_e}.sid.mx"
+                correo = f"empresa{empresa.id_empresa}@{slug_e}.sid.mx"
 
             usuario = Usuario(
-                id_matricula=f"PROJ_{proyecto.id_proyecto:04d}",
-                nombre=proyecto.nombre_proyecto,
+                id_matricula=f"EMP_{empresa.id_empresa:04d}",
+                nombre=empresa.nombre_empresa,
                 correo=correo,
                 carrera="Empresa",
                 semestre=0,
                 password_hash=_hash(password),
                 totp_secret="A" * 32,
                 rol="empresa",
-                id_proyecto=proyecto.id_proyecto,
+                id_empresa=empresa.id_empresa,
             )
             db.add(usuario)
-            credenciales_log.append((proyecto.nombre_proyecto, correo, password))
+            credenciales_log.append((empresa.nombre_empresa, correo, password))
             nuevos += 1
 
         if nuevos == 0:
-            print("ℹ️  Todos los proyectos ya tienen usuario empresa.")
+            print("ℹ️  Todas las empresas ya tienen usuario empresa.")
             return
 
         await db.commit()
         print(f"✅ {nuevos} usuarios empresa creados:")
-        for nombre, correo, pw in credenciales_log:
-            print(f"   [{nombre}]  correo={correo}  pass={pw}")
+        for empresa_nombre, correo, pw in credenciales_log:
+            print(f"   [{empresa_nombre}]  correo={correo}  pass={pw}")
         print("   ⚠️  Guarda estas credenciales — no se podrán recuperar.")
 
 
@@ -489,8 +484,8 @@ async def main(force: bool = False) -> None:
     print("\n── Usuario Administrador ────────────────")
     await seed_admin_user()
 
-    # 7. Usuarios empresa (uno por proyecto)
-    print("\n── Usuarios Empresa (por proyecto) ──────")
+    # 7. Usuarios empresa (uno por empresa)
+    print("\n── Usuarios Empresa (por empresa) ───────")
     await seed_usuarios_empresa()
 
     # 8. Log de auditoría

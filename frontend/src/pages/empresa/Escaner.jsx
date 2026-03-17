@@ -1,196 +1,720 @@
-import { useState, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { LogOut, ScanLine, AlertCircle, CheckCircle2, QrCode } from "lucide-react";
+import {
+  Activity,
+  AlertCircle,
+  Calendar,
+  CheckCircle2,
+  Gauge,
+  LogOut,
+  QrCode,
+  ScanLine,
+  Search,
+  Users,
+} from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
-import { Card, CardContent } from "@/components/ui/card";
+import { motion as Motion, AnimatePresence } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { motion, AnimatePresence } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { apiUrl } from "@/lib/api";
+import { cn } from "@/lib/utils";
+import tecLogo from "@/assets/tec_logo.png";
+import campusImg1 from "@/assets/login_images/ser_social_header.png";
+import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
+import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
+import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+
+const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
+
+const SCANNER_CONFIG = {
+  bgRotationMs: 20000,
+  resultAutoHideMs: 4500,
+  fps: 15,
+  qrBoxSize: 320,
+  preferredCameraLabel: "back",
+  scanCooldownMs: 2200,
+  duplicateQrIgnoreMs: 6000,
+};
+
+const CAMERA_ERRORS = {
+  insecureContext: "La camara en celular requiere HTTPS (o localhost). Abre esta pagina con https://.",
+  permissionDenied: "Permiso de camara denegado. Habilitalo en el navegador y vuelve a intentar.",
+  noCamera: "No se encontro una camara disponible en este dispositivo.",
+  generic: "No se pudo iniciar la camara. Verifica permisos y vuelve a intentar.",
+};
+
+function StatCard({ icon, label, value, tone = "default" }) {
+  const IconComponent = icon;
+  const toneMap = {
+    default: "border-white/15 bg-black/30 text-white",
+    accent: "border-blue-400/20 bg-blue-500/10 text-white",
+    success: "border-emerald-500/20 bg-emerald-500/10 text-white",
+    warn: "border-amber-500/20 bg-amber-500/10 text-white",
+  };
+
+  return (
+    <Card className={cn("rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.2)]", toneMap[tone])}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">{label}</p>
+            <p className="mt-3 text-3xl font-bold tracking-tight text-white">{value}</p>
+          </div>
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white">
+            {IconComponent ? <IconComponent className="h-5 w-5" /> : null}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function OccupancyMeter({ current, max, percent }) {
+  const barTone = percent >= 100 ? "bg-red-500" : percent >= 75 ? "bg-amber-400" : "bg-emerald-400";
+
+  return (
+    <div className="rounded-2xl border border-white/15 bg-black/30 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
+          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{current}/{max}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
+          <p className="text-2xl font-semibold text-white">{percent}%</p>
+        </div>
+      </div>
+
+      <div className="mt-5 h-2 rounded-full bg-white/10 overflow-hidden">
+        <div style={{ width: `${Math.min(percent, 100)}%` }} className={cn("h-full rounded-full transition-[width] duration-500 ease-out", barTone)} />
+      </div>
+
+      <div className="mt-4 flex items-center justify-between text-xs text-white/55">
+        <span>Disponibles: {Math.max(max - current, 0)}</span>
+        <span>{percent >= 100 ? "Cupo completo" : percent >= 75 ? "Demanda alta" : "Recepcion abierta"}</span>
+      </div>
+    </div>
+  );
+}
+
+function ResultBanner({ result }) {
+  if (!result) return null;
+
+  const styles = {
+    ok: {
+      wrapper: "border-emerald-500/25 bg-emerald-500/10",
+      icon: <CheckCircle2 className="h-8 w-8 text-emerald-300" />,
+      text: "text-emerald-100",
+    },
+    error: {
+      wrapper: "border-red-500/25 bg-red-500/10",
+      icon: <AlertCircle className="h-8 w-8 text-red-300" />,
+      text: "text-red-100",
+    },
+    loading: {
+      wrapper: "border-amber-500/25 bg-amber-500/10",
+      icon: <QrCode className="h-8 w-8 text-amber-300 animate-pulse" />,
+      text: "text-amber-100",
+    },
+  };
+
+  const currentStyle = styles[result.status] || styles.loading;
+
+  return (
+    <div className={cn("rounded-2xl border p-4", currentStyle.wrapper)}>
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5">{currentStyle.icon}</div>
+        <div>
+          <p className="text-base font-semibold text-white">{result.name}</p>
+          <p className={cn("mt-1 text-sm leading-relaxed", currentStyle.text)}>{result.message}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TabButton({ active, onClick, icon, children }) {
+  const IconComponent = icon;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+        active
+          ? "bg-blue-600/30 border-blue-500/40 text-white"
+          : "bg-white/5 border-white/10 text-white/70 hover:text-white"
+      )}
+    >
+      {IconComponent ? <IconComponent className="h-4 w-4" /> : null}
+      {children}
+    </button>
+  );
+}
 
 export default function EmpresaEscaner() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [proyecto, setProyecto] = useState(null);
+  const [proyectosEmpresa, setProyectosEmpresa] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [switchingProject, setSwitchingProject] = useState(false);
   const [result, setResult] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("sensor");
+  const [lastSync, setLastSync] = useState(null);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const scannerRef = useRef(null);
+  const scannerMountingRef = useRef(false);
+    const resolveCameraError = useCallback((error) => {
+      const msg = String(error?.message || "").toLowerCase();
+      const name = String(error?.name || "").toLowerCase();
 
-  useEffect(() => {
-    fetch(apiUrl("/api/v1/empresa/proyecto"), { credentials: "include" })
-      .then(res => res.json())
-      .then(data => setProyecto(data))
-      .catch(err => console.error(err));
+      if (msg.includes("secure") || msg.includes("https") || !window.isSecureContext) {
+        return CAMERA_ERRORS.insecureContext;
+      }
+      if (name.includes("notallowed") || msg.includes("permission") || msg.includes("denied")) {
+        return CAMERA_ERRORS.permissionDenied;
+      }
+      if (name.includes("notfound") || msg.includes("not found") || msg.includes("no cameras")) {
+        return CAMERA_ERRORS.noCamera;
+      }
+      return CAMERA_ERRORS.generic;
+    }, []);
+
+  const scanLockUntilRef = useRef(0);
+  const lastDecodedRef = useRef({ text: "", at: 0 });
+
+  const loadProyecto = useCallback(async (projectId = null) => {
+    try {
+      const query = projectId ? `?id_proyecto=${projectId}` : "";
+      const res = await fetch(apiUrl(`/api/v1/empresa/proyecto${query}`), { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "No se pudo cargar el proyecto");
+      setProyecto(data);
+      setSelectedProjectId(data.id_proyecto);
+      setLastSync(new Date());
+      return data;
+    } catch (err) {
+      console.error(err);
+      return null;
+    }
   }, []);
 
-  const onScanSuccess = async (decodedText) => {
-    if (result && result.status === 'loading') return;
-    setResult({ status: 'loading', message: 'Verificando firmas criptográficas...', icon: '⌛' });
+  const loadProyectosEmpresa = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl("/api/v1/empresa/proyectos"), { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "No se pudieron cargar los proyectos");
+
+      const proyectos = Array.isArray(data.proyectos) ? data.proyectos : [];
+      setProyectosEmpresa(proyectos);
+      const preferredProjectId = proyectos[0]?.id_proyecto || null;
+      await loadProyecto(preferredProjectId);
+    } catch (err) {
+      console.error(err);
+      await loadProyecto();
+    }
+  }, [loadProyecto]);
+
+  useEffect(() => {
+    loadProyectosEmpresa();
+  }, [loadProyectosEmpresa]);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
+    }, SCANNER_CONFIG.bgRotationMs);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const stopScanner = useCallback(async () => {
+    if (!scannerRef.current) {
+      setScanning(false);
+      return;
+    }
+
+    try {
+      await scannerRef.current.stop();
+    } catch {
+      // Ignore stop failures when the camera is already inactive.
+    }
+
+    try {
+      await scannerRef.current.clear();
+    } catch {
+      // Ignore clear failures on partially initialized instances.
+    }
+
+    scannerRef.current = null;
+    setScanning(false);
+  }, []);
+
+  const onScanSuccess = useCallback(async (decodedText) => {
+    const now = Date.now();
+    const normalizedText = (decodedText || "").trim();
+
+    if (!normalizedText) return;
+    if (now < scanLockUntilRef.current) return;
+    if (
+      lastDecodedRef.current.text === normalizedText
+      && now - lastDecodedRef.current.at < SCANNER_CONFIG.duplicateQrIgnoreMs
+    ) {
+      return;
+    }
+
+    scanLockUntilRef.current = now + SCANNER_CONFIG.scanCooldownMs;
+    lastDecodedRef.current = { text: normalizedText, at: now };
+
+    if (result?.status === "loading") return;
+
+    setResult({
+      status: "loading",
+      name: "Sensor verificando",
+      message: "Validando QR y disponibilidad del proyecto...",
+    });
 
     try {
       const res = await fetch(apiUrl("/api/v1/empresa/escanear"), {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qr_data: decodedText }), credentials: "include"
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qr_data: normalizedText, id_proyecto: selectedProjectId || proyecto?.id_proyecto }),
+        credentials: "include",
       });
       const data = await res.json();
 
       if (res.ok && data.ok) {
-        setResult({ status: 'ok', name: data.nombre_alumno || 'Alumno Autorizado', message: data.mensaje });
-        if (data.cupo_actual !== undefined && proyecto) {
-          setProyecto(prev => ({ ...prev, cupo_actual: data.cupo_actual }));
-        }
+        setResult({
+          status: "ok",
+          name: data.nombre_alumno || "Alumno validado",
+          message: data.mensaje,
+        });
+        await loadProyecto(selectedProjectId || proyecto?.id_proyecto);
       } else {
-        setResult({ status: 'error', name: data.nombre_alumno || 'Desconocido', message: data.detail || data.mensaje });
+        setResult({
+          status: "error",
+          name: data.nombre_alumno || "Lectura rechazada",
+          message: data.detail || data.mensaje || "No fue posible procesar el QR.",
+        });
       }
-    } catch (err) {
-      setResult({ status: 'error', name: 'Alerta SS', message: 'Fallo de conexión segura' });
+    } catch {
+      setResult({
+        status: "error",
+        name: "Conectividad",
+        message: "No se pudo comunicar el sensor con el servidor.",
+      });
     }
-    setTimeout(() => setResult(null), 4000);
-  };
 
-  const toggleScanner = async () => {
-    if (scanning) {
-      if (scannerRef.current) await scannerRef.current.stop();
-      setScanning(false);
-    } else {
-      scannerRef.current = new Html5Qrcode("reader");
-      Html5Qrcode.getCameras().then(cameras => {
-        if (cameras && cameras.length > 0) {
-          const cam = cameras.find(c => c.label.toLowerCase().includes('back')) || cameras[cameras.length - 1];
-          scannerRef.current.start(cam.id, { fps: 15, qrbox: { width: 280, height: 280 } }, onScanSuccess).catch(e => console.error(e));
-          setScanning(true);
+    setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
+  }, [loadProyecto, proyecto?.id_proyecto, result?.status, selectedProjectId]);
+
+  const startScanner = useCallback(async () => {
+    if (scannerRef.current || scannerMountingRef.current) return;
+
+    scannerMountingRef.current = true;
+
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras?.length) throw new Error(CAMERA_ERRORS.noCamera);
+
+      const scanner = new Html5Qrcode("reader");
+      scannerRef.current = scanner;
+
+      const cameraCandidates = [
+        { facingMode: { exact: "environment" } },
+        { facingMode: "environment" },
+      ];
+      const preferredCamera = cameras.find((camera) => camera.label.toLowerCase().includes(SCANNER_CONFIG.preferredCameraLabel));
+
+      if (preferredCamera?.id) cameraCandidates.push(preferredCamera.id);
+      if (cameras[0]?.id) cameraCandidates.push(cameras[0].id);
+
+      let started = false;
+      let lastError = null;
+
+      for (const cameraConfig of cameraCandidates) {
+        try {
+          await scanner.start(
+            cameraConfig,
+            {
+              fps: SCANNER_CONFIG.fps,
+              qrbox: {
+                width: SCANNER_CONFIG.qrBoxSize,
+                height: SCANNER_CONFIG.qrBoxSize,
+              },
+            },
+            onScanSuccess,
+            () => {}
+          );
+          started = true;
+          break;
+        } catch (err) {
+          lastError = err;
         }
-      }).catch(e => console.error(e));
+      }
+
+      if (!started) {
+        throw lastError || new Error(CAMERA_ERRORS.generic);
+      }
+
+      setResult(null);
+      setScanning(true);
+    } catch (error) {
+      console.error(error);
+      setResult({
+        status: "error",
+        name: "Camara no disponible",
+        message: resolveCameraError(error),
+      });
+      setScanning(false);
+
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.clear();
+        } catch {
+          // Ignore cleanup errors after failed starts.
+        }
+        scannerRef.current = null;
+      }
+    } finally {
+      scannerMountingRef.current = false;
     }
-  };
+  }, [onScanSuccess, resolveCameraError]);
+
+  const toggleScanner = useCallback(async () => {
+    if (scanning) {
+      await stopScanner();
+      return;
+    }
+    await startScanner();
+  }, [scanning, startScanner, stopScanner]);
+
+  const onSelectProject = useCallback(async (event) => {
+    const nextId = Number(event.target.value);
+    if (!nextId || nextId === selectedProjectId) return;
+
+    setSwitchingProject(true);
+    setResult(null);
+    setSearchQuery("");
+    scanLockUntilRef.current = 0;
+    lastDecodedRef.current = { text: "", at: 0 };
+    await stopScanner();
+    await loadProyecto(nextId);
+
+    if (activeTab === "sensor") {
+      await startScanner();
+    }
+
+    setSwitchingProject(false);
+  }, [activeTab, loadProyecto, selectedProjectId, startScanner, stopScanner]);
 
   useEffect(() => {
-    toggleScanner();
-    return () => { if (scannerRef.current && scanning) { scannerRef.current.stop().catch(() => { }); } };
-    // eslint-disable-next-line
-  }, []);
+    if (activeTab === "sensor") {
+      startScanner();
+      return undefined;
+    }
+
+    stopScanner();
+    return undefined;
+  }, [activeTab, startScanner, stopScanner]);
+
+  useEffect(() => {
+    return () => {
+      stopScanner();
+    };
+  }, [stopScanner]);
+
+  const alumnosFiltrados = useMemo(() => {
+    const alumnos = proyecto?.alumnos_inscritos || [];
+    const q = searchQuery.trim().toLowerCase();
+
+    if (!q) return alumnos;
+
+    return alumnos.filter((alumno) =>
+      [alumno.nombre, alumno.matricula, alumno.correo, alumno.carrera]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(q))
+    );
+  }, [proyecto, searchQuery]);
 
   if (!proyecto) {
     return (
-      <div className="min-h-screen bg-tec-deep flex flex-col items-center justify-center text-white space-y-4">
-        <ScanLine className="w-12 h-12 animate-pulse text-emerald-400" />
-        <p className="font-bold tracking-widest text-emerald-200/50 uppercase text-sm animate-pulse">Iniciando Terminal Óptica...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-black" />
+        <Motion.div
+          animate={{ rotate: [0, 360] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+          className="relative z-10"
+        >
+          <ScanLine className="w-12 h-12 text-blue-300 stroke-[1.5]" />
+        </Motion.div>
+        <p className="relative z-10 font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Inicializando panel de empresa...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-tec-deep pb-10 relative overflow-hidden">
-      {/* Background Dynamics */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.3, 1], rotate: [0, -10, 0] }} transition={{ duration: 22, repeat: Infinity, ease: "linear" }} className="absolute -top-[20%] -right-[10%] w-[80%] h-[80%] rounded-full bg-emerald-600/10 blur-[130px]" />
-        <motion.div animate={{ scale: [1, 1.1, 1], x: [0, 50, 0] }} transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/10 blur-[100px]" />
+    <div className="h-dvh min-h-screen relative flex flex-col overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <AnimatePresence mode="sync" initial={false}>
+          <Motion.img
+            key={currentBgIndex}
+            src={campusImages[currentBgIndex]}
+            alt="Campus"
+            className="w-full h-full object-cover absolute inset-0"
+            initial={{ x: "100%" }}
+            animate={{ x: "0%" }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 3, ease: "easeInOut" }}
+          />
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-black/65" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
 
-      <div className="relative z-10">
-        <nav className="bg-white/5 backdrop-blur-2xl border-b border-white/10 sticky top-0 z-40 shadow-2xl">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-20 items-center">
-              <div className="flex items-center gap-4">
-                <motion.div whileHover={{ scale: 1.05 }} className="w-12 h-12 bg-gradient-to-tr from-emerald-600 to-emerald-400 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20 border border-emerald-400/30">
-                  <ScanLine className="w-6 h-6 text-white" />
-                </motion.div>
-                <div>
-                  <span className="font-bold text-white text-lg tracking-tight block leading-tight">{proyecto.empresa}</span>
-                  <span className="text-emerald-300/80 text-xs font-medium tracking-widest uppercase mt-0.5 block">{proyecto.nombre_proyecto}</span>
+      {/* Nav */}
+      <Motion.nav
+        initial={{ y: -70, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 14 }}
+        className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
+          <p className="text-white/70 text-xs sm:text-sm font-semibold tracking-wide uppercase">Portal Empresa</p>
+        </div>
+
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <Button
+            variant="ghost"
+            className="text-white/70 hover:text-white hover:bg-white/10 transition-colors rounded-xl"
+            onClick={logout}
+          >
+            <LogOut className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Cerrar Sesión</span>
+          </Button>
+        </div>
+      </Motion.nav>
+
+      {/* Content */}
+      <div className="relative z-10 flex-1 min-h-0 px-4 py-6 sm:px-6 lg:px-8 overflow-y-auto overscroll-contain">
+        <Motion.main
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="max-w-7xl mx-auto"
+        >
+          <div className="space-y-5">
+            {/* Hero Section */}
+            <div className="rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-5 sm:p-6">
+              <div className="space-y-5">
+                <div className="mb-2 flex flex-wrap gap-2">
+                  <Badge
+                    className={cn(
+                      "rounded-full hover:bg-transparent",
+                      proyecto.evento_activo
+                        ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+                        : "border-white/10 bg-white/[0.04] text-white/55"
+                    )}
+                  >
+                    {proyecto.evento_activo ? "Evento activo" : "Evento cerrado"}
+                  </Badge>
                 </div>
-              </div>
-              <div className="flex items-center gap-6">
-                <div className="text-right hidden sm:block">
-                  <p className="text-white/40 text-[10px] uppercase font-bold tracking-widest">Ocupación</p>
-                  <p className="font-mono text-sm font-black text-emerald-400">
-                    {proyecto.cupo_actual} <span className="text-white/30 text-xs">/ {proyecto.capacidad_max}</span>
-                  </p>
-                </div>
-                <Button variant="ghost" className="text-white/60 hover:text-white hover:bg-white/10 transition-colors" onClick={logout}>
-                  <LogOut className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </nav>
 
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="max-w-3xl mx-auto px-4 mt-8 space-y-6">
+                <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
+                  <div className="max-w-3xl">
+                    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
+                      <p className="mt-1 text-base font-semibold text-white">{proyecto.nombre_proyecto}</p>
+                      <p className="mt-1 text-sm text-white/55">Ultima sincronizacion: {lastSync ? lastSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</p>
+                    </div>
+                  </div>
 
-          {/* Stats Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-            <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl shadow-xl rounded-2xl">
-              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center">
-                <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Confirmados</p>
-                <p className="text-3xl sm:text-4xl font-extrabold text-white">{proyecto.cupo_actual}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-emerald-500/10 border-emerald-500/20 backdrop-blur-xl shadow-xl rounded-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-400/20 rounded-full blur-[20px] -mr-8 -mt-8"></div>
-              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center relative z-10">
-                <p className="text-emerald-400/70 text-[10px] uppercase font-bold tracking-widest mb-1">Vacantes</p>
-                <p className="text-3xl sm:text-4xl font-extrabold text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.3)]">{proyecto.capacidad_max - proyecto.cupo_actual}</p>
-              </CardContent>
-            </Card>
-            <Card className="bg-white/[0.03] border-white/10 backdrop-blur-xl shadow-xl rounded-2xl">
-              <CardContent className="p-4 sm:p-5 text-center flex flex-col items-center justify-center">
-                <p className="text-white/50 text-[10px] uppercase font-bold tracking-widest mb-1">Capacidad Total</p>
-                <p className="text-3xl sm:text-4xl font-extrabold text-white/30">{proyecto.capacidad_max}</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {result && (
-              <motion.div initial={{ opacity: 0, height: 0, marginBottom: 0 }} animate={{ opacity: 1, height: 'auto', marginBottom: 24 }} exit={{ opacity: 0, height: 0, marginBottom: 0 }} transition={{ duration: 0.3 }}>
-                <div className={`p-5 rounded-2xl border backdrop-blur-md flex items-center gap-5 shadow-2xl relative overflow-hidden
-                  ${result.status === 'ok' ? 'bg-emerald-500/10 border-emerald-500/30' :
-                    result.status === 'error' ? 'bg-red-500/10 border-red-500/30' : 'bg-amber-500/10 border-amber-500/30'}
-                `}>
-                  <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${result.status === 'ok' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : result.status === 'error' ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.8)]' : 'bg-amber-500'}`}></div>
-
-                  {result.status === 'ok' && <CheckCircle2 className="w-10 h-10 text-emerald-400 drop-shadow-md z-10" />}
-                  {result.status === 'error' && <AlertCircle className="w-10 h-10 text-red-400 drop-shadow-md z-10" />}
-                  {result.status === 'loading' && <QrCode className="w-10 h-10 text-amber-400 animate-pulse z-10" />}
-
-                  <div className="z-10">
-                    <p className="font-extrabold text-white text-lg tracking-tight">{result.name}</p>
-                    <p className={`text-sm font-medium mt-0.5 ${result.status === 'ok' ? 'text-emerald-200' : result.status === 'error' ? 'text-red-200' : 'text-amber-200'}`}>
-                      {result.message}
+                  <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
+                    <select
+                      value={selectedProjectId || ""}
+                      onChange={onSelectProject}
+                      disabled={switchingProject || !proyectosEmpresa.length}
+                      className="mt-4 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 disabled:opacity-60"
+                    >
+                      {proyectosEmpresa.map((item) => (
+                        <option key={item.id_proyecto} value={item.id_proyecto} className="text-slate-900">
+                          {item.evento} - {item.nombre_proyecto}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-3 text-xs text-white/50">
+                      {proyectosEmpresa.length} proyecto(s) asociado(s) a tu empresa.
                     </p>
                   </div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Scanner Viewport */}
-          <Card className="bg-white/[0.02] border-white/5 backdrop-blur-2xl overflow-hidden shadow-2xl rounded-3xl">
-            <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between bg-tec-surface/60">
-              <div>
-                <h2 className="text-white font-bold flex items-center gap-3">
-                  <span className="relative flex h-3.5 w-3.5">
-                    {scanning && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                    <span className={`relative inline-flex rounded-full h-3.5 w-3.5 ${scanning ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.8)]' : 'bg-slate-500'}`}></span>
-                  </span>
-                  Cámara
-                </h2>
               </div>
-              <Button
-                onClick={toggleScanner}
-                className={`font-bold transition-all shadow-lg rounded-xl px-6 ${!scanning ? "bg-emerald-500 hover:bg-emerald-400 text-slate-900 shadow-emerald-500/20" : "bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30"}`}
-              >
-                {scanning ? "Pausar Lente" : "Activar Escáner"}
-              </Button>
             </div>
-            <div className="p-6 bg-black/60 flex justify-center">
-              <div id="reader" className="rounded-2xl overflow-hidden [&_video]:rounded-2xl [&_video]:w-full border-none shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] max-w-sm w-full mx-auto"></div>
-            </div>
-            <div className="bg-tec-surface/80 py-3 text-center border-t border-white/5">
-              <p className="text-[10px] text-white/30 uppercase tracking-widest font-mono">Apunte el código QR dinámico del alumno hacia el cuadro central</p>
-            </div>
-          </Card>
 
-        </motion.div>
+            {/* Tab Selector */}
+            <div className="flex justify-center rounded-3xl border border-white/15 bg-black/25 p-3 backdrop-blur-md">
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <TabButton active={activeTab === "sensor"} onClick={() => setActiveTab("sensor")} icon={ScanLine}>
+                  Lectura QR
+                </TabButton>
+                <TabButton active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} icon={Activity}>
+                  Informacion
+                </TabButton>
+              </div>
+            </div>
+
+            {/* Dashboard Tab */}
+            {activeTab === "dashboard" ? (
+              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.55fr_0.9fr]">
+                <div className="space-y-5">
+                  <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
+                    <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
+                        <h3 className="mt-1 text-lg font-bold text-white">Alumnos registrados</h3>
+                      </div>
+                      <div className="relative w-full lg:w-80">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
+                        <Input
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Buscar por nombre, matricula o carrera"
+                          className="h-10 rounded-xl border-white/15 bg-white/10 pl-9 text-white placeholder:text-white/45 focus-visible:ring-blue-400/30"
+                        />
+                      </div>
+                    </div>
+
+                    {alumnosFiltrados.length ? (
+                      <div className="overflow-x-auto">
+                        <Table className="min-w-[760px]">
+                          <TableHeader>
+                            <TableRow className="border-white/10 hover:bg-transparent">
+                              <TableHead className="px-5 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Alumno</TableHead>
+                              <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Matricula</TableHead>
+                              <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Carrera</TableHead>
+                              <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Semestre</TableHead>
+                              <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Contacto</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {alumnosFiltrados.map((alumno) => (
+                              <TableRow key={alumno.id_inscripcion} className="border-white/10 hover:bg-white/[0.03]">
+                                <TableCell className="px-5 py-4">
+                                  <div>
+                                    <p className="font-medium text-white">{alumno.nombre}</p>
+                                    <p className="mt-1 text-xs text-white/45">{alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "Sin fecha"}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="px-4 py-4 font-mono text-white/80">{alumno.matricula}</TableCell>
+                                <TableCell className="px-4 py-4 text-white/80">{alumno.carrera}</TableCell>
+                                <TableCell className="px-4 py-4 text-white/80">{alumno.semestre}</TableCell>
+                                <TableCell className="px-4 py-4 text-white/65">{alumno.correo}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="px-6 py-16 text-center">
+                        <Users className="mx-auto h-10 w-10 text-white/20" />
+                        <p className="mt-4 font-medium text-white/70">{searchQuery ? "No hay coincidencias con esa busqueda." : "Aun no hay alumnos registrados en este proyecto."}</p>
+                        <p className="mt-2 text-sm text-white/45">El roster se actualiza automaticamente despues de cada lectura valida del sensor.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-5 xl:sticky xl:top-6">
+                  <OccupancyMeter
+                    current={proyecto.cupo_actual || 0}
+                    max={proyecto.capacidad_max || 0}
+                    percent={proyecto.ocupacion_porcentaje || 0}
+                  />
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <StatCard icon={Users} label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
+                    <StatCard icon={Activity} label="Espacios libres" value={proyecto.cupos_disponibles} tone="success" />
+                    <StatCard icon={Gauge} label="Capacidad total" value={proyecto.capacidad_max} tone="accent" />
+                    <StatCard icon={Calendar} label="Lista de espera" value={proyecto.capacidad_espera_max ?? 0} tone="warn" />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-3xl border border-white/15 bg-black/30 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md sm:p-5">
+                  <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
+                      <h3 className="mt-1 text-xl font-bold text-white">Escaneo QR en sitio</h3>
+                    </div>
+                    <Button
+                      onClick={toggleScanner}
+                      className={cn(
+                        "rounded-xl px-5 font-semibold shadow-none",
+                        scanning
+                          ? "border border-red-400/25 bg-red-500/15 text-red-100 hover:bg-red-500/25"
+                          : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                      )}
+                    >
+                      <ScanLine className="mr-2 h-4 w-4" />
+                      {scanning ? "Pausar sensor" : "Activar sensor"}
+                    </Button>
+                  </div>
+
+                  <div className="relative min-h-[420px] sm:min-h-[520px] lg:min-h-[620px] xl:min-h-[70vh] overflow-hidden rounded-2xl border border-white/15 bg-black/40 p-3 sm:p-4">
+                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.12),transparent_42%)]" />
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 sm:p-8">
+                      <div className="flex h-[84%] w-[94%] sm:h-[80%] sm:w-[86%] items-center justify-center rounded-[24px] sm:rounded-[28px] border border-dashed border-blue-300/35">
+                        <div className="h-[92%] w-[92%] rounded-[22px] border border-white/10" />
+                      </div>
+                    </div>
+                    <div id="reader" className="relative z-10 h-full overflow-hidden rounded-xl [&_video]:h-full [&_video]:w-full [&_video]:rounded-xl [&_video]:object-cover" />
+                  </div>
+
+                  <p className="mt-4 text-center text-xs uppercase tracking-[0.18em] text-white/45">Mantener la credencial dentro del marco para validacion inmediata</p>
+                </div>
+
+                <div className="w-full max-w-xl">
+                  <AnimatePresence mode="wait">{result ? <ResultBanner result={result} /> : null}</AnimatePresence>
+                </div>
+              </div>
+            )}
+          </div>
+        </Motion.main>
       </div>
+
+      {/* Footer */}
+      <Motion.footer
+        initial={{ y: 60, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 14, delay: 0.15 }}
+        className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+      >
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Aviso de Privacidad
+          </a>
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Ethos
+          </a>
+        </div>
+        <p className="text-white/40 text-[11px] font-medium text-center">
+          © {new Date().getFullYear()}{" "}
+          <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey</a>
+        </p>
+      </Motion.footer>
     </div>
   );
 }

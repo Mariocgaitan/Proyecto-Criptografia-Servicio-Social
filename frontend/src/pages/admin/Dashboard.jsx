@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
-  LogOut, LayoutDashboard, Building2, Calendar, Plus, RefreshCw,
-  Copy, Check, QrCode, Users, TrendingUp, BarChart3,
+  LogOut, LayoutDashboard, Building2, Calendar, Plus,
+  Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, Bell,
   Sun, Moon, Menu, X, List
 } from "lucide-react";
@@ -131,7 +131,6 @@ export default function AdminDashboard() {
   const [isCrearEmpresaOpen, setIsCrearEmpresaOpen] = useState(false);
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
-  const [credsModalInfo, setCredsModalInfo] = useState(null);
 
   // Forms
   const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
@@ -142,7 +141,6 @@ export default function AdminDashboard() {
   // Status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorText, setErrorText] = useState("");
-  const [copiedField, setCopiedField] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -156,12 +154,6 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { fetchData(); }, []);
-
-  const handleCopy = (text, fieldName) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
 
   // === HANDLERS ===
   const handleCrearProyecto = async (e) => {
@@ -180,7 +172,6 @@ export default function AdminDashboard() {
       setIsCrearProyectoOpen(false);
       setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
       fetchData();
-      setCredsModalInfo({ nombre: data.nombre_proyecto, correo: data.credenciales.correo, password: data.credenciales.password });
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
@@ -223,16 +214,6 @@ export default function AdminDashboard() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
       setCupoModalInfo(null); fetchData();
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
-  };
-
-  const handleRegenerarCreds = async (id, nombre) => {
-    if (!confirm(`¿Regenerar contraseña para: ${nombre}? La anterior dejará de funcionar.`)) return;
-    try {
-      const res = await fetch(apiUrl(`/api/v1/admin/proyectos/${id}/credenciales`), { method: "POST", credentials: "include" });
-      if (!res.ok) throw new Error("Fallo de red");
-      const data = await res.json();
-      setCredsModalInfo({ nombre, correo: data.correo, password: data.password });
-    } catch(err) { alert(err.message); }
   };
 
   // Computed stats
@@ -537,7 +518,7 @@ export default function AdminDashboard() {
                             <Input type="number" min="0" className="bg-white border-slate-200 font-bold text-lg text-center" value={formProyecto.espera} onChange={e => setFormProyecto({...formProyecto, espera: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg">Finalizar e Instanciar Credenciales</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg">Finalizar y Crear Proyecto</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -577,7 +558,6 @@ export default function AdminDashboard() {
                               <td className="px-6 py-4 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-lg transition-colors">+ Cupo</button>
-                                  <button onClick={() => handleRegenerarCreds(p.id_proyecto, p.nombre_proyecto)} className="text-xs font-semibold text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Re-Keys</button>
                                 </div>
                               </td>
                             </tr>
@@ -636,7 +616,6 @@ export default function AdminDashboard() {
                                       )}
                                       <div className="flex gap-1.5">
                                         <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">+ Cupo</button>
-                                        <button onClick={() => handleRegenerarCreds(p.id_proyecto, p.nombre_proyecto)} className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Re-Keys</button>
                                       </div>
                                     </div>
                                   </div>
@@ -805,40 +784,6 @@ export default function AdminDashboard() {
       </main>
 
       {/* ═══════════ GLOBAL MODALS ═══════════ */}
-      {/* Credenciales Modal */}
-      <Dialog open={!!credsModalInfo} onOpenChange={open => !open && setCredsModalInfo(null)}>
-        <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl p-0 overflow-hidden">
-          <div className="bg-amber-500 p-6 text-white">
-            <DialogTitle className="text-xl flex items-center gap-2"><QrCode className="w-6 h-6"/> Credenciales Privadas</DialogTitle>
-            <DialogDescription className="text-amber-100 mt-1">Comparte esto con el representante de la empresa.</DialogDescription>
-          </div>
-          <div className="p-6 space-y-4">
-            <div className="text-xs bg-amber-50 text-amber-800 p-3 rounded-lg border border-amber-200">
-              <b>Atención:</b> Esta contraseña no volverá a mostrarse. Guárdala antes de cerrar.
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Correo de Acceso</Label>
-              <div className="flex mt-1">
-                <Input readOnly value={credsModalInfo?.correo || ""} className="font-mono bg-slate-50 border-r-0 rounded-r-none outline-none focus-visible:ring-0 text-slate-700" />
-                <Button onClick={() => handleCopy(credsModalInfo?.correo, 'c')} variant="outline" className="rounded-l-none bg-slate-100 border-l-0 text-slate-500">
-                  {copiedField==='c' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Contraseña de Proyecto</Label>
-              <div className="flex mt-1">
-                <Input readOnly value={credsModalInfo?.password || ""} className="font-mono bg-emerald-50 border-emerald-200 border-r-0 rounded-r-none outline-none focus-visible:ring-0 text-emerald-700 font-bold" />
-                <Button onClick={() => handleCopy(credsModalInfo?.password, 'p')} variant="outline" className="rounded-l-none bg-emerald-100 border-emerald-200 border-l-0 text-emerald-700 hover:bg-emerald-200">
-                  {copiedField==='p' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <Button className="w-full bg-slate-900 hover:bg-slate-800" onClick={() => setCredsModalInfo(null)}>Confirmar Guardado</Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Cupo Modal */}
       <Dialog open={!!cupoModalInfo} onOpenChange={open => !open && setCupoModalInfo(null)}>
         <DialogContent className="sm:max-w-sm bg-white border border-slate-200 text-slate-900">
