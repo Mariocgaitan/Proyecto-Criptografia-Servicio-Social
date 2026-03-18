@@ -25,6 +25,7 @@ function SocialIcon({ children, href = "#" }) {
 }
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
+const ENROLLMENT_POLL_MS = 3000;
 
 function getProjectMetrics(project) {
   const pct = project.capacidad_max > 0 ? Math.round((project.cupo_actual / project.capacidad_max) * 100) : 0;
@@ -300,8 +301,8 @@ function ProjectGrid({ proyectos }) {
 
 // ─── QR Credential Tab Content ───────────────────────────────────
 function QRCredentialView({ evento, qrPayload, timeLeft }) {
-  const qrSize = 220;
-  const qrLogoSize = 48;
+  const qrSize = 280;
+  const qrLogoSize = 34;
 
   return (
     <div className="w-full">
@@ -355,6 +356,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
                     value={qrPayload}
                     size={qrSize}
                     level="H"
+                    marginSize={4}
                     imageSettings={{
                       src: "/ser_social.svg",
                       width: qrLogoSize,
@@ -435,7 +437,7 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 }
 
 // ─── Event Card (orchestrator) ───────────────────────────────────
-const EventCard = ({ evento }) => {
+const EventCard = ({ evento, onEnrollmentDetected }) => {
   const [qrPayload, setQrPayload] = useState(null);
   const [timeLeft, setTimeLeft] = useState(0);
   const [activeTab, setActiveTab] = useState("credencial");
@@ -447,7 +449,9 @@ const EventCard = ({ evento }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.ya_inscrito) {
-          window.location.reload();
+          setQrPayload(null);
+          setTimeLeft(0);
+          onEnrollmentDetected?.();
         } else {
           setQrPayload(data.qr_data);
           setTimeLeft(data.expira_en_segundos);
@@ -456,7 +460,7 @@ const EventCard = ({ evento }) => {
     } catch (err) {
       setTimeout(fetchQR, 5000);
     }
-  }, [evento]);
+  }, [evento.id_evento, evento.inscrito, onEnrollmentDetected]);
 
   useEffect(() => {
     fetchQR();
@@ -538,6 +542,58 @@ export default function Dashboard() {
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const navigate = useNavigate();
 
+  const refreshEnrollmentStatus = useCallback(async () => {
+    try {
+      const res = await fetch(apiUrl("/api/v1/alumno/estado-inscripcion"), { credentials: "include" });
+      if (!res.ok) return;
+
+      const latest = await res.json();
+      const latestEventos = Array.isArray(latest?.eventos) ? latest.eventos : [];
+      const latestByEventId = new Map(latestEventos.map((e) => [e.id_evento, e]));
+
+      setData((prev) => {
+        if (!prev?.eventos?.length) return prev;
+
+        let changed = false;
+
+        const nextEventos = prev.eventos.map((evento) => {
+          const latestEvento = latestByEventId.get(evento.id_evento);
+          if (!latestEvento || !latestEvento.inscrito) return evento;
+
+          const nextInscripcion = latestEvento.proyecto
+            ? {
+                id_proyecto: evento.inscripcion?.id_proyecto ?? null,
+                nombre_proyecto: latestEvento.proyecto.nombre,
+                empresa: latestEvento.proyecto.empresa,
+                descripcion: latestEvento.proyecto.descripcion,
+                timestamp: latestEvento.timestamp || evento.inscripcion?.timestamp || null,
+              }
+            : evento.inscripcion;
+
+          const wasInscrito = Boolean(evento.inscrito);
+          const sameNombreProyecto = (evento.inscripcion?.nombre_proyecto || null) === (nextInscripcion?.nombre_proyecto || null);
+          const sameEmpresa = (evento.inscripcion?.empresa || null) === (nextInscripcion?.empresa || null);
+          const sameTimestamp = (evento.inscripcion?.timestamp || null) === (nextInscripcion?.timestamp || null);
+
+          if (wasInscrito && sameNombreProyecto && sameEmpresa && sameTimestamp) {
+            return evento;
+          }
+
+          changed = true;
+          return {
+            ...evento,
+            inscrito: true,
+            inscripcion: nextInscripcion,
+          };
+        });
+
+        return changed ? { ...prev, eventos: nextEventos } : prev;
+      });
+    } catch {
+      // Best-effort polling to keep enrollment status fresh.
+    }
+  }, []);
+
   useEffect(() => {
     fetch(apiUrl("/api/v1/alumno/dashboard"), { credentials: "include" })
       .then(res => {
@@ -561,6 +617,18 @@ export default function Dashboard() {
 
     return () => clearInterval(intervalId);
   }, []);
+
+  useEffect(() => {
+    if (!data?.eventos?.length) return undefined;
+
+    const hasPendingEnrollment = data.eventos.some((evento) => !evento.inscrito);
+    if (!hasPendingEnrollment) return undefined;
+
+    refreshEnrollmentStatus();
+    const pollId = setInterval(refreshEnrollmentStatus, ENROLLMENT_POLL_MS);
+
+    return () => clearInterval(pollId);
+  }, [data?.eventos, refreshEnrollmentStatus]);
 
   if (loading) {
     return (
@@ -696,7 +764,7 @@ export default function Dashboard() {
             ) : (
               data.eventos.map((evento, i) => (
                 <motion.div key={evento.id_evento} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1, duration: 0.5 }}>
-                  <EventCard evento={evento} />
+                  <EventCard evento={evento} onEnrollmentDetected={refreshEnrollmentStatus} />
                 </motion.div>
               ))
             )}

@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.services.empresa_service import (
     EscanerError,
+    eliminar_inscripcion_proyecto,
     obtener_id_empresa_de_proyecto,
     obtener_info_proyecto,
     obtener_proyectos_empresa,
@@ -136,3 +137,38 @@ async def api_lista_proyectos_empresa(request: Request, db: AsyncSession = Depen
     id_empresa = await _resolver_id_empresa(user, db)
     proyectos = await obtener_proyectos_empresa(db, id_empresa)
     return {"proyectos": proyectos}
+
+
+@router.delete("/api/v1/empresa/inscripciones/{id_inscripcion}", tags=["Empresa"])
+async def api_eliminar_inscripcion_empresa(
+    id_inscripcion: str,
+    request: Request,
+    id_proyecto: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina una inscripción dentro de un proyecto de la empresa autenticada."""
+    user = await _get_empresa_user(request, db)
+    id_empresa = await _resolver_id_empresa(user, db)
+
+    if id_proyecto is None:
+        proyectos = await obtener_proyectos_empresa(db, id_empresa)
+        if not proyectos:
+            raise HTTPException(status_code=404, detail="La empresa no tiene proyectos")
+        id_proyecto_objetivo = proyectos[0]["id_proyecto"]
+    else:
+        id_proyecto_objetivo = id_proyecto
+
+    if not await proyecto_pertenece_a_empresa(db, id_empresa, id_proyecto_objetivo):
+        raise HTTPException(status_code=403, detail="El proyecto no pertenece a tu empresa")
+
+    try:
+        return await eliminar_inscripcion_proyecto(
+            db,
+            id_empresa=id_empresa,
+            id_proyecto=id_proyecto_objetivo,
+            id_inscripcion=id_inscripcion,
+            actor_matricula=user.id_matricula,
+            ip_origen=request.client.host if request.client else None,
+        )
+    except EscanerError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)

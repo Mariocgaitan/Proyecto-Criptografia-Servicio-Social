@@ -4,7 +4,7 @@ import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  PanelLeftClose, PanelLeftOpen, Command,
+  PanelLeftClose, PanelLeftOpen, Command, Trash2,
   List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,6 +124,8 @@ export default function AdminDashboard() {
   // Status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
+  const [deleteModalInfo, setDeleteModalInfo] = useState(null);
 
   const fetchData = async () => {
     try {
@@ -204,6 +206,35 @@ export default function AdminDashboard() {
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
       setCupoModalInfo(null); fetchData();
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleEliminarInscripcion = async (alumno) => {
+    if (!alumno?.id_inscripcion) return;
+
+    setDeleteModalInfo(alumno);
+  };
+
+  const confirmarEliminarInscripcion = async () => {
+    const alumno = deleteModalInfo;
+    if (!alumno?.id_inscripcion) return;
+
+    setDeletingInscripcionId(alumno.id_inscripcion);
+    setErrorText("");
+
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/inscripciones/${alumno.id_inscripcion}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || data.mensaje || "No se pudo eliminar la inscripción");
+      setDeleteModalInfo(null);
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "No se pudo eliminar la inscripción");
+    } finally {
+      setDeletingInscripcionId(null);
+    }
   };
 
   // Computed stats
@@ -843,6 +874,7 @@ export default function AdminDashboard() {
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Matricula</th>
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Carrera</th>
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Correo</th>
+                                                <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Accion</th>
                                               </tr>
                                             </thead>
                                             <tbody>
@@ -852,6 +884,17 @@ export default function AdminDashboard() {
                                                   <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
                                                   <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
                                                   <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
+                                                  <td className="px-3 py-2 text-right">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleEliminarInscripcion(alumno)}
+                                                      disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                                    >
+                                                      <Trash2 className="w-3.5 h-3.5" />
+                                                      {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                                    </button>
+                                                  </td>
                                                 </tr>
                                               ))}
                                             </tbody>
@@ -1066,6 +1109,39 @@ export default function AdminDashboard() {
             </div>
           </div>
           <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold">Salvar Ajuste</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
+        <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogDescription className="text-white/60">Esta acción quitará al alumno del proyecto y liberará su cupo.</DialogDescription>
+          </DialogHeader>
+          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
+          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
+            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => setDeleteModalInfo(null)}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              onClick={confirmarEliminarInscripcion}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
       <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">

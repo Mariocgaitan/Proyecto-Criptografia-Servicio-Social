@@ -8,7 +8,7 @@ Endpoints:
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,6 +63,22 @@ async def api_ampliar_cupo(
 ):
     """Amplía la capacidad de un proyecto y promueve alumnos de lista de espera."""
     return await admin_service.ampliar_cupo(db, id_proyecto, datos.nueva_capacidad_max)
+
+
+@router.delete("/api/v1/admin/inscripciones/{id_inscripcion}", tags=["Admin"])
+async def api_eliminar_inscripcion(
+    id_inscripcion: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(get_current_admin),
+):
+    """Elimina una inscripción de alumno y ajusta cupo del proyecto."""
+    return await admin_service.eliminar_inscripcion(
+        db,
+        id_inscripcion,
+        actor_matricula=current_admin.id_matricula,
+        ip_origen=request.client.host if request.client else None,
+    )
 
 
 

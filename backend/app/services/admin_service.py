@@ -1,6 +1,8 @@
 """
 Servicio del módulo Admin — lógica de negocio para gestión de proyectos.
 """
+import uuid
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -8,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.models.empresa import Empresa
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
+from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
 
 
@@ -163,4 +166,58 @@ async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int)
         "nombre_proyecto": proyecto.nombre_proyecto,
         "capacidad_max": proyecto.capacidad_max,
         "cupo_actual": proyecto.cupo_actual,
+    }
+
+
+async def eliminar_inscripcion(
+    db: AsyncSession,
+    id_inscripcion: str,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """Elimina una inscripción y ajusta el cupo del proyecto asociado."""
+    from fastapi import HTTPException
+
+    try:
+        inscripcion_uuid = uuid.UUID(str(id_inscripcion))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="id_inscripcion inválido") from exc
+
+    result = await db.execute(
+        select(Inscripcion)
+        .options(selectinload(Inscripcion.usuario), selectinload(Inscripcion.proyecto))
+        .where(Inscripcion.id_inscripcion == inscripcion_uuid)
+    )
+    inscripcion = result.scalar_one_or_none()
+    if not inscripcion:
+        raise HTTPException(status_code=404, detail="Inscripción no encontrada")
+
+    proyecto = inscripcion.proyecto
+    alumno = inscripcion.usuario
+
+    if proyecto and proyecto.cupo_actual > 0:
+        proyecto.cupo_actual -= 1
+
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_ELIMINADA_ADMIN",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Admin eliminó inscripción {inscripcion.id_inscripcion} de "
+                f"{alumno.id_matricula if alumno else 'N/A'} "
+                f"en proyecto {proyecto.id_proyecto if proyecto else 'N/A'}"
+            ),
+        )
+    )
+
+    await db.delete(inscripcion)
+    await db.commit()
+
+    return {
+        "ok": True,
+        "mensaje": "Inscripción eliminada correctamente",
+        "id_proyecto": proyecto.id_proyecto if proyecto else None,
+        "cupo_actual": proyecto.cupo_actual if proyecto else None,
+        "nombre_alumno": alumno.nombre if alumno else None,
     }

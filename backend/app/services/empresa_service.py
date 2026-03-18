@@ -3,6 +3,7 @@ Servicio del módulo Empresa — validación de QR y procesamiento de inscripcio
 """
 import json
 import time
+import uuid
 
 import pyotp
 from sqlalchemy import select
@@ -10,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inscripcion import Inscripcion
+from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
@@ -260,6 +262,67 @@ async def validar_y_inscribir(
         "ok": True,
         "mensaje": f"¡{alumno.nombre} inscrito exitosamente!",
         "nombre_alumno": alumno.nombre,
+        "cupo_actual": proyecto.cupo_actual,
+        "capacidad_max": proyecto.capacidad_max,
+    }
+
+
+async def eliminar_inscripcion_proyecto(
+    db: AsyncSession,
+    id_empresa: int,
+    id_proyecto: int,
+    id_inscripcion: str,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """Elimina una inscripción solo si pertenece al proyecto y empresa indicados."""
+    try:
+        inscripcion_uuid = uuid.UUID(str(id_inscripcion))
+    except ValueError as exc:
+        raise EscanerError("id_inscripcion inválido", 400) from exc
+
+    proyecto = await db.get(Proyecto, id_proyecto)
+    if not proyecto:
+        raise EscanerError("Proyecto no encontrado", 404)
+
+    if proyecto.id_empresa != id_empresa:
+        raise EscanerError("El proyecto no pertenece a tu empresa", 403)
+
+    result = await db.execute(
+        select(Inscripcion)
+        .options(selectinload(Inscripcion.usuario))
+        .where(Inscripcion.id_inscripcion == inscripcion_uuid)
+    )
+    inscripcion = result.scalar_one_or_none()
+    if not inscripcion:
+        raise EscanerError("Inscripción no encontrada", 404)
+
+    if inscripcion.id_proyecto != id_proyecto:
+        raise EscanerError("La inscripción no pertenece al proyecto seleccionado", 400)
+
+    if proyecto.cupo_actual > 0:
+        proyecto.cupo_actual -= 1
+
+    alumno = inscripcion.usuario
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_ELIMINADA_EMPRESA",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Empresa eliminó inscripción {inscripcion.id_inscripcion} de "
+                f"{alumno.id_matricula if alumno else 'N/A'} en proyecto {id_proyecto}"
+            ),
+        )
+    )
+    await db.delete(inscripcion)
+    await db.commit()
+    await db.refresh(proyecto)
+
+    return {
+        "ok": True,
+        "mensaje": "Inscripción eliminada correctamente",
+        "nombre_alumno": alumno.nombre if alumno else None,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }

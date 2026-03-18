@@ -8,13 +8,15 @@ import {
   QrCode,
   ScanLine,
   Search,
+  Trash2,
   Users,
 } from "lucide-react";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -37,8 +39,9 @@ const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 const SCANNER_CONFIG = {
   bgRotationMs: 20000,
   resultAutoHideMs: 4500,
-  fps: 15,
+  fps: 20,
   qrBoxSize: 320,
+  qrBoxMinSize: 200,
   preferredCameraLabel: "back",
   scanCooldownMs: 2200,
   duplicateQrIgnoreMs: 6000,
@@ -102,6 +105,8 @@ function OccupancyMeter({ current, max, percent }) {
 function ResultBanner({ result }) {
   if (!result) return null;
 
+  const isSuccess = result.status === "ok";
+
   const styles = {
     ok: {
       wrapper: "border-emerald-500/25 bg-emerald-500/10",
@@ -123,15 +128,36 @@ function ResultBanner({ result }) {
   const currentStyle = styles[result.status] || styles.loading;
 
   return (
-    <div className={cn("rounded-2xl border p-4", currentStyle.wrapper)}>
+    <Motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.96 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -8, scale: 0.98 }}
+      transition={{ duration: 0.25 }}
+      className={cn(
+        "rounded-2xl border p-4",
+        currentStyle.wrapper,
+        isSuccess && "border-emerald-300/55 bg-emerald-500/20 p-6 sm:p-7 shadow-[0_0_35px_rgba(16,185,129,0.35)]"
+      )}
+    >
       <div className="flex items-start gap-3">
-        <div className="mt-0.5">{currentStyle.icon}</div>
+        <Motion.div
+          className="mt-0.5"
+          animate={isSuccess ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          transition={{ duration: 0.45, repeat: isSuccess ? 2 : 0 }}
+        >
+          {currentStyle.icon}
+        </Motion.div>
         <div>
-          <p className="text-base font-semibold text-white">{result.name}</p>
-          <p className={cn("mt-1 text-sm leading-relaxed", currentStyle.text)}>{result.message}</p>
+          {result.status === "ok" ? (
+            <p className="mb-2 inline-flex rounded-full border border-emerald-300/45 bg-emerald-300/15 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-50">
+              Registro exitoso
+            </p>
+          ) : null}
+          <p className={cn("text-base font-semibold text-white", isSuccess && "text-xl sm:text-2xl font-extrabold tracking-tight")}>{result.name}</p>
+          <p className={cn("mt-1 text-sm leading-relaxed", currentStyle.text, isSuccess && "mt-2 text-base sm:text-lg text-emerald-50")}>{result.message}</p>
         </div>
       </div>
-    </div>
+    </Motion.div>
   );
 }
 
@@ -164,11 +190,15 @@ export default function EmpresaEscaner() {
   const [switchingProject, setSwitchingProject] = useState(false);
   const [result, setResult] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
+  const [deleteModalInfo, setDeleteModalInfo] = useState(null);
   const [activeTab, setActiveTab] = useState("sensor");
   const [lastSync, setLastSync] = useState(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const scannerRef = useRef(null);
   const scannerMountingRef = useRef(false);
+  const activeProjectIdRef = useRef(null);
+  const switchingProjectRef = useRef(false);
     const resolveCameraError = useCallback((error) => {
       const msg = String(error?.message || "").toLowerCase();
       const name = String(error?.name || "").toLowerCase();
@@ -187,6 +217,14 @@ export default function EmpresaEscaner() {
 
   const scanLockUntilRef = useRef(0);
   const lastDecodedRef = useRef({ text: "", at: 0 });
+
+  useEffect(() => {
+    activeProjectIdRef.current = selectedProjectId || proyecto?.id_proyecto || null;
+  }, [proyecto?.id_proyecto, selectedProjectId]);
+
+  useEffect(() => {
+    switchingProjectRef.current = switchingProject;
+  }, [switchingProject]);
 
   const loadProyecto = useCallback(async (projectId = null) => {
     try {
@@ -256,10 +294,14 @@ export default function EmpresaEscaner() {
   }, []);
 
   const onScanSuccess = useCallback(async (decodedText) => {
+    if (switchingProjectRef.current) return;
+
     const now = Date.now();
     const normalizedText = (decodedText || "").trim();
+    const projectIdForScan = activeProjectIdRef.current;
 
     if (!normalizedText) return;
+    if (!projectIdForScan) return;
     if (now < scanLockUntilRef.current) return;
     if (
       lastDecodedRef.current.text === normalizedText
@@ -283,7 +325,7 @@ export default function EmpresaEscaner() {
       const res = await fetch(apiUrl("/api/v1/empresa/escanear"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ qr_data: normalizedText, id_proyecto: selectedProjectId || proyecto?.id_proyecto }),
+        body: JSON.stringify({ qr_data: normalizedText, id_proyecto: projectIdForScan }),
         credentials: "include",
       });
       const data = await res.json();
@@ -294,7 +336,7 @@ export default function EmpresaEscaner() {
           name: data.nombre_alumno || "Alumno validado",
           message: data.mensaje,
         });
-        await loadProyecto(selectedProjectId || proyecto?.id_proyecto);
+        await loadProyecto(projectIdForScan);
       } else {
         setResult({
           status: "error",
@@ -311,7 +353,7 @@ export default function EmpresaEscaner() {
     }
 
     setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
-  }, [loadProyecto, proyecto?.id_proyecto, result?.status, selectedProjectId]);
+  }, [loadProyecto, result?.status]);
 
   const startScanner = useCallback(async () => {
     if (scannerRef.current || scannerMountingRef.current) return;
@@ -353,10 +395,15 @@ export default function EmpresaEscaner() {
             cameraConfig,
             {
               fps: SCANNER_CONFIG.fps,
-              qrbox: {
-                width: SCANNER_CONFIG.qrBoxSize,
-                height: SCANNER_CONFIG.qrBoxSize,
+              qrbox: (viewfinderWidth, viewfinderHeight) => {
+                const maxByViewport = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.75);
+                const size = Math.max(
+                  SCANNER_CONFIG.qrBoxMinSize,
+                  Math.min(maxByViewport, SCANNER_CONFIG.qrBoxSize)
+                );
+                return { width: size, height: size };
               },
+              formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
             },
             onScanSuccess,
             () => {}
@@ -408,6 +455,9 @@ export default function EmpresaEscaner() {
     const nextId = Number(event.target.value);
     if (!nextId || nextId === selectedProjectId) return;
 
+    switchingProjectRef.current = true;
+    activeProjectIdRef.current = nextId;
+    setSelectedProjectId(nextId);
     setSwitchingProject(true);
     setResult(null);
     setSearchQuery("");
@@ -420,8 +470,57 @@ export default function EmpresaEscaner() {
       await startScanner();
     }
 
+    switchingProjectRef.current = false;
     setSwitchingProject(false);
   }, [activeTab, loadProyecto, selectedProjectId, startScanner, stopScanner]);
+
+  const handleEliminarInscripcion = useCallback(async (alumno) => {
+    if (!alumno?.id_inscripcion) return;
+
+    setDeleteModalInfo(alumno);
+  }, []);
+
+  const confirmarEliminarInscripcion = useCallback(async () => {
+    const alumno = deleteModalInfo;
+    if (!alumno?.id_inscripcion) return;
+
+    setDeletingInscripcionId(alumno.id_inscripcion);
+    setResult({
+      status: "loading",
+      name: "Actualizando roster",
+      message: "Eliminando inscripción del proyecto...",
+    });
+
+    try {
+      const idProyecto = selectedProjectId || proyecto?.id_proyecto;
+      const res = await fetch(
+        apiUrl(`/api/v1/empresa/inscripciones/${alumno.id_inscripcion}?id_proyecto=${idProyecto}`),
+        { method: "DELETE", credentials: "include" }
+      );
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.detail || data.mensaje || "No se pudo eliminar la inscripción");
+      }
+
+      setResult({
+        status: "ok",
+        name: data.nombre_alumno || alumno.nombre || "Alumno actualizado",
+        message: data.mensaje || "Inscripción eliminada correctamente",
+      });
+      setDeleteModalInfo(null);
+      await loadProyecto(idProyecto);
+    } catch (error) {
+      setResult({
+        status: "error",
+        name: "No se pudo eliminar",
+        message: error?.message || "Error inesperado al eliminar la inscripción",
+      });
+    } finally {
+      setDeletingInscripcionId(null);
+      setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
+    }
+  }, [deleteModalInfo, loadProyecto, proyecto?.id_proyecto, selectedProjectId]);
 
   useEffect(() => {
     if (activeTab === "sensor") {
@@ -609,6 +708,7 @@ export default function EmpresaEscaner() {
                               <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Carrera</TableHead>
                               <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Semestre</TableHead>
                               <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45">Contacto</TableHead>
+                              <TableHead className="px-4 py-4 text-[11px] uppercase tracking-[0.18em] text-white/45 text-right">Accion</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -624,6 +724,17 @@ export default function EmpresaEscaner() {
                                 <TableCell className="px-4 py-4 text-white/80">{alumno.carrera}</TableCell>
                                 <TableCell className="px-4 py-4 text-white/80">{alumno.semestre}</TableCell>
                                 <TableCell className="px-4 py-4 text-white/65">{alumno.correo}</TableCell>
+                                <TableCell className="px-4 py-4 text-right">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleEliminarInscripcion(alumno)}
+                                    disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                    {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                  </button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -684,14 +795,17 @@ export default function EmpresaEscaner() {
                       </div>
                     </div>
                     <div id="reader" className="relative z-10 h-full overflow-hidden rounded-xl [&_video]:h-full [&_video]:w-full [&_video]:rounded-xl [&_video]:object-cover" />
+
+                    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
+                      <div className="w-full max-w-3xl">
+                        <AnimatePresence mode="wait">{result ? <ResultBanner result={result} /> : null}</AnimatePresence>
+                      </div>
+                    </div>
                   </div>
 
                   <p className="mt-4 text-center text-xs uppercase tracking-[0.18em] text-white/45">Mantener la credencial dentro del marco para validacion inmediata</p>
                 </div>
 
-                <div className="w-full max-w-xl">
-                  <AnimatePresence mode="wait">{result ? <ResultBanner result={result} /> : null}</AnimatePresence>
-                </div>
               </div>
             )}
           </div>
@@ -718,6 +832,42 @@ export default function EmpresaEscaner() {
           <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey</a>
         </p>
       </Motion.footer>
+
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
+        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogDescription className="text-white/70">
+              Esta acción quitará al alumno del proyecto y liberará su cupo.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
+            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+          </div>
+
+          <div className="mt-2 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="border border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => setDeleteModalInfo(null)}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              onClick={confirmarEliminarInscripcion}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
