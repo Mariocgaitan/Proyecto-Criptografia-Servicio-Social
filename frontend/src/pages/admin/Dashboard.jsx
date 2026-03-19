@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiUrl } from "@/lib/api";
+import EstadisticasPanel from "./EstadisticasPanel";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
@@ -21,6 +22,95 @@ import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-mo
 import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
+
+const normalizeSearchText = (value) =>
+  (value || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const ALL_COMPANIES_FILTER = "todas";
+
+const resolveCompanyGroupKey = (companyName, groupKeys) => {
+  const normalizedCompany = normalizeSearchText(companyName);
+  if (!normalizedCompany) return null;
+
+  const exactMatch = groupKeys.find((key) => normalizeSearchText(key) === normalizedCompany);
+  if (exactMatch) return exactMatch;
+
+  return groupKeys.find((key) => {
+    const normalizedKey = normalizeSearchText(key);
+    return normalizedKey.includes(normalizedCompany) || normalizedCompany.includes(normalizedKey);
+  }) || null;
+};
+
+const isLooseSubsequence = (text, query) => {
+  if (!query) return true;
+  let textIndex = 0;
+  let queryIndex = 0;
+
+  while (textIndex < text.length && queryIndex < query.length) {
+    if (text[textIndex] === query[queryIndex]) queryIndex += 1;
+    textIndex += 1;
+  }
+
+  return queryIndex === query.length;
+};
+
+const boundedLevenshtein = (a, b, maxDistance) => {
+  const lenA = a.length;
+  const lenB = b.length;
+
+  if (Math.abs(lenA - lenB) > maxDistance) return maxDistance + 1;
+  if (!lenA) return lenB;
+  if (!lenB) return lenA;
+
+  let previous = Array.from({ length: lenB + 1 }, (_, idx) => idx);
+
+  for (let i = 1; i <= lenA; i += 1) {
+    const current = [i];
+    let rowMin = current[0];
+
+    for (let j = 1; j <= lenB; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const value = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + cost
+      );
+
+      current[j] = value;
+      if (value < rowMin) rowMin = value;
+    }
+
+    if (rowMin > maxDistance) return maxDistance + 1;
+    previous = current;
+  }
+
+  return previous[lenB];
+};
+
+const hasNearWordMatch = (text, query) => {
+  if (query.length < 4) return false;
+
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return false;
+
+  const maxDistance = query.length <= 5 ? 1 : 2;
+  return words.some((word) => boundedLevenshtein(word, query, maxDistance) <= maxDistance);
+};
+
+const textMatchesQuery = (value, query) => {
+  if (!query) return true;
+  const normalizedValue = normalizeSearchText(value);
+  if (!normalizedValue) return false;
+
+  return normalizedValue.includes(query)
+    || isLooseSubsequence(normalizedValue, query)
+    || hasNearWordMatch(normalizedValue, query);
+};
 
 // ─── KPI Stat Card ───────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
@@ -101,19 +191,24 @@ export default function AdminDashboard() {
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+  const commandInputRef = useRef(null);
+  const commandItemRefs = useRef([]);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [availability, setAvailability] = useState("todas");
-  const [empresaFilter, setEmpresaFilter] = useState("todas");
+  const [empresaFilter, setEmpresaFilter] = useState(ALL_COMPANIES_FILTER);
   const [sortMode, setSortMode] = useState("demanda");
-  const [proyectosView, setProyectosView] = useState("all"); // "all" | "byEmpresa"
-  const [expandedEmpresa, setExpandedEmpresa] = useState(null);
+  const [expandedEmpresas, setExpandedEmpresas] = useState([]);
 
   // Modals Info
   const [isCrearProyectoOpen, setIsCrearProyectoOpen] = useState(false);
   const [isCrearEmpresaOpen, setIsCrearEmpresaOpen] = useState(false);
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
+  const [isAgregarAlumnoOpen, setIsAgregarAlumnoOpen] = useState(false);
+  const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
+  const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
+  const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
 
   // Forms
   const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
@@ -126,6 +221,7 @@ export default function AdminDashboard() {
   const [errorText, setErrorText] = useState("");
   const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
   const [deleteModalInfo, setDeleteModalInfo] = useState(null);
+  const [preserveFiltersOnNextSearch, setPreserveFiltersOnNextSearch] = useState(false);
 
   const fetchData = async () => {
     try {
@@ -165,6 +261,51 @@ export default function AdminDashboard() {
       setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
       fetchData();
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleAbreModalAgregarAlumno = async (proyecto) => {
+    setSelectedProyectoForAlumno(proyecto);
+    setSelectedAlumnoMatricula("");
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/alumnos-disponibles?id_evento=${proyecto.id_evento}`), {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al obtener alumnos");
+      setAlumnosDisponibles(data || []);
+      setIsAgregarAlumnoOpen(true);
+    } catch (err) {
+      setErrorText(err.message || "No se pudo cargar los alumnos disponibles");
+    }
+  };
+
+  const handleAgregarAlumno = async (e) => {
+    e.preventDefault();
+    if (!selectedAlumnoMatricula || !selectedProyectoForAlumno) return;
+
+    setIsSubmitting(true);
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl("/api/v1/admin/inscripciones"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id_matricula: selectedAlumnoMatricula,
+          id_proyecto: selectedProyectoForAlumno.id_proyecto,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al agregar alumno");
+      setIsAgregarAlumnoOpen(false);
+      setSelectedAlumnoMatricula("");
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "No se pudo agregar el alumno");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCrearEmpresa = async (e) => {
@@ -243,17 +384,25 @@ export default function AdminDashboard() {
   const eventosActivos = eventos.filter(e => e.activo).length;
 
   // Search filtering
-  const q = searchQuery.toLowerCase().trim();
+  const q = normalizeSearchText(searchQuery);
   const empresasEnProyectos = useMemo(() => {
     return [...new Set(proyectos.map((p) => p.empresa).filter(Boolean))].sort((a, b) => a.localeCompare(b));
   }, [proyectos]);
 
   const filteredProyectos = useMemo(() => {
     const base = proyectos.filter((p) => {
+      const alumnoMatchesQuery = Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.some((alumno) => {
+        return textMatchesQuery(alumno?.nombre, q)
+          || textMatchesQuery(alumno?.matricula, q)
+          || textMatchesQuery(alumno?.carrera, q)
+          || textMatchesQuery(alumno?.correo, q);
+      });
+
       const matchesQuery = !q
-        || p.nombre_proyecto?.toLowerCase().includes(q)
-        || p.empresa?.toLowerCase().includes(q)
-        || p.descripcion?.toLowerCase().includes(q);
+        || textMatchesQuery(p.nombre_proyecto, q)
+        || textMatchesQuery(p.empresa, q)
+        || textMatchesQuery(p.descripcion, q)
+        || alumnoMatchesQuery;
 
       const remaining = Math.max((p.capacidad_max || 0) - (p.cupo_actual || 0), 0);
       const isFull = (p.cupo_actual || 0) >= (p.capacidad_max || 0);
@@ -263,7 +412,7 @@ export default function AdminDashboard() {
         || (availability === "ultimos" && !isFull && remaining <= 2)
         || (availability === "llenos" && isFull);
 
-      const matchesEmpresa = empresaFilter === "todas" || p.empresa === empresaFilter;
+      const matchesEmpresa = empresaFilter === ALL_COMPANIES_FILTER || p.empresa === empresaFilter;
 
       return matchesQuery && matchesAvailability && matchesEmpresa;
     });
@@ -293,8 +442,14 @@ export default function AdminDashboard() {
     return base;
   }, [proyectos, q, availability, empresaFilter, sortMode]);
 
-  const filteredEmpresas = q ? empresas.filter(e => e.nombre_empresa?.toLowerCase().includes(q) || e.razon_social?.toLowerCase().includes(q) || e.id_asociado?.toLowerCase().includes(q)) : empresas;
-  const filteredEventos = q ? eventos.filter(e => e.nombre?.toLowerCase().includes(q) || e.periodo?.toLowerCase().includes(q)) : eventos;
+  const filteredEmpresas = empresas;
+  const filteredEventos = q
+    ? eventos.filter(
+        (e) =>
+          textMatchesQuery(e.nombre, q)
+          || textMatchesQuery(e.periodo, q)
+      )
+    : eventos;
 
   // Group projects by empresa
   const proyectosPorEmpresa = {};
@@ -303,10 +458,40 @@ export default function AdminDashboard() {
     if (!proyectosPorEmpresa[key]) proyectosPorEmpresa[key] = [];
     proyectosPorEmpresa[key].push(p);
   });
+  const companyGroupKeys = Object.keys(proyectosPorEmpresa);
+
+  useEffect(() => {
+    if (activeSection !== "proyectos") return;
+    setExpandedEmpresas((prev) => {
+      if (!prev.length) return companyGroupKeys;
+      return prev.filter((name) => companyGroupKeys.includes(name));
+    });
+  }, [activeSection, filteredProyectos]);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
   };
+
+  const applySearchQuery = (nextQuery, options = {}) => {
+    const { preserveFilters = false } = options;
+
+    if (preserveFilters) {
+      setPreserveFiltersOnNextSearch(true);
+      setSearchQuery(nextQuery);
+      return;
+    }
+
+    setPreserveFiltersOnNextSearch(false);
+    setSearchQuery(nextQuery);
+    setAvailability("todas");
+    setEmpresaFilter(ALL_COMPANIES_FILTER);
+    setExpandedEmpresas([]);
+  };
+
+  useEffect(() => {
+    if (!preserveFiltersOnNextSearch) return;
+    setPreserveFiltersOnNextSearch(false);
+  }, [searchQuery, preserveFiltersOnNextSearch]);
 
   const sectionMeta = {
     overview: {
@@ -335,33 +520,163 @@ export default function AdminDashboard() {
     },
   };
 
+  const studentCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = [];
+
+    proyectos.forEach((proyecto) => {
+      if (!Array.isArray(proyecto.alumnos_inscritos)) return;
+
+      proyecto.alumnos_inscritos.forEach((alumno) => {
+        const nombre = alumno?.nombre || "Alumno sin nombre";
+        const matricula = alumno?.matricula || "Sin matrícula";
+        const carrera = alumno?.carrera || "";
+        const correo = alumno?.correo || "";
+
+        const searchable = [
+          nombre,
+          matricula,
+          carrera,
+          correo,
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+        ].map((value) => normalizeSearchText(value)).join(" ");
+
+        if (!textMatchesQuery(searchable, normalized)) return;
+
+        items.push({
+          id: `student-${proyecto.id_proyecto}-${alumno.id_inscripcion || matricula}`,
+          label: `Alumno: ${nombre}`,
+          hint: `Proyecto: ${proyecto.nombre_proyecto || "Sin proyecto"} - ${proyecto.empresa || "Sin Empresa"}`,
+          keepSearchContext: true,
+          action: () => {
+            setActiveSection("proyectos");
+            setExpandedEmpresas((prev) => {
+              const companyKey = proyecto.empresa || "Sin Empresa";
+              if (prev.includes(companyKey)) return prev;
+              return [...prev, companyKey];
+            });
+            setAvailability("todas");
+            setEmpresaFilter(proyecto.empresa || ALL_COMPANIES_FILTER);
+            applySearchQuery(alumno?.matricula || alumno?.nombre || "", { preserveFilters: true });
+          },
+        });
+      });
+    });
+
+    return items.slice(0, 30);
+  }, [proyectos, commandQuery]);
+
+  const projectCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = proyectos
+      .filter((proyecto) => {
+        const searchable = [
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+          proyecto?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((proyecto) => ({
+        id: `project-${proyecto.id_proyecto}`,
+        label: `Proyecto: ${proyecto.nombre_proyecto || "Sin nombre"}`,
+        hint: `Empresa: ${proyecto.empresa || "Sin Empresa"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          setEmpresaFilter(ALL_COMPANIES_FILTER);
+          setExpandedEmpresas([]);
+          applySearchQuery(proyecto?.nombre_proyecto || "", { preserveFilters: true });
+        },
+      }));
+
+    return items;
+  }, [proyectos, commandQuery]);
+
+  const companyCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = empresas
+      .filter((empresa) => {
+        const searchable = [
+          empresa?.nombre_empresa || "",
+          empresa?.razon_social || "",
+          empresa?.id_asociado || "",
+          empresa?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((empresa) => ({
+        id: `company-${empresa.id_empresa}`,
+        label: `Empresa: ${empresa.nombre_empresa || "Sin nombre"}`,
+        hint: `ID: ${empresa.id_asociado || "N/A"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          const selectedCompanyName = empresa?.nombre_empresa || "";
+          const companyGroupKey = resolveCompanyGroupKey(selectedCompanyName, companyGroupKeys);
+
+          setEmpresaFilter(companyGroupKey || ALL_COMPANIES_FILTER);
+          setExpandedEmpresas(companyGroupKey ? [companyGroupKey] : companyGroupKeys);
+          applySearchQuery(companyGroupKey || selectedCompanyName, { preserveFilters: true });
+        },
+      }));
+
+    return items;
+  }, [empresas, commandQuery, companyGroupKeys]);
+
   const commandItems = useMemo(() => {
     const baseItems = [
-      { id: "sec-overview", label: "Ir a Dashboard", hint: "Secciones", action: () => setActiveSection("overview") },
-      { id: "sec-stats", label: "Ir a Estadísticas", hint: "Secciones", action: () => setActiveSection("estadisticas") },
-      { id: "sec-projects", label: "Ir a Proyectos", hint: "Secciones", action: () => setActiveSection("proyectos") },
-      { id: "sec-companies", label: "Ir a Empresas", hint: "Secciones", action: () => setActiveSection("empresas") },
-      { id: "sec-events", label: "Ir a Eventos", hint: "Secciones", action: () => setActiveSection("eventos") },
-      { id: "sec-manage", label: "Ir a Gestión Integral", hint: "Secciones", action: () => setActiveSection("gestion") },
-      { id: "act-new-project", label: "Abrir: Registrar Proyecto", hint: "Acciones", action: () => { setActiveSection("proyectos"); setIsCrearProyectoOpen(true); } },
-      { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
-      { id: "act-new-event", label: "Abrir: Aperturar Periodo", hint: "Acciones", action: () => { setActiveSection("gestion"); setIsCrearEventoOpen(true); } },
-      { id: "act-toggle-sidebar", label: sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral", hint: "Vista", action: () => setSidebarCollapsed((prev) => !prev) },
+      { id: "sec-overview", label: "Ir a Dashboard", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("overview") },
+      { id: "sec-stats", label: "Ir a Estadísticas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("estadisticas") },
+      { id: "sec-projects", label: "Ir a Proyectos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("proyectos") },
+      { id: "sec-companies", label: "Ir a Empresas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("empresas") },
+      { id: "sec-events", label: "Ir a Eventos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("eventos") },
+      { id: "sec-manage", label: "Ir a Gestión Integral", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("gestion") },
+      { id: "act-new-project", label: "Abrir: Registrar Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsCrearProyectoOpen(true); } },
+      { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
+      { id: "act-new-event", label: "Abrir: Aperturar Periodo", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEventoOpen(true); } },
+      { id: "act-add-alumno", label: "Abrir: Agregar Alumno a Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsAgregarAlumnoOpen(true); setSelectedProyectoForAlumno(null); } },
+      { id: "act-toggle-sidebar", label: sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral", hint: "Vista", keepSearchContext: false, action: () => setSidebarCollapsed((prev) => !prev) },
     ];
 
-    const normalized = commandQuery.trim().toLowerCase();
+    const normalized = normalizeSearchText(commandQuery);
     if (!normalized) return baseItems;
 
-    return baseItems.filter((item) =>
-      item.label.toLowerCase().includes(normalized)
-      || item.hint.toLowerCase().includes(normalized)
+    const filteredBaseItems = baseItems.filter((item) =>
+      textMatchesQuery(item.label, normalized)
+      || textMatchesQuery(item.hint, normalized)
     );
-  }, [commandQuery, sidebarCollapsed]);
+
+    return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
+  }, [commandQuery, sidebarCollapsed, studentCommandItems, projectCommandItems, companyCommandItems]);
+
+  const runCommandItem = (item) => {
+    if (!item) return;
+
+    item.action();
+    if (!item.keepSearchContext) {
+      applySearchQuery("");
+    }
+    setCommandOpen(false);
+  };
 
   useEffect(() => {
     const onKeyDown = (event) => {
       const key = event.key.toLowerCase();
-      const isOpenShortcut = (event.ctrlKey || event.metaKey) && (key === "t" || key === "k");
+      const isOpenShortcut = (event.ctrlKey || event.metaKey) && key === "k";
 
       if (isOpenShortcut) {
         event.preventDefault();
@@ -398,8 +713,7 @@ export default function AdminDashboard() {
         event.preventDefault();
         const selected = commandItems[activeCommandIndex];
         if (selected) {
-          selected.action();
-          setCommandOpen(false);
+          runCommandItem(selected);
         }
       }
     };
@@ -412,31 +726,48 @@ export default function AdminDashboard() {
     if (!commandOpen) {
       setCommandQuery("");
       setActiveCommandIndex(0);
+      return;
     }
+
+    const frame = requestAnimationFrame(() => {
+      commandInputRef.current?.focus();
+      commandInputRef.current?.select();
+    });
+
+    return () => cancelAnimationFrame(frame);
   }, [commandOpen]);
 
   useEffect(() => {
     setActiveCommandIndex(0);
   }, [commandQuery]);
 
+  useEffect(() => {
+    if (!commandOpen) return;
+
+    const activeElement = commandItemRefs.current[activeCommandIndex];
+    if (activeElement) {
+      activeElement.scrollIntoView({ block: "nearest" });
+    }
+  }, [commandOpen, activeCommandIndex]);
+
   // ─── RENDER ──────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'Geist Variable', sans-serif" }}>
-      <div className="absolute inset-0 z-0 overflow-hidden">
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
         <AnimatePresence mode="sync" initial={false}>
           <motion.img
             key={currentBgIndex}
             src={campusImages[currentBgIndex]}
             alt="Campus"
-            className="w-full h-full object-cover absolute inset-0"
+            className="w-full h-full object-cover fixed inset-0"
             initial={{ x: "100%" }}
             animate={{ x: "0%" }}
             exit={{ x: "-100%" }}
             transition={{ duration: 3, ease: "easeInOut" }}
           />
         </AnimatePresence>
-        <div className="absolute inset-0 bg-black/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
+        <div className="fixed inset-0 bg-black/70" />
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
 
       <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5">
@@ -465,7 +796,7 @@ export default function AdminDashboard() {
             title="Command palette"
           >
             <Command className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs font-semibold">Ctrl+K / Ctrl+T</span>
+            <span className="hidden sm:inline text-xs font-semibold">Ctrl+K</span>
           </button>
 
           <button
@@ -503,17 +834,6 @@ export default function AdminDashboard() {
         </aside>
 
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-        {sidebarCollapsed ? (
-          <div className="hidden lg:flex mb-3">
-            <button
-              type="button"
-              onClick={() => setSidebarCollapsed(false)}
-              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-white/15 bg-white/10 text-white/70 hover:text-white"
-            >
-              <PanelLeftOpen className="w-4 h-4" /> Mostrar barra lateral
-            </button>
-          </div>
-        ) : null}
         <div className="w-full">
           <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
             <div>
@@ -523,17 +843,6 @@ export default function AdminDashboard() {
               <p className="text-xs sm:text-sm mt-0.5 text-white/60">
                 {sectionMeta[activeSection]?.description}
               </p>
-            </div>
-
-            <div className="relative w-full sm:max-w-md">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
-              <input
-                type="text"
-                placeholder="Buscar proyectos, empresas..."
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2.5 rounded-xl text-sm w-full bg-white/10 border border-white/15 text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              />
             </div>
 
             <div className="flex lg:hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -548,7 +857,7 @@ export default function AdminDashboard() {
 
           <AnimatePresence mode="wait">
             {/* ─── OVERVIEW ────────────────────── */}
-            {(activeSection === "overview" || activeSection === "estadisticas") && (
+            {activeSection === "overview" && (
               <motion.div
                 key="overview"
                 initial={{ opacity: 0, y: 12 }}
@@ -635,19 +944,34 @@ export default function AdminDashboard() {
             {/* ─── PROYECTOS ───────────────────── */}
             {activeSection === "proyectos" && (
               <motion.div key="proyectos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="space-y-6">
-                {/* Header with view toggle and create button */}
+                {/* Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex items-center gap-1 p-1 rounded-xl border border-white/15 bg-black/35">
-                    <button onClick={() => setProyectosView('all')} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${proyectosView === 'all' ? 'bg-blue-600/25 border border-blue-400/35 text-white' : 'text-white/65 hover:text-white'}`}>
-                      <List className="w-3.5 h-3.5" /> Todos
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEmpresas(companyGroupKeys)}
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Expandir todas
                     </button>
-                    <button onClick={() => setProyectosView('byEmpresa')} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${proyectosView === 'byEmpresa' ? 'bg-blue-600/25 border border-blue-400/35 text-white' : 'text-white/65 hover:text-white'}`}>
-                      <Building2 className="w-3.5 h-3.5" /> Por Empresa
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEmpresas([])}
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Colapsar todas
                     </button>
                   </div>
-                  <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      onClick={() => setIsAgregarAlumnoOpen(true)}
+                      className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all"
+                    >
+                      <Users className="w-4 h-4 mr-2" /> Agregar Alumno
+                    </Button>
+                    <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
+                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all">
                         <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
                       </Button>
                     </DialogTrigger>
@@ -696,10 +1020,11 @@ export default function AdminDashboard() {
                             <Input type="number" min="0" className="bg-white/10 border-white/15 text-white font-bold text-lg text-center" value={formProyecto.espera} onChange={e => setFormProyecto({...formProyecto, espera: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg">Finalizar y Crear Proyecto</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold shadow-none">Finalizar y Crear Proyecto</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
+                  </div>
                 </div>
 
                 <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
@@ -726,28 +1051,21 @@ export default function AdminDashboard() {
                   </div>
 
                   <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                    <div className="flex-1 min-w-0">
-                      <div className="overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                        <div className="flex gap-2 w-max">
-                          <button
-                            type="button"
-                            onClick={() => setEmpresaFilter("todas")}
-                            className={`px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap ${empresaFilter === "todas" ? "bg-white/20 border-white/30 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}
-                          >
-                            Todas las empresas
-                          </button>
-                          {empresasEnProyectos.map((empresa) => (
-                            <button
-                              key={empresa}
-                              type="button"
-                              onClick={() => setEmpresaFilter(empresa)}
-                              className={`px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap ${empresaFilter === empresa ? "bg-cyan-500/20 border-cyan-400/35 text-cyan-100" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}
-                            >
-                              {empresa}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                    <div className="w-full md:w-auto md:min-w-[260px]">
+                      <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
+                      <select
+                        id="empresa-filter-select"
+                        value={empresaFilter}
+                        onChange={(e) => setEmpresaFilter(e.target.value)}
+                        className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+                      >
+                        <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
+                        {empresasEnProyectos.map((empresa) => (
+                          <option key={empresa} value={empresa} className="bg-slate-900 text-white">
+                            {empresa}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <select
@@ -755,67 +1073,19 @@ export default function AdminDashboard() {
                       onChange={(e) => setSortMode(e.target.value)}
                       className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
                     >
-                      <option value="demanda" className="text-slate-900">Ordenar: Demanda</option>
-                      <option value="disponibilidad" className="text-slate-900">Ordenar: Ultimos lugares</option>
-                      <option value="alfabetico" className="text-slate-900">Ordenar: A-Z</option>
+                      <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
+                      <option value="disponibilidad" className="bg-slate-900 text-white">Ordenar: Ultimos lugares</option>
+                      <option value="alfabetico" className="bg-slate-900 text-white">Ordenar: A-Z</option>
                     </select>
                   </div>
                 </div>
 
-                {/* ALL VIEW */}
-                {proyectosView === 'all' && (
-                  <div className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-white/10 bg-black/20">
-                            <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-6 py-3.5 text-white/55">Nombre del Proyecto</th>
-                            <th className="text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3.5 text-white/55">Ocupación</th>
-                            <th className="text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3.5 text-white/55">Estatus</th>
-                            <th className="text-right text-[11px] font-semibold uppercase tracking-wider px-6 py-3.5 text-white/55">Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredProyectos?.map((p) => (
-                            <tr key={p.id_proyecto} className="border-b last:border-0 transition-colors group border-white/10 hover:bg-white/[0.03]">
-                              <td className="px-6 py-4">
-                                <p className="font-semibold text-sm transition-colors text-white group-hover:text-blue-200">{p.nombre_proyecto}</p>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  <Building2 className="w-3 h-3 text-blue-400" />
-                                  <p className="text-xs text-white/55">{p.empresa}</p>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4"><div className="flex justify-center"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div></td>
-                              <td className="px-4 py-4 text-center">
-                                {p.cupo_actual >= p.capacidad_max ? (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-200 hover:text-white bg-blue-500/15 hover:bg-blue-500/25 border border-blue-400/30 px-3 py-1.5 rounded-lg transition-colors">+ Cupo</button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {!filteredProyectos.length && (
-                            <tr><td colSpan={4} className="text-center py-16 text-sm text-white/45">{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</td></tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                )}
-
                 {/* BY EMPRESA VIEW */}
-                {proyectosView === 'byEmpresa' && (
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     {Object.entries(proyectosPorEmpresa).map(([empresaName, proys]) => (
                       <div key={empresaName} className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden transition-all">
                         <button
-                          onClick={() => setExpandedEmpresa(expandedEmpresa === empresaName ? null : empresaName)}
+                          onClick={() => setExpandedEmpresas((prev) => prev.includes(empresaName) ? prev.filter((name) => name !== empresaName) : [...prev, empresaName])}
                           className="w-full flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/[0.03]"
                         >
                           <div className="flex items-center gap-3">
@@ -831,13 +1101,13 @@ export default function AdminDashboard() {
                             <span className="text-xs font-mono font-bold px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
                               {proys.reduce((s, p) => s + (p.cupo_actual||0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max||0), 0)} plazas
                             </span>
-                            <motion.div animate={{ rotate: expandedEmpresa === empresaName ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                            <motion.div animate={{ rotate: expandedEmpresas.includes(empresaName) ? 180 : 0 }} transition={{ duration: 0.2 }}>
                               <ChevronDown className="w-4 h-4 text-white/55" />
                             </motion.div>
                           </div>
                         </button>
                         <AnimatePresence>
-                          {expandedEmpresa === empresaName && (
+                          {expandedEmpresas.includes(empresaName) && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
                               <div className="border-t border-white/10">
                                 {proys.map(p => (
@@ -867,23 +1137,31 @@ export default function AdminDashboard() {
 
                                       {Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.length > 0 ? (
                                         <div className="overflow-x-auto">
-                                          <table className="w-full min-w-[640px]">
+                                          <table className="w-full min-w-[900px]">
                                             <thead>
                                               <tr className="border-b border-white/10">
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Alumno</th>
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Matricula</th>
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Carrera</th>
                                                 <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Correo</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Fecha Registro</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Hora Registro</th>
                                                 <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Accion</th>
                                               </tr>
                                             </thead>
                                             <tbody>
-                                              {p.alumnos_inscritos.map((alumno) => (
+                                              {p.alumnos_inscritos.map((alumno) => {
+                                                const fecha = alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion) : null;
+                                                const fechaStr = fecha ? fecha.toLocaleDateString("es-MX") : "--";
+                                                const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--";
+                                                return (
                                                 <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
                                                   <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
                                                   <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
                                                   <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
                                                   <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
+                                                  <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
+                                                  <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
                                                   <td className="px-3 py-2 text-right">
                                                     <button
                                                       type="button"
@@ -896,7 +1174,8 @@ export default function AdminDashboard() {
                                                     </button>
                                                   </td>
                                                 </tr>
-                                              ))}
+                                                );
+                                              })}
                                             </tbody>
                                           </table>
                                         </div>
@@ -915,8 +1194,20 @@ export default function AdminDashboard() {
                     {!Object.keys(proyectosPorEmpresa).length && (
                       <div className="text-center py-16 text-sm rounded-2xl border border-white/15 bg-black/35 text-white/45">{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</div>
                     )}
-                  </div>
-                )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeSection === "estadisticas" && (
+              <motion.div
+                key="estadisticas"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-6"
+              >
+                <EstadisticasPanel eventos={eventos} empresas={empresas} />
               </motion.div>
             )}
 
@@ -1108,7 +1399,7 @@ export default function AdminDashboard() {
               <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-500/10 border-blue-400/30 text-blue-100 focus-visible:ring-blue-500 text-lg font-bold" />
             </div>
           </div>
-          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold">Salvar Ajuste</Button>
+          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold">Salvar Ajuste</Button>
         </DialogContent>
       </Dialog>
 
@@ -1144,6 +1435,76 @@ export default function AdminDashboard() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal Agregar Alumno */}
+      <Dialog open={isAgregarAlumnoOpen} onOpenChange={setIsAgregarAlumnoOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Agregar Alumno a Proyecto</DialogTitle>
+            <DialogDescription className="text-white/60">
+              {selectedProyectoForAlumno ? selectedProyectoForAlumno.nombre_proyecto : "Selecciona un proyecto"}
+            </DialogDescription>
+          </DialogHeader>
+          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
+          
+          {!selectedProyectoForAlumno ? (
+            <div className="space-y-3">
+              <p className="text-sm text-white/70">Selecciona un proyecto:</p>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {proyectos.filter(p => p.cupo_actual < p.capacidad_max).map(p => (
+                  <button
+                    key={p.id_proyecto}
+                    onClick={() => handleAbreModalAgregarAlumno(p)}
+                    className="w-full text-left px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-white">{p.nombre_proyecto}</p>
+                    <p className="text-xs text-white/60">{p.empresa} • {p.cupo_actual}/{p.capacidad_max}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <form onSubmit={handleAgregarAlumno} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white text-[11px] font-semibold uppercase tracking-wider">Alumno</Label>
+                <select
+                  value={selectedAlumnoMatricula}
+                  onChange={e => setSelectedAlumnoMatricula(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-white/15 bg-slate-950 text-white placeholder-white/40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent"
+                >
+                  <option value="">-- Selecciona un alumno --</option>
+                  {alumnosDisponibles.map(a => (
+                    <option key={a.id_matricula} value={a.id_matricula}>
+                      {a.nombre} ({a.id_matricula}) - {a.carrera}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    setSelectedProyectoForAlumno(null);
+                    setSelectedAlumnoMatricula("");
+                  }}
+                >
+                  Atrás
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!selectedAlumnoMatricula || isSubmitting}
+                  className="flex-1 border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold"
+                >
+                  {isSubmitting ? "Agregando..." : "Agregar"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
           <p className="text-white/50 uppercase tracking-wider font-semibold">Panel Administrativo</p>
@@ -1152,35 +1513,51 @@ export default function AdminDashboard() {
       </footer>
 
       {commandOpen ? (
-        <div className="fixed inset-0 z-50 flex items-start justify-center pt-[12vh] px-4 bg-black/55 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
-          <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-slate-950/95 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-3 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
+          <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-black/75 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-3 border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
               <div className="relative">
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
                 <input
-                  autoFocus
+                  ref={commandInputRef}
                   type="text"
                   value={commandQuery}
                   onChange={(e) => setCommandQuery(e.target.value)}
-                  placeholder="Buscar comando (secciones, acciones, vista)..."
+                  placeholder="Buscar comando, alumno, empresa o proyecto..."
+                  role="combobox"
+                  aria-expanded={commandOpen}
+                  aria-controls="admin-command-list"
+                  aria-activedescendant={commandItems.length ? `admin-command-item-${commandItems[activeCommandIndex]?.id}` : undefined}
                   className="w-full h-11 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/45 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
                 />
               </div>
             </div>
 
-            <div className="max-h-[55vh] overflow-y-auto p-2">
+            <div id="admin-command-list" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
               {commandItems.length > 0 ? commandItems.map((item, idx) => (
                 <button
                   key={item.id}
-                  type="button"
-                  onClick={() => {
-                    item.action();
-                    setCommandOpen(false);
+                  id={`admin-command-item-${item.id}`}
+                  role="option"
+                  aria-selected={idx === activeCommandIndex}
+                  ref={(node) => {
+                    commandItemRefs.current[idx] = node;
                   }}
-                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${idx === activeCommandIndex ? "bg-white/12" : "hover:bg-white/10"}`}
+                  type="button"
+                  onClick={() => runCommandItem(item)}
+                  className={`relative w-full text-left px-3 py-2 rounded-lg transition-colors ${idx === activeCommandIndex ? "text-white" : "hover:bg-white/10"}`}
                 >
-                  <p className="text-sm font-medium text-white">{item.label}</p>
-                  <p className="text-[11px] text-white/45 uppercase tracking-wider">{item.hint}</p>
+                  {idx === activeCommandIndex ? (
+                    <motion.span
+                      layoutId="admin-command-active-highlight"
+                      className="absolute inset-0 rounded-lg border border-blue-400/35 bg-gradient-to-r from-blue-500/20 via-blue-400/10 to-transparent"
+                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                    />
+                  ) : null}
+                  <div className="relative z-10">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-[11px] text-white/50 uppercase tracking-wider">{item.hint}</p>
+                  </div>
                 </button>
               )) : (
                 <div className="px-3 py-6 text-sm text-white/45">Sin comandos que coincidan.</div>
@@ -1188,7 +1565,7 @@ export default function AdminDashboard() {
             </div>
 
             <div className="px-4 py-2 border-t border-white/10 text-[11px] text-white/45 uppercase tracking-wider">
-              Navegación: ↑ ↓ Enter - Abrir: Ctrl+K / Ctrl+T - Cerrar: Esc
+              Navegación: ↑ ↓ Enter - Abrir: Ctrl+K - Cerrar: Esc - Busca alumnos, empresas y proyectos
             </div>
           </div>
         </div>

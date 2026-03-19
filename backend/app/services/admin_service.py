@@ -12,6 +12,8 @@ from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
 from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
+from app.models.usuario import Usuario
+from app.models.usuario_evento import UsuarioEvento
 
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
@@ -220,4 +222,140 @@ async def eliminar_inscripcion(
         "id_proyecto": proyecto.id_proyecto if proyecto else None,
         "cupo_actual": proyecto.cupo_actual if proyecto else None,
         "nombre_alumno": alumno.nombre if alumno else None,
+    }
+
+
+async def listar_alumnos_disponibles(db: AsyncSession, id_evento: int) -> list[dict]:
+    """
+    Retorna los alumnos registrados en un evento que no están inscritos en ningún proyecto.
+    """
+    # 1. Obtener todos los alumnos registrados en el evento
+    result = await db.execute(
+        select(Usuario)
+        .join(UsuarioEvento, Usuario.id_matricula == UsuarioEvento.id_matricula)
+        .where(UsuarioEvento.id_evento == id_evento)
+        .order_by(Usuario.nombre)
+    )
+    alumnos = result.scalars().all()
+
+    # 2. Obtener todos los alumnos inscritos en proyectos de este evento
+    ins_result = await db.execute(
+        select(Inscripcion.id_matricula.distinct()).where(
+            Inscripcion.id_evento == id_evento
+        )
+    )
+    inscritos = {row[0] for row in ins_result.all()}
+
+    # 3. Retornar solo los que no están inscritos
+    return [
+        {
+            "id_matricula": a.id_matricula,
+            "nombre": a.nombre,
+            "carrera": a.carrera,
+            "semestre": a.semestre,
+            "correo": a.correo,
+        }
+        for a in alumnos
+        if a.id_matricula not in inscritos
+    ]
+
+
+async def crear_inscripcion(
+    db: AsyncSession,
+    id_matricula: str,
+    id_proyecto: int,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """
+    Crea una nueva inscripción de alumno en un proyecto.
+    Valida que el alumno existe, está registrado en el evento y tiene cupo disponible.
+    """
+    from fastapi import HTTPException
+
+    # 1. Verificar que el alumno existe
+    result = await db.execute(
+        select(Usuario).where(Usuario.id_matricula == id_matricula)
+    )
+    alumno = result.scalar_one_or_none()
+    if not alumno:
+        raise HTTPException(status_code=404, detail=f"Alumno {id_matricula} no encontrado")
+
+    # 2. Verificar que el proyecto existe
+    result = await db.execute(
+        select(Proyecto)
+        .options(selectinload(Proyecto.empresa), selectinload(Proyecto.evento))
+        .where(Proyecto.id_proyecto == id_proyecto)
+    )
+    proyecto = result.scalar_one_or_none()
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    # 3. Verificar que el alumno está registrado en el evento
+    ue_result = await db.execute(
+        select(UsuarioEvento).where(
+            UsuarioEvento.id_matricula == id_matricula,
+            UsuarioEvento.id_evento == proyecto.id_evento,
+        )
+    )
+    if not ue_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"El alumno {id_matricula} no está registrado en el evento",
+        )
+
+    # 4. Verificar que no está ya inscrito en otro proyecto del mismo evento
+    ins_result = await db.execute(
+        select(Inscripcion).where(
+            Inscripcion.id_matricula == id_matricula,
+            Inscripcion.id_evento == proyecto.id_evento,
+        )
+    )
+    if ins_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"El alumno ya está inscrito en un proyecto de este evento",
+        )
+
+    # 5. Verificar que el proyecto tiene cupo disponible
+    if proyecto.cupo_actual >= proyecto.capacidad_max:
+        raise HTTPException(
+            status_code=400,
+            detail="El proyecto está lleno. No hay cupo disponible",
+        )
+
+    # 6. Crear la inscripción
+    inscripcion = Inscripcion(
+        id_inscripcion=uuid.uuid4(),
+        id_matricula=id_matricula,
+        id_proyecto=id_proyecto,
+        id_evento=proyecto.id_evento,
+    )
+    proyecto.cupo_actual += 1
+    db.add(inscripcion)
+
+    # 7. Registrar en auditoría
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_CREADA_ADMIN",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Admin agregó inscripción de {id_matricula} ({alumno.nombre}) "
+                f"al proyecto {proyecto.id_proyecto} ({proyecto.nombre_proyecto})"
+            ),
+        )
+    )
+
+    await db.commit()
+    await db.refresh(proyecto)
+
+    return {
+        "ok": True,
+        "mensaje": f"{alumno.nombre} ha sido inscrito exitosamente",
+        "id_inscripcion": str(inscripcion.id_inscripcion),
+        "id_proyecto": proyecto.id_proyecto,
+        "nombre_alumno": alumno.nombre,
+        "cupo_actual": proyecto.cupo_actual,
+        "capacidad_max": proyecto.capacidad_max,
     }

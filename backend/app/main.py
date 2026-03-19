@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.ssh_manager import ssh_tunnel_manager
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
-from app.routers import auth, alumno, admin, empresa
+from app.routers import auth, alumno, admin, empresa, estadisticas
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -118,6 +118,7 @@ app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
+app.include_router(estadisticas.router, tags=["Estadisticas"])
 
 # Servir Frontend compilado (React SPA) en la raíz
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
