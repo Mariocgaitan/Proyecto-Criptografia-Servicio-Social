@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { motion, AnimatePresence } from "framer-motion";
 import { apiUrl } from "@/lib/api";
 import EstadisticasPanel from "./EstadisticasPanel";
+import SystemDashboardPanel from "./SystemDashboardPanel";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
@@ -187,7 +188,7 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
@@ -496,11 +497,11 @@ export default function AdminDashboard() {
   const sectionMeta = {
     overview: {
       title: "Dashboard",
-      description: "Resumen general del sistema",
+      description: "Observabilidad del sistema: salud, requests, latencia y actividad de login",
     },
     estadisticas: {
       title: "Estadísticas",
-      description: "Métricas operativas y tendencias del evento activo",
+      description: "Métricas de negocio con vistas General y Particular",
     },
     proyectos: {
       title: "Directorio de Proyectos",
@@ -866,78 +867,7 @@ export default function AdminDashboard() {
                 transition={{ duration: 0.25 }}
                 className="space-y-8"
               >
-                {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  <StatCard icon={BarChart3} label="Total Proyectos" value={proyectos.length} subtitle={`${totalCapacidad} plazas totales`} color="orange" index={0} />
-                  <StatCard icon={Building2} label="Empresas" value={empresas.length} subtitle="Socios formadores activos" color="blue" index={1} />
-                  <StatCard icon={Calendar} label="Eventos Activos" value={eventosActivos} subtitle={`de ${eventos.length} registrados`} color="teal" index={2} />
-                  <StatCard icon={Users} label="Alumnos Inscritos" value={totalAlumnos} subtitle={`de ${totalCapacidad} capacidad`} color="purple" index={3} />
-                </div>
-
-                {/* Chart Placeholders */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <ChartPlaceholder title="Ocupación por Proyecto" icon={BarChart3} />
-                  <ChartPlaceholder title="Distribución por Empresa" icon={PieChart} />
-                  <ChartPlaceholder title="Tendencia de Inscripciones" icon={Activity} />
-                </div>
-
-                {/* Project Summary Table */}
-                {activeSection === "overview" ? (
-                <div className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden">
-                  <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                    <h3 className="font-semibold text-white">Resumen de Proyectos</h3>
-                    <button
-                      onClick={() => setActiveSection("proyectos")}
-                      className="text-xs text-blue-300 hover:text-blue-200 font-medium flex items-center gap-1 transition-colors"
-                    >
-                      Ver todos <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b border-white/10">
-                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-6 py-3 text-white/55">Proyecto</th>
-                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-4 py-3 text-white/55">Empresa</th>
-                          <th className="text-left text-[11px] font-semibold uppercase tracking-wider px-4 py-3 text-white/55">Ocupación</th>
-                          <th className="text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3 text-white/55">Estatus</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredProyectos.slice(0, 5).map((p) => (
-                          <tr key={p.id_proyecto} className="border-b last:border-0 border-white/10 transition-colors hover:bg-white/[0.03]">
-                            <td className="px-6 py-3.5">
-                              <p className="text-sm font-semibold text-white">{p.nombre_proyecto}</p>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <p className="text-sm text-white/70">{p.empresa}</p>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <OccupancyBar current={p.cupo_actual} max={p.capacidad_max} />
-                            </td>
-                            <td className="px-4 py-3.5 text-center">
-                              {p.cupo_actual >= p.capacidad_max ? (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full text-red-300 bg-red-500/10 border border-red-500/25">
-                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
-                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {!filteredProyectos.length && (
-                          <tr>
-                            <td colSpan={4} className="text-center py-12 text-sm text-white/45">{q ? 'Sin resultados para la búsqueda.' : 'No hay proyectos registrados aún.'}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-                ) : null}
+                <SystemDashboardPanel />
               </motion.div>
             )}
 

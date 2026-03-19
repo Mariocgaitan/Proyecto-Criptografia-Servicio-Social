@@ -42,6 +42,7 @@ async def get_kpis(
     evento_id: int | None = None,
     fecha_inicio: date | None = None,
     fecha_fin: date | None = None,
+    include_security_metrics: bool = True,
 ) -> dict:
     selected_evento_id = await _resolve_evento_id(db, evento_id)
     start_dt, end_dt = _normalize_date_range(fecha_inicio, fecha_fin)
@@ -91,15 +92,17 @@ async def get_kpis(
         ).one()
         ocupacion_promedio = round((float(sum_cupo) / float(sum_capacidad)) * 100, 2) if sum_capacidad else 0.0
 
-    login_fallidos_7d = int(
-        await db.scalar(
-            select(func.count(LogAuditoria.id_log)).where(
-                LogAuditoria.tipo_evento == "LOGIN_FALLIDO",
-                LogAuditoria.timestamp >= (datetime.now(UTC) - timedelta(days=7)),
+    login_fallidos_7d = 0
+    if include_security_metrics:
+        login_fallidos_7d = int(
+            await db.scalar(
+                select(func.count(LogAuditoria.id_log)).where(
+                    LogAuditoria.tipo_evento == "LOGIN_FALLIDO",
+                    LogAuditoria.timestamp >= (datetime.now(UTC) - timedelta(days=7)),
+                )
             )
+            or 0
         )
-        or 0
-    )
 
     return {
         "evento_id": selected_evento_id,
@@ -109,6 +112,118 @@ async def get_kpis(
         "en_lista_espera": total_espera,
         "empresas_participantes": total_empresas,
         "intentos_login_fallido_7d": login_fallidos_7d,
+    }
+
+
+async def get_general_contract(
+    db: AsyncSession,
+    evento_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    timeline_ventana: str = "24h",
+) -> dict:
+    kpis = await get_kpis(
+        db,
+        evento_id=evento_id,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        include_security_metrics=False,
+    )
+    ocupacion_eventos = await get_ocupacion_eventos(db, evento_id)
+    alumnos_por_carrera = await get_alumnos_por_carrera(db, evento_id, None)
+    tendencia = await get_inscripciones_timeline(
+        db,
+        evento_id=evento_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        ventana=timeline_ventana,
+    )
+
+    return {
+        "filtros_aplicados": {
+            "evento_id": evento_id,
+            "carrera": carrera,
+            "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+            "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
+            "timeline_ventana": timeline_ventana,
+        },
+        "kpis": {
+            "total_alumnos_registrados": kpis.get("total_alumnos_registrados", 0),
+            "total_inscritos": kpis.get("total_inscritos", 0),
+            "ocupacion_promedio": kpis.get("ocupacion_promedio", 0),
+            "en_lista_espera": kpis.get("en_lista_espera", 0),
+            "empresas_participantes": kpis.get("empresas_participantes", 0),
+        },
+        "series": {
+            "ocupacion_eventos": ocupacion_eventos,
+            "alumnos_por_carrera": alumnos_por_carrera,
+            "inscripciones_timeline": tendencia,
+        },
+    }
+
+
+async def get_particular_contract(
+    db: AsyncSession,
+    evento_id: int | None = None,
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    timeline_ventana: str = "24h",
+) -> dict:
+    kpis = await get_kpis(
+        db,
+        evento_id=evento_id,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        include_security_metrics=False,
+    )
+
+    proyectos_cupo = await get_proyectos_cupo(db, evento_id=evento_id, empresa_id=empresa_id)
+    if proyecto_id is not None:
+        proyectos_cupo = [item for item in proyectos_cupo if int(item.get("id_proyecto", 0)) == proyecto_id]
+
+    alumnos_empresa = await get_alumnos_por_empresa(db, evento_id)
+    ratio = await get_ratio_inscritos(db, evento_id=evento_id, empresa_id=empresa_id, carrera=carrera)
+    if proyecto_id is not None:
+        ratio = [item for item in ratio if int(item.get("id_proyecto", 0)) == proyecto_id]
+
+    timeline = await get_inscripciones_timeline(
+        db,
+        evento_id=evento_id,
+        empresa_id=empresa_id,
+        proyecto_id=proyecto_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        ventana=timeline_ventana,
+    )
+
+    return {
+        "filtros_aplicados": {
+            "evento_id": evento_id,
+            "empresa_id": empresa_id,
+            "proyecto_id": proyecto_id,
+            "carrera": carrera,
+            "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
+            "fecha_fin": fecha_fin.isoformat() if fecha_fin else None,
+            "timeline_ventana": timeline_ventana,
+        },
+        "resumen": {
+            "total_alumnos_registrados": kpis.get("total_alumnos_registrados", 0),
+            "total_inscritos": kpis.get("total_inscritos", 0),
+            "ocupacion_promedio": kpis.get("ocupacion_promedio", 0),
+            "en_lista_espera": kpis.get("en_lista_espera", 0),
+        },
+        "series": {
+            "proyectos_cupo": proyectos_cupo,
+            "alumnos_por_empresa": alumnos_empresa,
+            "ratio_inscritos": ratio,
+            "inscripciones_timeline": timeline,
+        },
     }
 
 
@@ -341,58 +456,165 @@ async def get_tendencia_espera(
     return response
 
 
+def _resolve_timeline_window(ventana: str | None, horas: int | None = None) -> tuple[str, int, int]:
+    if horas is not None:
+        bounded = max(1, min(horas, 24 * 30))
+        if bounded <= 1:
+            return "1h", 60, 5
+        if bounded <= 24:
+            return "24h", 24 * 60, 60
+        if bounded <= 24 * 7:
+            return "7d", 24 * 7 * 60, 6 * 60
+        return "30d", 24 * 30 * 60, 24 * 60
+
+    key = (ventana or "24h").strip().lower()
+    mapping = {
+        "1h": (60, 5),
+        "24h": (24 * 60, 60),
+        "1d": (24 * 60, 60),
+        "7d": (24 * 7 * 60, 6 * 60),
+        "1w": (24 * 7 * 60, 6 * 60),
+        "30d": (24 * 30 * 60, 24 * 60),
+        "1m": (24 * 30 * 60, 24 * 60),
+    }
+    minutes, step = mapping.get(key, mapping["24h"])
+    normalized = "24h" if key not in mapping else key
+    if normalized == "1d":
+        normalized = "24h"
+    if normalized == "1w":
+        normalized = "7d"
+    if normalized == "1m":
+        normalized = "30d"
+    return normalized, minutes, step
+
+
+def _bucket_floor(ts: datetime, step_minutes: int) -> datetime:
+    ts_utc = ts.astimezone(UTC)
+    ts_utc = ts_utc.replace(second=0, microsecond=0)
+    total_minutes = ts_utc.hour * 60 + ts_utc.minute
+    floored_minutes = (total_minutes // step_minutes) * step_minutes
+    hour = floored_minutes // 60
+    minute = floored_minutes % 60
+    return ts_utc.replace(hour=hour, minute=minute)
+
+
 async def get_inscripciones_timeline(
     db: AsyncSession,
     evento_id: int | None = None,
-    horas: int = 48,
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    horas: int | None = None,
+    ventana: str = "24h",
 ) -> list[dict]:
-    horas = max(12, min(horas, 168))
-    now = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
-    start_dt = now - timedelta(hours=horas)
+    _, window_minutes, step_minutes = _resolve_timeline_window(ventana=ventana, horas=horas)
+    now = datetime.now(UTC).replace(second=0, microsecond=0)
+    start_dt = now - timedelta(minutes=window_minutes)
+    end_dt = now
 
-    filters = [Inscripcion.timestamp >= start_dt]
+    if fecha_inicio is not None:
+        explicit_start = datetime.combine(fecha_inicio, datetime.min.time(), tzinfo=UTC)
+        start_dt = max(start_dt, explicit_start)
+    if fecha_fin is not None:
+        explicit_end = datetime.combine(fecha_fin, datetime.max.time(), tzinfo=UTC)
+        end_dt = min(end_dt, explicit_end)
+
+    if start_dt > end_dt:
+        return []
+
+    start_bucket = _bucket_floor(start_dt, step_minutes)
+    end_bucket = _bucket_floor(end_dt, step_minutes)
+
+    filters = [Inscripcion.timestamp >= start_dt, Inscripcion.timestamp <= end_dt]
+    base_filters = []
     if evento_id is not None:
         filters.append(Inscripcion.id_evento == evento_id)
+        base_filters.append(Inscripcion.id_evento == evento_id)
 
+    needs_proyecto_join = empresa_id is not None
+    if empresa_id is not None:
+        filters.append(Proyecto.id_empresa == empresa_id)
+        base_filters.append(Proyecto.id_empresa == empresa_id)
+    if proyecto_id is not None:
+        filters.append(Inscripcion.id_proyecto == proyecto_id)
+        base_filters.append(Inscripcion.id_proyecto == proyecto_id)
+
+    needs_usuario_join = carrera is not None
+    if carrera is not None:
+        filters.append(Usuario.carrera == carrera)
+        base_filters.append(Usuario.carrera == carrera)
+
+    count_stmt = select(func.count(Inscripcion.id_inscripcion)).select_from(Inscripcion)
+    if needs_proyecto_join:
+        count_stmt = count_stmt.join(Proyecto, Proyecto.id_proyecto == Inscripcion.id_proyecto)
+    if needs_usuario_join:
+        count_stmt = count_stmt.join(Usuario, Usuario.id_matricula == Inscripcion.id_matricula)
+    current_total = int(await db.scalar(count_stmt.where(*base_filters)) or 0)
+
+    timeline_stmt = select(Inscripcion.timestamp).select_from(Inscripcion)
+    if needs_proyecto_join:
+        timeline_stmt = timeline_stmt.join(Proyecto, Proyecto.id_proyecto == Inscripcion.id_proyecto)
+    if needs_usuario_join:
+        timeline_stmt = timeline_stmt.join(Usuario, Usuario.id_matricula == Inscripcion.id_matricula)
     rows = (
         await db.execute(
-            select(Inscripcion.timestamp)
+            timeline_stmt
             .where(*filters)
             .order_by(Inscripcion.timestamp.asc())
         )
     ).scalars().all()
 
-    # Agrupación en buckets de 2 horas para evitar ruido visual.
-    bucket_counts: dict[datetime, int] = defaultdict(int)
+    positivos_en_ventana = len(rows)
+
+    # Para reflejar "bajones" tras eliminaciones recientes (como en vista trading),
+    # se incorporan deltas negativos desde auditoría en el mismo timeline.
+    deleted_events = []
+    if empresa_id is None and proyecto_id is None and carrera is None:
+        deleted_events = (
+            await db.execute(
+                select(LogAuditoria.timestamp)
+                .where(
+                    LogAuditoria.timestamp >= start_dt,
+                    LogAuditoria.timestamp <= end_dt,
+                    LogAuditoria.tipo_evento.in_(["INSCRIPCION_ELIMINADA_ADMIN", "INSCRIPCION_ELIMINADA_EMPRESA"]),
+                )
+                .order_by(LogAuditoria.timestamp.asc())
+            )
+        ).scalars().all()
+
+    negativos_en_ventana = len(deleted_events)
+
+    bucket_delta: dict[datetime, int] = defaultdict(int)
     for ts in rows:
         if ts is None:
             continue
-        ts_utc = ts.astimezone(UTC)
-        hour = ts_utc.replace(minute=0, second=0, microsecond=0)
-        bucket_hour = hour - timedelta(hours=hour.hour % 2)
-        bucket_counts[bucket_hour] += 1
+        bucket_delta[_bucket_floor(ts, step_minutes)] += 1
+
+    for ts in deleted_events:
+        if ts is None:
+            continue
+        bucket_delta[_bucket_floor(ts, step_minutes)] -= 1
+
+    baseline = max(current_total - positivos_en_ventana + negativos_en_ventana, 0)
 
     response = []
-    acumulado = 0
-    cursor = start_dt
-    while cursor <= now:
-        bucket_start = cursor - timedelta(hours=cursor.hour % 2)
-        cantidad = bucket_counts.get(bucket_start, 0)
-        acumulado += cantidad
+    acumulado = baseline
+    cursor = start_bucket
+    while cursor <= end_bucket:
+        delta = bucket_delta.get(cursor, 0)
+        acumulado = max(acumulado + delta, 0)
         response.append(
             {
-                "timestamp": bucket_start.isoformat(),
-                "cantidad_nueva": cantidad,
+                "timestamp": cursor.isoformat(),
+                "cantidad_nueva": delta,
                 "acumulado": acumulado,
             }
         )
-        cursor += timedelta(hours=2)
+        cursor += timedelta(minutes=step_minutes)
 
-    dedup: dict[str, dict] = {}
-    for item in response:
-        dedup[item["timestamp"]] = item
-
-    return [dedup[key] for key in sorted(dedup.keys())]
+    return response
 
 async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     # Total eventos en los que el alumno se ha registrado.

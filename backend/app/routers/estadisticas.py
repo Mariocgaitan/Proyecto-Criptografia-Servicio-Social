@@ -72,11 +72,27 @@ async def api_tendencia_espera(
 @router.get("/api/v1/admin/estadisticas/inscripciones-timeline", tags=["Admin", "Estadisticas"])
 async def api_inscripciones_timeline(
     evento_id: int | None = None,
-    horas: int = Query(default=48, ge=12, le=168),
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    horas: int | None = Query(default=None, ge=1, le=720),
+    ventana: str = Query(default="24h"),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_inscripciones_timeline(db, evento_id, horas)
+    return await estadisticas_service.get_inscripciones_timeline(
+        db,
+        evento_id=evento_id,
+        empresa_id=empresa_id,
+        proyecto_id=proyecto_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        horas=horas,
+        ventana=ventana,
+    )
 
 
 @router.get("/api/v1/admin/estadisticas/reinscripcion-scatter", tags=["Admin", "Estadisticas"])
@@ -116,3 +132,47 @@ async def api_logs_recientes(
     _=Depends(get_current_admin),
 ):
     return await estadisticas_service.get_logs_recientes(db, limite)
+
+
+@router.get("/api/v1/admin/estadisticas/general", tags=["Admin", "Estadisticas"])
+async def api_estadisticas_general(
+    evento_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    timeline_ventana: str = Query(default="24h"),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_general_contract(
+        db,
+        evento_id=evento_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        timeline_ventana=timeline_ventana,
+    )
+
+
+@router.get("/api/v1/admin/estadisticas/particular", tags=["Admin", "Estadisticas"])
+async def api_estadisticas_particular(
+    evento_id: int | None = None,
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    timeline_ventana: str = Query(default="24h"),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_particular_contract(
+        db,
+        evento_id=evento_id,
+        empresa_id=empresa_id,
+        proyecto_id=proyecto_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+        timeline_ventana=timeline_ventana,
+    )
