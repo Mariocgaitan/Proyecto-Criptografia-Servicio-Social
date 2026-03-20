@@ -761,7 +761,6 @@ export default function EmpresaEscaner() {
                     <StatCard label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
                     <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} tone="success" />
                     <StatCard label="Capacidad total" value={proyecto.capacidad_max} tone="accent" />
-                    <StatCard label="Lista de espera" value={proyecto.capacidad_espera_max ?? 0} tone="warn" />
                   </div>
                 </div>
               </div>

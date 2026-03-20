@@ -7,9 +7,19 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchWithTimeout = async (url, options = {}, timeoutMs = 6000) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetch(url, { ...options, signal: controller.signal });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   const fetchUser = async () => {
     try {
-      const res = await fetch(apiUrl("/api/v1/auth/me"), {
+      const res = await fetchWithTimeout(apiUrl("/api/v1/auth/me"), {
         credentials: "include",
       });
       if (res.ok) {

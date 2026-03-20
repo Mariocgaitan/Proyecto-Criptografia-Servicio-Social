@@ -59,16 +59,6 @@ async def api_alumnos_por_carrera(
     return await estadisticas_service.get_alumnos_por_carrera(db, evento_id, carrera)
 
 
-@router.get("/api/v1/admin/estadisticas/tendencia-espera", tags=["Admin", "Estadisticas"])
-async def api_tendencia_espera(
-    evento_id: int | None = None,
-    dias: int = Query(default=13, ge=3, le=60),
-    db: AsyncSession = Depends(get_db),
-    _=Depends(get_current_admin),
-):
-    return await estadisticas_service.get_tendencia_espera(db, evento_id, dias)
-
-
 @router.get("/api/v1/admin/estadisticas/inscripciones-timeline", tags=["Admin", "Estadisticas"])
 async def api_inscripciones_timeline(
     evento_id: int | None = None,
@@ -125,6 +115,28 @@ async def api_ratio_inscritos(
     return await estadisticas_service.get_ratio_inscritos(db, evento_id, empresa_id, carrera)
 
 
+@router.get("/api/v1/admin/estadisticas/embudo-conversion", tags=["Admin", "Estadisticas"])
+async def api_embudo_conversion(
+    evento_id: int | None = None,
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    carrera: str | None = None,
+    fecha_inicio: date | None = None,
+    fecha_fin: date | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_embudo_conversion(
+        db,
+        evento_id=evento_id,
+        empresa_id=empresa_id,
+        proyecto_id=proyecto_id,
+        carrera=carrera,
+        fecha_inicio=fecha_inicio,
+        fecha_fin=fecha_fin,
+    )
+
+
 @router.get("/api/v1/admin/estadisticas/logs-recientes", tags=["Admin", "Estadisticas"])
 async def api_logs_recientes(
     limite: int = Query(default=10, ge=1, le=50),
@@ -132,6 +144,26 @@ async def api_logs_recientes(
     _=Depends(get_current_admin),
 ):
     return await estadisticas_service.get_logs_recientes(db, limite)
+
+
+@router.get("/api/v1/admin/estadisticas/alertas-proyectos", tags=["Admin", "Estadisticas"])
+async def api_alertas_proyectos(
+    evento_id: int | None = None,
+    empresa_id: int | None = None,
+    proyecto_id: int | None = None,
+    min_ocupacion_pct: float = Query(default=40.0, ge=0, le=100),
+    ocupacion_alta_pct: float = Query(default=90.0, ge=0, le=100),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_alertas_proyectos(
+        db,
+        evento_id=evento_id,
+        empresa_id=empresa_id,
+        proyecto_id=proyecto_id,
+        min_ocupacion_pct=min_ocupacion_pct,
+        ocupacion_alta_pct=ocupacion_alta_pct,
+    )
 
 
 @router.get("/api/v1/admin/estadisticas/general", tags=["Admin", "Estadisticas"])

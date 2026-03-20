@@ -19,6 +19,16 @@ import { RefreshCw } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 const CHART_COLORS = ["#0ea5e9", "#22c55e", "#f59e0b", "#ef4444", "#14b8a6", "#f97316"];
+const DARK_TOOLTIP_PROPS = {
+  contentStyle: {
+    backgroundColor: "#020617",
+    border: "1px solid rgba(148, 163, 184, 0.35)",
+    borderRadius: "10px",
+    color: "#e2e8f0",
+  },
+  itemStyle: { color: "#e2e8f0" },
+  labelStyle: { color: "#f8fafc" },
+};
 
 function KpiCard({ label, value, helper }) {
   return (
@@ -30,9 +40,9 @@ function KpiCard({ label, value, helper }) {
   );
 }
 
-function ChartCard({ title, children }) {
+function ChartCard({ title, children, className = "" }) {
   return (
-    <div className="rounded-2xl border border-white/15 bg-black/35 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+    <div className={`rounded-2xl border border-white/15 bg-black/35 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] ${className}`}>
       <h3 className="mb-3 text-sm font-semibold text-white/90">{title}</h3>
       <div className="h-72">{children}</div>
     </div>
@@ -48,6 +58,14 @@ function formatUptime(seconds) {
   return `${hours}h ${mins}m`;
 }
 
+function logBadgeClass(tipo = "") {
+  const t = (tipo || "").toLowerCase();
+  if (t.startsWith("inscripcion_")) return "border-blue-400/30 bg-blue-500/15 text-blue-100";
+  if (t.startsWith("cancelacion_") || t.includes("eliminada")) return "border-red-400/30 bg-red-500/15 text-red-100";
+  if (t.startsWith("error_") || t.includes("error")) return "border-red-500/40 bg-red-600/20 text-red-100";
+  return "border-white/20 bg-white/10 text-white/85";
+}
+
 export default function SystemDashboardPanel() {
   const [windowMinutes, setWindowMinutes] = useState("60");
   const [loading, setLoading] = useState(false);
@@ -58,6 +76,7 @@ export default function SystemDashboardPanel() {
   const [statusDist, setStatusDist] = useState([]);
   const [latency, setLatency] = useState(null);
   const [logins, setLogins] = useState({ totales: null, series: [] });
+  const [auditLogs, setAuditLogs] = useState([]);
 
   const windowQuery = useMemo(
     () => new URLSearchParams({ ventana_minutos: windowMinutes }).toString(),
@@ -70,24 +89,26 @@ export default function SystemDashboardPanel() {
     try {
       const endpoint = (path) => apiUrl(`${path}?${windowQuery}`);
 
-      const [summaryRes, rpmRes, statusRes, latencyRes, loginsRes] = await Promise.all([
+      const [summaryRes, rpmRes, statusRes, latencyRes, loginsRes, logsRes] = await Promise.all([
         fetch(endpoint("/api/v1/admin/sistema/resumen"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/requests-por-minuto"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/status-distribucion"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/latencia"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/logins"), { credentials: "include" }),
+        fetch(apiUrl("/api/v1/admin/estadisticas/logs-recientes?limite=25"), { credentials: "include" }),
       ]);
 
-      if (!summaryRes.ok || !rpmRes.ok || !statusRes.ok || !latencyRes.ok || !loginsRes.ok) {
+      if (!summaryRes.ok || !rpmRes.ok || !statusRes.ok || !latencyRes.ok || !loginsRes.ok || !logsRes.ok) {
         throw new Error("No se pudieron cargar las métricas del sistema.");
       }
 
-      const [summaryData, rpmData, statusData, latencyData, loginsData] = await Promise.all([
+      const [summaryData, rpmData, statusData, latencyData, loginsData, logsData] = await Promise.all([
         summaryRes.json(),
         rpmRes.json(),
         statusRes.json(),
         latencyRes.json(),
         loginsRes.json(),
+        logsRes.json(),
       ]);
 
       setSummary(summaryData || null);
@@ -95,6 +116,7 @@ export default function SystemDashboardPanel() {
       setStatusDist(statusData?.items || []);
       setLatency(latencyData || null);
       setLogins(loginsData || { totales: null, series: [] });
+      setAuditLogs(Array.isArray(logsData) ? logsData : Array.isArray(logsData?.logs) ? logsData.logs : []);
     } catch (err) {
       setError(err.message || "Error cargando métricas del sistema.");
     } finally {
@@ -169,7 +191,7 @@ export default function SystemDashboardPanel() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
                 <XAxis dataKey="minute" hide />
                 <YAxis stroke="#cbd5e1" fontSize={11} />
-                <Tooltip />
+                <Tooltip {...DARK_TOOLTIP_PROPS} />
                 <Line type="monotone" dataKey="requests" name="Requests" stroke="#0ea5e9" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -183,7 +205,7 @@ export default function SystemDashboardPanel() {
                     <Cell key={`status-${idx}`} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip {...DARK_TOOLTIP_PROPS} />
                 <Legend />
               </PieChart>
             </ResponsiveContainer>
@@ -202,7 +224,7 @@ export default function SystemDashboardPanel() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
                 <XAxis dataKey="name" stroke="#cbd5e1" fontSize={11} />
                 <YAxis stroke="#cbd5e1" fontSize={11} />
-                <Tooltip />
+                <Tooltip {...DARK_TOOLTIP_PROPS} />
                 <Bar dataKey="valor" fill="#22c55e" name="Latencia ms" />
               </BarChart>
             </ResponsiveContainer>
@@ -214,7 +236,7 @@ export default function SystemDashboardPanel() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff22" />
                 <XAxis dataKey="minute" hide />
                 <YAxis stroke="#cbd5e1" fontSize={11} />
-                <Tooltip />
+                <Tooltip {...DARK_TOOLTIP_PROPS} />
                 <Legend />
                 <Line type="monotone" dataKey="logins_exitosos" stroke="#22c55e" name="Exitosos" strokeWidth={2} dot={false} />
                 <Line type="monotone" dataKey="logins_fallidos" stroke="#ef4444" name="Fallidos" strokeWidth={2} dot={false} />
@@ -224,6 +246,41 @@ export default function SystemDashboardPanel() {
               <div>Exitosos: <span className="font-semibold text-white">{logins?.totales?.logins_exitosos ?? 0}</span></div>
               <div>Fallidos: <span className="font-semibold text-white">{logins?.totales?.logins_fallidos ?? 0}</span></div>
             </div>
+          </ChartCard>
+
+          <ChartCard title="Logs de Auditoría Recientes" className="xl:col-span-2">
+            {!auditLogs.length ? (
+              <div className="h-full rounded-lg border border-white/10 bg-black/25 px-4 py-8 text-center text-white/70">
+                Sin logs recientes para mostrar.
+              </div>
+            ) : (
+              <div className="h-full overflow-auto rounded-lg border border-white/10">
+                <table className="min-w-full text-left text-xs">
+                  <thead className="bg-white/5 text-white/65">
+                    <tr>
+                      <th className="px-3 py-2 font-semibold">Fecha</th>
+                      <th className="px-3 py-2 font-semibold">Tipo</th>
+                      <th className="px-3 py-2 font-semibold">Matrícula</th>
+                      <th className="px-3 py-2 font-semibold">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id_log} className="border-t border-white/10">
+                        <td className="px-3 py-2 text-white/75">{log.timestamp ? new Date(log.timestamp).toLocaleString("es-MX") : "-"}</td>
+                        <td className="px-3 py-2">
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${logBadgeClass(log.tipo_evento)}`}>
+                            {log.tipo_evento || "N/A"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-white/75">{log.id_matricula || "-"}</td>
+                        <td className="px-3 py-2 text-white/75">{log.ip_origen || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </ChartCard>
         </div>
       )}

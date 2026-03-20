@@ -119,20 +119,20 @@ EMPRESAS_DATA = [
 ]
 
 # Proyectos por empresa (se asignarán al evento activo FEB_JUN 2026)
-# Formato: (nombre_empresa, nombre_proyecto, descripcion, capacidad_max, lista_espera_max)
+# Formato: (nombre_empresa, nombre_proyecto, descripcion, capacidad_max)
 PROYECTOS_TEMPLATE = [
-    ("Cemex",             "Optimización logística con IA",              "Aplicación de machine learning para rutas de distribución.",              5, 3),
-    ("Cemex",             "Gestión de inventario digital",              "Sistema ERP para plantas cementeras.",                                    4, 2),
-    ("Grupo Bimbo",       "Análisis de cadena de suministro",           "Modelado matemático de flujos de producción y distribución.",              6, 3),
-    ("Grupo Bimbo",       "Automatización de líneas de empaque",        "Integración de visión artificial en líneas industriales.",                 4, 2),
-    ("FEMSA",             "Digitalización de puntos de venta OXXO",    "App interna de gestión para tiendas de conveniencia.",                     5, 2),
-    ("FEMSA",             "Plataforma de lealtad y datos",              "Sistema de analítica de comportamiento de clientes.",                      5, 3),
-    ("Banorte",           "Detección de fraude en tiempo real",         "Modelos predictivos sobre transacciones bancarias.",                       4, 2),
-    ("Banorte",           "Open Banking API",                           "Desarrollo de endpoints seguros para integración de terceros.",            3, 2),
-    ("Arca Continental",  "Transformación digital de distribuidoras",   "Modernización de sistemas legados para red de distribución.",              5, 3),
-    ("Arca Continental",  "Dashboard de ventas y KPIs",                 "Plataforma BI con datos en tiempo real.",                                  5, 2),
-    ("Axtel (TotalPlay)", "Automatización de redes de fibra óptica",   "Herramientas de monitoreo y gestión de infraestructura.",                  4, 2),
-    ("Axtel (TotalPlay)", "Portal de atención a clientes",              "Sistema multicanal de soporte técnico y facturación.",                     4, 2),
+    ("Cemex",             "Optimización logística con IA",              "Aplicación de machine learning para rutas de distribución.",              5),
+    ("Cemex",             "Gestión de inventario digital",              "Sistema ERP para plantas cementeras.",                                    4),
+    ("Grupo Bimbo",       "Análisis de cadena de suministro",           "Modelado matemático de flujos de producción y distribución.",              6),
+    ("Grupo Bimbo",       "Automatización de líneas de empaque",        "Integración de visión artificial en líneas industriales.",                 4),
+    ("FEMSA",             "Digitalización de puntos de venta OXXO",    "App interna de gestión para tiendas de conveniencia.",                     5),
+    ("FEMSA",             "Plataforma de lealtad y datos",              "Sistema de analítica de comportamiento de clientes.",                      5),
+    ("Banorte",           "Detección de fraude en tiempo real",         "Modelos predictivos sobre transacciones bancarias.",                       4),
+    ("Banorte",           "Open Banking API",                           "Desarrollo de endpoints seguros para integración de terceros.",            3),
+    ("Arca Continental",  "Transformación digital de distribuidoras",   "Modernización de sistemas legados para red de distribución.",              5),
+    ("Arca Continental",  "Dashboard de ventas y KPIs",                 "Plataforma BI con datos en tiempo real.",                                  5),
+    ("Axtel (TotalPlay)", "Automatización de redes de fibra óptica",   "Herramientas de monitoreo y gestión de infraestructura.",                  4),
+    ("Axtel (TotalPlay)", "Portal de atención a clientes",              "Sistema multicanal de soporte técnico y facturación.",                     4),
 ]
 
 # ────────────────────────────────────────────────────────────────────────────────
@@ -231,7 +231,7 @@ async def seed_proyectos(
             return
 
         proyectos = []
-        for nombre_empresa, nombre_proj, desc, cap, espera in PROYECTOS_TEMPLATE:
+        for nombre_empresa, nombre_proj, desc, cap in PROYECTOS_TEMPLATE:
             empresa = empresas.get(nombre_empresa)
             if not empresa:
                 print(f"⚠️  Empresa '{nombre_empresa}' no encontrada, saltando proyecto.")
@@ -244,7 +244,6 @@ async def seed_proyectos(
                     descripcion=desc,
                     capacidad_max=cap,
                     cupo_actual=0,
-                    capacidad_espera_max=espera,
                 )
             )
 

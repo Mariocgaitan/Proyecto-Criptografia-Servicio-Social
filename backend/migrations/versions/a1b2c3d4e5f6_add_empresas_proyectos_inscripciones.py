@@ -44,7 +44,6 @@ def upgrade() -> None:
         sa.Column('descripcion', sa.Text(), nullable=True),
         sa.Column('capacidad_max', sa.Integer(), nullable=False),
         sa.Column('cupo_actual', sa.Integer(), nullable=False, server_default='0'),
-        sa.Column('capacidad_espera_max', sa.Integer(), nullable=False, server_default='0'),
         sa.Column(
             'created_at',
             sa.DateTime(timezone=True),

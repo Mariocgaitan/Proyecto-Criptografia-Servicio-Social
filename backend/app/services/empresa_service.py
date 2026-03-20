@@ -97,7 +97,6 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
         "semestre": semestre,
         "evento_activo": evento.activo,
         "capacidad_max": proyecto.capacidad_max,
-        "capacidad_espera_max": proyecto.capacidad_espera_max,
         "cupo_actual": proyecto.cupo_actual,
         "inscripciones_totales": len(inscripciones),
         "cupos_disponibles": max(0, proyecto.capacidad_max - proyecto.cupo_actual),

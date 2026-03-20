@@ -26,7 +26,6 @@ class ProyectoCreate(BaseModel):
     nombre_proyecto: str
     descripcion: str | None = None
     capacidad_max: int
-    capacidad_espera_max: int = 0
 
 
 class CapacidadUpdate(BaseModel):
@@ -66,7 +65,7 @@ async def api_ampliar_cupo(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    """Amplía la capacidad de un proyecto y promueve alumnos de lista de espera."""
+    """Amplía la capacidad de un proyecto."""
     return await admin_service.ampliar_cupo(db, id_proyecto, datos.nueva_capacidad_max)
 
 

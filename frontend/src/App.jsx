@@ -12,7 +12,11 @@ function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return null;
+    return (
+      <div className="min-h-screen bg-slate-950 text-white grid place-items-center">
+        <div className="text-sm text-white/80">Cargando sesion...</div>
+      </div>
+    );
   }
 
   return (

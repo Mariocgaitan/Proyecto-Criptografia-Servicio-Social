@@ -212,7 +212,7 @@ export default function AdminDashboard() {
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
 
   // Forms
-  const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
+  const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
   const [formEmpresa, setFormEmpresa] = useState({ id_asociado: "", nombre: "", razon: "", desc: "", calle: "" });
   const [formEvento, setFormEvento] = useState({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
   const [nuevaCapacidad, setNuevaCapacidad] = useState(0);
@@ -253,13 +253,13 @@ export default function AdminDashboard() {
         body: JSON.stringify({
           id_empresa: parseInt(formProyecto.id_empresa), id_evento: parseInt(formProyecto.id_evento),
           nombre_proyecto: formProyecto.nombre, descripcion: formProyecto.desc || null,
-          capacidad_max: parseInt(formProyecto.cap_max), capacidad_espera_max: parseInt(formProyecto.espera)
+          capacidad_max: parseInt(formProyecto.cap_max)
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Error al crear");
       setIsCrearProyectoOpen(false);
-      setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
+      setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
       fetchData();
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
@@ -940,14 +940,10 @@ export default function AdminDashboard() {
                           <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Descripción (Opcional)</Label>
                           <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({...formProyecto, desc: e.target.value})} />
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-black/30 p-4 rounded-xl border border-white/10">
+                        <div className="bg-black/30 p-4 rounded-xl border border-white/10">
                           <div className="space-y-2">
                             <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Límite de Alumnos</Label>
                             <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-bold text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Espera Máx.</Label>
-                            <Input type="number" min="0" className="bg-white/10 border-white/15 text-white font-bold text-lg text-center" value={formProyecto.espera} onChange={e => setFormProyecto({...formProyecto, espera: e.target.value})} />
                           </div>
                         </div>
                         <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold shadow-none">Finalizar y Crear Proyecto</Button>

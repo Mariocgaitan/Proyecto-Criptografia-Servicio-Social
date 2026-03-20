@@ -65,7 +65,6 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
             "id_evento": p.id_evento,
             "capacidad_max": p.capacidad_max,
             "cupo_actual": p.cupo_actual,
-            "capacidad_espera_max": p.capacidad_espera_max,
             "cupos_disponibles": max(0, p.capacidad_max - p.cupo_actual),
             "ocupacion_porcentaje": round((p.cupo_actual / p.capacidad_max) * 100) if p.capacidad_max else 0,
             "evento_activo": ev.activo,
@@ -127,7 +126,6 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
         descripcion=datos.descripcion,
         capacidad_max=datos.capacidad_max,
         cupo_actual=0,
-        capacidad_espera_max=datos.capacidad_espera_max,
     )
     db.add(proyecto)
     await db.flush()  # Obtener el id_proyecto antes del commit

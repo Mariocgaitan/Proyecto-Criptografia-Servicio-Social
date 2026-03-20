@@ -40,7 +40,4 @@ class Usuario(Base):
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
         "Inscripcion", back_populates="usuario"
     )
-    lista_espera: Mapped[list["ListaEspera"]] = relationship(
-        "ListaEspera", back_populates="usuario"
-    )
     empresa: Mapped["Empresa | None"] = relationship("Empresa", back_populates="usuarios")
