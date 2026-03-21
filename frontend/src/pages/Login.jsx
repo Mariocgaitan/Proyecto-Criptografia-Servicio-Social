@@ -64,7 +64,23 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
     const normalizedEmail = normalizeLoginIdentifier(correo);
+    
+    // Validar que el correo no esté vacío
+    if (!normalizedEmail.trim()) {
+      setError("Ingresa tu correo o matrícula.");
+      triggerErrorAnimation();
+      return;
+    }
+
+    // Validar que la contraseña no esté vacía
+    if (!password.trim()) {
+      setError("Se requiere contraseña.");
+      triggerErrorAnimation();
+      return;
+    }
+
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
     if (!isValidEmail) {
@@ -81,7 +97,11 @@ export default function Login() {
     setError(null);
     const result = await login(normalizedEmail, password);
     if (!result.success) {
-      setError(result.error);
+      // Manejar error como string para evitar "[object Object]"
+      const errorMessage = typeof result.error === "string" 
+        ? result.error 
+        : result.error?.detail || result.error?.message || "Error al iniciar sesión.";
+      setError(errorMessage);
       triggerErrorAnimation();
     }
     setIsLoading(false);

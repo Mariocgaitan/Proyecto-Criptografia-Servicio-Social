@@ -507,14 +507,6 @@ export default function AdminDashboard() {
       title: "Directorio de Proyectos",
       description: "Oferta de plazas para el Servicio Social",
     },
-    empresas: {
-      title: "Empresas",
-      description: "Socios formadores autorizados",
-    },
-    eventos: {
-      title: "Eventos",
-      description: "Control de semestres e inscripciones",
-    },
     gestion: {
       title: "Gestión de Empresas y Eventos",
       description: "Socios formadores, periodos académicos y registro operativo",
@@ -643,8 +635,6 @@ export default function AdminDashboard() {
       { id: "sec-overview", label: "Ir a Dashboard", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("overview") },
       { id: "sec-stats", label: "Ir a Estadísticas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("estadisticas") },
       { id: "sec-projects", label: "Ir a Proyectos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("proyectos") },
-      { id: "sec-companies", label: "Ir a Empresas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("empresas") },
-      { id: "sec-events", label: "Ir a Eventos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("eventos") },
       { id: "sec-manage", label: "Ir a Gestión Integral", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("gestion") },
       { id: "act-new-project", label: "Abrir: Registrar Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsCrearProyectoOpen(true); } },
       { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
@@ -760,7 +750,7 @@ export default function AdminDashboard() {
             key={currentBgIndex}
             src={campusImages[currentBgIndex]}
             alt="Campus"
-            className="w-full h-full object-cover fixed inset-0"
+            className="w-full h-full object-cover fixed inset-0 blur-[4px] scale-105"
             initial={{ x: "100%" }}
             animate={{ x: "0%" }}
             exit={{ x: "-100%" }}
@@ -826,8 +816,6 @@ export default function AdminDashboard() {
             <div>
               <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Gestión</p>
               <div className="mt-2 space-y-1">
-                <button onClick={() => handleSectionChange("empresas")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "empresas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><Building2 className="w-4 h-4" /> Empresas ({empresas.length})</span></button>
-                <button onClick={() => handleSectionChange("eventos")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "eventos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><Calendar className="w-4 h-4" /> Eventos ({eventos.length})</span></button>
                 <button onClick={() => handleSectionChange("gestion")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><Activity className="w-4 h-4" /> Gestión Integral</span></button>
               </div>
             </div>
@@ -850,8 +838,6 @@ export default function AdminDashboard() {
             <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
             <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
             <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
-            <button onClick={() => handleSectionChange("empresas")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "empresas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Empresas ({empresas.length})</button>
-            <button onClick={() => handleSectionChange("eventos")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "eventos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Eventos ({eventos.length})</button>
             <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
           </div>
         </div>
@@ -1138,7 +1124,7 @@ export default function AdminDashboard() {
             )}
 
             {/* ─── EMPRESAS ────────────────────── */}
-            {(activeSection === "gestion" || activeSection === "empresas") && (
+            {activeSection === "gestion" && (
               <motion.div
                 key="empresas"
                 initial={{ opacity: 0, y: 12 }}
@@ -1222,7 +1208,7 @@ export default function AdminDashboard() {
             )}
 
             {/* ─── EVENTOS ─────────────────────── */}
-            {(activeSection === "gestion" || activeSection === "eventos") && (
+            {activeSection === "gestion" && (
               <motion.div
                 key="eventos"
                 initial={{ opacity: 0, y: 12 }}

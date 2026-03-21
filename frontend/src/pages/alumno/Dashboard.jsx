@@ -673,7 +673,7 @@ export default function Dashboard() {
             key={currentBgIndex}
             src={campusImages[currentBgIndex]}
             alt="Campus"
-            className="w-full h-full object-cover absolute inset-0"
+            className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
             initial={{ x: "100%" }}
             animate={{ x: "0%" }}
             exit={{ x: "-100%" }}
