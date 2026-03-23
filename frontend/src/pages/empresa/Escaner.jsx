@@ -39,6 +39,7 @@ const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 const SCANNER_CONFIG = {
   bgRotationMs: 20000,
   resultAutoHideMs: 4500,
+  liveSyncMs: 5000,
   fps: 20,
   qrBoxSize: 320,
   qrBoxMinSize: 200,
@@ -263,6 +264,35 @@ export default function EmpresaEscaner() {
   useEffect(() => {
     loadProyectosEmpresa();
   }, [loadProyectosEmpresa]);
+
+  useEffect(() => {
+    if (initializing || !proyecto) return undefined;
+
+    let cancelled = false;
+    const syncProyectoActivo = async () => {
+      if (cancelled || document.hidden || switchingProjectRef.current) return;
+
+      const currentProjectId = activeProjectIdRef.current || selectedProjectId || proyecto?.id_proyecto || null;
+      if (!currentProjectId) return;
+
+      await loadProyecto(currentProjectId);
+    };
+
+    const intervalId = setInterval(syncProyectoActivo, SCANNER_CONFIG.liveSyncMs);
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        syncProyectoActivo();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [initializing, loadProyecto, proyecto, selectedProjectId]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {

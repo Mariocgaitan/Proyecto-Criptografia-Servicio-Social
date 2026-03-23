@@ -5,6 +5,7 @@ import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
@@ -230,50 +231,31 @@ function ProjectGrid({ proyectos }) {
           </div>
         </div>
 
-        <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="overflow-x-auto pb-1 no-visible-scrollbar">
-              <div className="flex gap-2 w-max">
-                <button
-                  type="button"
-                  onClick={() => setEmpresaFilter("todas")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap",
-                    empresaFilter === "todas"
-                      ? "bg-white/20 border-white/30 text-white"
-                      : "bg-white/5 border-white/15 text-white/70 hover:text-white"
-                  )}
-                >
-                  Todas las empresas
-                </button>
-                {empresas.map((empresa) => (
-                  <button
-                    key={empresa}
-                    type="button"
-                    onClick={() => setEmpresaFilter(empresa)}
-                    className={cn(
-                      "px-3 py-1.5 rounded-full text-xs border transition-colors whitespace-nowrap",
-                      empresaFilter === empresa
-                        ? "bg-cyan-500/20 border-cyan-400/35 text-cyan-100"
-                        : "bg-white/5 border-white/15 text-white/70 hover:text-white"
-                    )}
-                  >
-                    {empresa}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-3">
+          <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+            <SelectTrigger className="w-full h-10 rounded-xl bg-white/5 border-white/15 text-white/85 text-sm hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-blue-400/30">
+              {empresaFilter === "todas" ? "Empresa: Todas" : `Empresa: ${empresaFilter}`}
+            </SelectTrigger>
+            <SelectContent className="bg-black/95 border-white/15 text-white backdrop-blur-md">
+              <SelectItem value="todas" className="text-white focus:bg-white/10 focus:text-white">Empresa: Todas</SelectItem>
+              {empresas.map((empresa) => (
+                <SelectItem key={empresa} value={empresa} className="text-white focus:bg-white/10 focus:text-white">{empresa}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <select
-            value={sortMode}
-            onChange={(e) => setSortMode(e.target.value)}
-            className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
-          >
-            <option value="demanda" className="text-slate-900">Ordenar: Demanda</option>
-            <option value="disponibilidad" className="text-slate-900">Ordenar: Ultimos lugares</option>
-            <option value="alfabetico" className="text-slate-900">Ordenar: A-Z</option>
-          </select>
+          <Select value={sortMode} onValueChange={setSortMode}>
+            <SelectTrigger className="w-full h-10 rounded-xl bg-white/5 border-white/15 text-white/85 text-sm hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-blue-400/30">
+              {sortMode === "demanda" && "Ordenar: Demanda"}
+              {sortMode === "disponibilidad" && "Ordenar: Ultimos lugares"}
+              {sortMode === "alfabetico" && "Ordenar: A-Z"}
+            </SelectTrigger>
+            <SelectContent className="bg-black/95 border-white/15 text-white backdrop-blur-md">
+              <SelectItem value="demanda" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Demanda</SelectItem>
+              <SelectItem value="disponibilidad" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Ultimos lugares</SelectItem>
+              <SelectItem value="alfabetico" className="text-white focus:bg-white/10 focus:text-white">Ordenar: A-Z</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -366,7 +348,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
                   />
                 </motion.div>
               ) : (
-                <div className="animate-pulse flex flex-col items-center gap-4 text-white/30 relative z-10">
+                <div className="flex flex-col items-center gap-4 text-white/30 relative z-10">
                   <QrCode className="w-16 h-16 stroke-[1]" />
                   <p className="text-xs font-bold tracking-widest uppercase">Generando Llave...</p>
                 </div>
@@ -634,14 +616,6 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-black" />
-        <motion.div
-          animate={{ rotate: [0, 360] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="relative z-10"
-        >
-          <QrCode className="w-12 h-12 text-tec-light stroke-[1.5]" />
-        </motion.div>
-        <p className="relative z-10 font-bold tracking-widest uppercase text-blue-200/60 text-sm animate-pulse">Cargando credencial...</p>
       </div>
     );
   }

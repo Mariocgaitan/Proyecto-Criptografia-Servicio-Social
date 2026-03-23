@@ -33,6 +33,7 @@ const normalizeSearchText = (value) =>
     .trim();
 
 const ALL_COMPANIES_FILTER = "todas";
+const ADMIN_SYNC_MS = 5000;
 
 const resolveCompanyGroupKey = (companyName, groupKeys) => {
   const normalizedCompany = normalizeSearchText(companyName);
@@ -236,6 +237,27 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  useEffect(() => {
+    const syncIfVisible = () => {
+      if (document.hidden) return;
+      fetchData();
+    };
+
+    const intervalId = setInterval(syncIfVisible, ADMIN_SYNC_MS);
+    const onVisibilityChange = () => {
+      if (!document.hidden) syncIfVisible();
+    };
+
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     const intervalId = setInterval(() => {

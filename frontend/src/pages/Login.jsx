@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
-import { Loader2, Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
@@ -252,7 +252,7 @@ export default function Login() {
                   disabled={isLoading}
                   className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Ingresar"}
+                  {isLoading ? "Ingresando..." : "Ingresar"}
                 </Button>
               </motion.div>
             </form>
