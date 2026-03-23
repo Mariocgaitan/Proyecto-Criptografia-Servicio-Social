@@ -3,12 +3,15 @@ Servicio del módulo Empresa — validación de QR y procesamiento de inscripcio
 """
 import json
 import time
+import uuid
 
 import pyotp
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.inscripcion import Inscripcion
+from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
@@ -19,6 +22,14 @@ class EscanerError(Exception):
         self.message = message
         self.status_code = status_code
         super().__init__(message)
+
+
+def _first_attr(obj, names, default=None):
+    for name in names:
+        value = getattr(obj, name, None)
+        if value not in (None, ""):
+            return value
+    return default
 
 
 async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
@@ -40,21 +51,113 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
 
     # Contar inscripciones confirmadas
     ins_result = await db.execute(
-        select(Inscripcion).where(Inscripcion.id_proyecto == id_proyecto)
+        select(Inscripcion)
+        .options(selectinload(Inscripcion.usuario))
+        .where(Inscripcion.id_proyecto == id_proyecto)
+        .order_by(Inscripcion.timestamp.desc())
     )
     inscripciones = ins_result.scalars().all()
+
+    alumnos_inscritos = []
+    for inscripcion in inscripciones:
+        alumno = inscripcion.usuario
+        if not alumno:
+            continue
+        alumnos_inscritos.append(
+            {
+                "id_inscripcion": str(inscripcion.id_inscripcion),
+                "matricula": alumno.id_matricula,
+                "nombre": alumno.nombre,
+                "correo": alumno.correo,
+                "carrera": alumno.carrera,
+                "semestre": alumno.semestre,
+                "fecha_inscripcion": inscripcion.timestamp.isoformat() if inscripcion.timestamp else None,
+            }
+        )
+
+    ocupacion_pct = round((proyecto.cupo_actual / proyecto.capacidad_max) * 100) if proyecto.capacidad_max else 0
+    razon_social = _first_attr(empresa, ["razon_social", "nombre_fiscal", "nombre_empresa"], empresa.nombre_empresa)
+    id_asociado = _first_attr(empresa, ["id_asociado", "codigo_asociado", "codigo_empresa"])
+    direccion = _first_attr(empresa, ["direccion", "domicilio", "calle"])
+    semestre = _first_attr(evento, ["semestre", "periodo"])
 
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
+        "descripcion": proyecto.descripcion,
         "empresa": empresa.nombre_empresa,
+        "razon_social": razon_social,
+        "id_asociado": id_asociado,
+        "direccion": direccion,
+        "logo_url": getattr(empresa, "logo_url", None),
         "evento": evento.nombre,
         "id_evento": proyecto.id_evento,
+        "periodo": evento.periodo,
+        "anio": evento.anio,
+        "semestre": semestre,
+        "evento_activo": evento.activo,
         "capacidad_max": proyecto.capacidad_max,
         "cupo_actual": proyecto.cupo_actual,
         "inscripciones_totales": len(inscripciones),
         "cupos_disponibles": max(0, proyecto.capacidad_max - proyecto.cupo_actual),
+        "ocupacion_porcentaje": ocupacion_pct,
+        "alumnos_inscritos": alumnos_inscritos,
     }
+
+
+async def obtener_id_empresa_de_proyecto(db: AsyncSession, id_proyecto: int) -> int:
+    """Devuelve el id_empresa dueño de un proyecto."""
+    result = await db.execute(
+        select(Proyecto.id_empresa).where(Proyecto.id_proyecto == id_proyecto)
+    )
+    id_empresa = result.scalar_one_or_none()
+    if not id_empresa:
+        raise EscanerError("Proyecto no encontrado", 404)
+    return id_empresa
+
+
+async def proyecto_pertenece_a_empresa(db: AsyncSession, id_empresa: int, id_proyecto: int) -> bool:
+    """Valida que un proyecto pertenezca a una empresa."""
+    result = await db.execute(
+        select(Proyecto.id_proyecto).where(
+            Proyecto.id_proyecto == id_proyecto,
+            Proyecto.id_empresa == id_empresa,
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def obtener_proyectos_empresa(db: AsyncSession, id_empresa: int) -> list[dict]:
+    """Lista los proyectos/eventos asociados a una empresa."""
+    from app.models.evento import Evento
+
+    result = await db.execute(
+        select(Proyecto, Evento)
+        .join(Evento, Proyecto.id_evento == Evento.id_evento)
+        .where(Proyecto.id_empresa == id_empresa)
+        .order_by(Evento.activo.desc(), Evento.anio.desc(), Evento.periodo.desc(), Proyecto.nombre_proyecto.asc())
+    )
+
+    rows = result.all()
+    proyectos = []
+    for proyecto, evento in rows:
+        ocupacion_pct = round((proyecto.cupo_actual / proyecto.capacidad_max) * 100) if proyecto.capacidad_max else 0
+        proyectos.append(
+            {
+                "id_proyecto": proyecto.id_proyecto,
+                "id_evento": proyecto.id_evento,
+                "nombre_proyecto": proyecto.nombre_proyecto,
+                "evento": evento.nombre,
+                "periodo": evento.periodo,
+                "anio": evento.anio,
+                "evento_activo": evento.activo,
+                "cupo_actual": proyecto.cupo_actual,
+                "capacidad_max": proyecto.capacidad_max,
+                "ocupacion_porcentaje": ocupacion_pct,
+            }
+        )
+
+    return proyectos
 
 
 async def validar_y_inscribir(
@@ -158,6 +261,67 @@ async def validar_y_inscribir(
         "ok": True,
         "mensaje": f"¡{alumno.nombre} inscrito exitosamente!",
         "nombre_alumno": alumno.nombre,
+        "cupo_actual": proyecto.cupo_actual,
+        "capacidad_max": proyecto.capacidad_max,
+    }
+
+
+async def eliminar_inscripcion_proyecto(
+    db: AsyncSession,
+    id_empresa: int,
+    id_proyecto: int,
+    id_inscripcion: str,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """Elimina una inscripción solo si pertenece al proyecto y empresa indicados."""
+    try:
+        inscripcion_uuid = uuid.UUID(str(id_inscripcion))
+    except ValueError as exc:
+        raise EscanerError("id_inscripcion inválido", 400) from exc
+
+    proyecto = await db.get(Proyecto, id_proyecto)
+    if not proyecto:
+        raise EscanerError("Proyecto no encontrado", 404)
+
+    if proyecto.id_empresa != id_empresa:
+        raise EscanerError("El proyecto no pertenece a tu empresa", 403)
+
+    result = await db.execute(
+        select(Inscripcion)
+        .options(selectinload(Inscripcion.usuario))
+        .where(Inscripcion.id_inscripcion == inscripcion_uuid)
+    )
+    inscripcion = result.scalar_one_or_none()
+    if not inscripcion:
+        raise EscanerError("Inscripción no encontrada", 404)
+
+    if inscripcion.id_proyecto != id_proyecto:
+        raise EscanerError("La inscripción no pertenece al proyecto seleccionado", 400)
+
+    if proyecto.cupo_actual > 0:
+        proyecto.cupo_actual -= 1
+
+    alumno = inscripcion.usuario
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_ELIMINADA_EMPRESA",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Empresa eliminó inscripción {inscripcion.id_inscripcion} de "
+                f"{alumno.id_matricula if alumno else 'N/A'} en proyecto {id_proyecto}"
+            ),
+        )
+    )
+    await db.delete(inscripcion)
+    await db.commit()
+    await db.refresh(proyecto)
+
+    return {
+        "ok": True,
+        "mensaje": "Inscripción eliminada correctamente",
+        "nombre_alumno": alumno.nombre if alumno else None,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }

@@ -1,52 +1,25 @@
 """
-Servicio del módulo Admin — lógica de negocio para gestión de proyectos y credenciales empresa.
+Servicio del módulo Admin — lógica de negocio para gestión de proyectos.
 """
-import re
-import secrets
-import unicodedata
+import uuid
 
-import bcrypt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.models.empresa import Empresa
 from app.models.evento import Evento
+from app.models.inscripcion import Inscripcion
+from app.models.log_auditoria import LogAuditoria
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _slugify(text: str) -> str:
-    """Convierte texto a slug seguro para correos: 'Optimización Logística' → 'optimizacion-logistica'."""
-    nfkd = unicodedata.normalize("NFKD", text)
-    ascii_text = nfkd.encode("ascii", "ignore").decode("ascii")
-    slug = re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")
-    return slug[:30]  # máximo 30 chars para el correo
-
-
-def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def _generar_credenciales_empresa(nombre_proyecto: str, nombre_empresa: str, id_proyecto: int) -> dict:
-    """Genera correo y contraseña únicos para el usuario empresa del proyecto."""
-    slug_proyecto = _slugify(nombre_proyecto)
-    slug_empresa = _slugify(nombre_empresa)
-    password = secrets.token_urlsafe(12)
-    correo = f"{slug_proyecto}@{slug_empresa}.sid.mx"
-    return {
-        "id_matricula": f"PROJ_{id_proyecto:04d}",
-        "correo": correo,
-        "password": password,
-        "password_hash": _hash_password(password),
-    }
+from app.models.usuario_evento import UsuarioEvento
 
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
 
 async def listar_proyectos(db: AsyncSession) -> list[dict]:
-    """Devuelve todos los proyectos con datos de empresa, evento y si tienen usuario empresa."""
+    """Devuelve todos los proyectos con datos de empresa y evento."""
     result = await db.execute(
         select(Proyecto, Empresa, Evento)
         .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
@@ -55,11 +28,31 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
     )
     rows = result.all()
 
-    # Obtenemos qué proyectos ya tienen usuario empresa
-    empresas_result = await db.execute(
-        select(Usuario.id_proyecto).where(Usuario.rol == "empresa")
-    )
-    proyectos_con_usuario = {r for r in empresas_result.scalars().all() if r}
+    proyecto_ids = [p.id_proyecto for p, _, _ in rows]
+    inscripciones_por_proyecto: dict[int, list[dict]] = {pid: [] for pid in proyecto_ids}
+
+    if proyecto_ids:
+        inscripciones_result = await db.execute(
+            select(Inscripcion)
+            .options(selectinload(Inscripcion.usuario))
+            .where(Inscripcion.id_proyecto.in_(proyecto_ids))
+            .order_by(Inscripcion.timestamp.desc())
+        )
+        for inscripcion in inscripciones_result.scalars().all():
+            alumno = inscripcion.usuario
+            if not alumno:
+                continue
+            inscripciones_por_proyecto.setdefault(inscripcion.id_proyecto, []).append(
+                {
+                    "id_inscripcion": str(inscripcion.id_inscripcion),
+                    "matricula": alumno.id_matricula,
+                    "nombre": alumno.nombre,
+                    "correo": alumno.correo,
+                    "carrera": alumno.carrera,
+                    "semestre": alumno.semestre,
+                    "fecha_inscripcion": inscripcion.timestamp.isoformat() if inscripcion.timestamp else None,
+                }
+            )
 
     return [
         {
@@ -72,9 +65,11 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
             "id_evento": p.id_evento,
             "capacidad_max": p.capacidad_max,
             "cupo_actual": p.cupo_actual,
-            "capacidad_espera_max": p.capacidad_espera_max,
             "cupos_disponibles": max(0, p.capacidad_max - p.cupo_actual),
-            "tiene_credenciales": p.id_proyecto in proyectos_con_usuario,
+            "ocupacion_porcentaje": round((p.cupo_actual / p.capacidad_max) * 100) if p.capacidad_max else 0,
+            "evento_activo": ev.activo,
+            "inscripciones_totales": len(inscripciones_por_proyecto.get(p.id_proyecto, [])),
+            "alumnos_inscritos": inscripciones_por_proyecto.get(p.id_proyecto, []),
             "estado": (
                 "LLENO" if p.cupo_actual >= p.capacidad_max
                 else "CASI LLENO" if p.cupo_actual >= p.capacidad_max * 0.8
@@ -111,8 +106,7 @@ async def listar_eventos(db: AsyncSession) -> list[dict]:
 
 async def crear_proyecto(db: AsyncSession, datos) -> dict:
     """
-    Crea un nuevo proyecto y genera automáticamente credenciales de acceso
-    para el representante de la empresa.
+    Crea un nuevo proyecto para una empresa y evento.
     """
     from fastapi import HTTPException
 
@@ -132,34 +126,10 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
         descripcion=datos.descripcion,
         capacidad_max=datos.capacidad_max,
         cupo_actual=0,
-        capacidad_espera_max=datos.capacidad_espera_max,
     )
     db.add(proyecto)
     await db.flush()  # Obtener el id_proyecto antes del commit
 
-    # 2. Generar credenciales para el usuario empresa
-    creds = _generar_credenciales_empresa(
-        datos.nombre_proyecto, empresa.nombre_empresa, proyecto.id_proyecto
-    )
-
-    # Verificar que el correo no exista ya
-    existing = await db.execute(select(Usuario).where(Usuario.correo == creds["correo"]))
-    if existing.scalar_one_or_none():
-        # Si el correo ya existe (nombre muy similar), agregar sufijo con id
-        creds["correo"] = f"proj{proyecto.id_proyecto}@{_slugify(empresa.nombre_empresa)}.sid.mx"
-
-    usuario_empresa = Usuario(
-        id_matricula=creds["id_matricula"],
-        nombre=datos.nombre_proyecto,
-        correo=creds["correo"],
-        carrera="Empresa",
-        semestre=0,
-        password_hash=creds["password_hash"],
-        totp_secret="A" * 32,
-        rol="empresa",
-        id_proyecto=proyecto.id_proyecto,
-    )
-    db.add(usuario_empresa)
     await db.commit()
     await db.refresh(proyecto)
 
@@ -170,67 +140,7 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
         "evento": evento.nombre,
         "capacidad_max": proyecto.capacidad_max,
         "cupo_actual": 0,
-        # Credenciales generadas — solo se muestran una vez
-        "credenciales": {
-            "correo": creds["correo"],
-            "password": creds["password"],
-            "url_login": "/empresa/login",
-        },
     }
-
-
-async def generar_credenciales_para_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
-    """
-    Genera (o regenera) credenciales para un proyecto que aún no tiene usuario empresa.
-    """
-    from fastapi import HTTPException
-
-    proyecto = await db.get(Proyecto, id_proyecto)
-    if not proyecto:
-        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
-
-    empresa = await db.get(Empresa, proyecto.id_empresa)
-
-    # Verificar si ya tiene usuario
-    result = await db.execute(
-        select(Usuario).where(Usuario.id_proyecto == id_proyecto, Usuario.rol == "empresa")
-    )
-    usuario_existente = result.scalar_one_or_none()
-
-    creds = _generar_credenciales_empresa(proyecto.nombre_proyecto, empresa.nombre_empresa, id_proyecto)
-
-    if usuario_existente:
-        # Regenerar contraseña
-        new_password = secrets.token_urlsafe(12)
-        usuario_existente.password_hash = _hash_password(new_password)
-        await db.commit()
-        return {
-            "correo": usuario_existente.correo,
-            "password": new_password,
-            "url_login": "/empresa/login",
-            "regenerada": True,
-        }
-    else:
-        # Crear nuevo usuario empresa
-        usuario_empresa = Usuario(
-            id_matricula=creds["id_matricula"],
-            nombre=proyecto.nombre_proyecto,
-            correo=creds["correo"],
-            carrera="Empresa",
-            semestre=0,
-            password_hash=creds["password_hash"],
-            totp_secret="A" * 32,
-            rol="empresa",
-            id_proyecto=id_proyecto,
-        )
-        db.add(usuario_empresa)
-        await db.commit()
-        return {
-            "correo": creds["correo"],
-            "password": creds["password"],
-            "url_login": "/empresa/login",
-            "regenerada": False,
-        }
 
 
 async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int) -> dict:
@@ -256,4 +166,194 @@ async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int)
         "nombre_proyecto": proyecto.nombre_proyecto,
         "capacidad_max": proyecto.capacidad_max,
         "cupo_actual": proyecto.cupo_actual,
+    }
+
+
+async def eliminar_inscripcion(
+    db: AsyncSession,
+    id_inscripcion: str,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """Elimina una inscripción y ajusta el cupo del proyecto asociado."""
+    from fastapi import HTTPException
+
+    try:
+        inscripcion_uuid = uuid.UUID(str(id_inscripcion))
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="id_inscripcion inválido") from exc
+
+    result = await db.execute(
+        select(Inscripcion)
+        .options(selectinload(Inscripcion.usuario), selectinload(Inscripcion.proyecto))
+        .where(Inscripcion.id_inscripcion == inscripcion_uuid)
+    )
+    inscripcion = result.scalar_one_or_none()
+    if not inscripcion:
+        raise HTTPException(status_code=404, detail="Inscripción no encontrada")
+
+    proyecto = inscripcion.proyecto
+    alumno = inscripcion.usuario
+
+    if proyecto and proyecto.cupo_actual > 0:
+        proyecto.cupo_actual -= 1
+
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_ELIMINADA_ADMIN",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Admin eliminó inscripción {inscripcion.id_inscripcion} de "
+                f"{alumno.id_matricula if alumno else 'N/A'} "
+                f"en proyecto {proyecto.id_proyecto if proyecto else 'N/A'}"
+            ),
+        )
+    )
+
+    await db.delete(inscripcion)
+    await db.commit()
+
+    return {
+        "ok": True,
+        "mensaje": "Inscripción eliminada correctamente",
+        "id_proyecto": proyecto.id_proyecto if proyecto else None,
+        "cupo_actual": proyecto.cupo_actual if proyecto else None,
+        "nombre_alumno": alumno.nombre if alumno else None,
+    }
+
+
+async def listar_alumnos_disponibles(db: AsyncSession, id_evento: int) -> list[dict]:
+    """
+    Retorna los alumnos registrados en un evento que no están inscritos en ningún proyecto.
+    """
+    # 1. Obtener todos los alumnos registrados en el evento
+    result = await db.execute(
+        select(Usuario)
+        .join(UsuarioEvento, Usuario.id_matricula == UsuarioEvento.id_matricula)
+        .where(UsuarioEvento.id_evento == id_evento)
+        .order_by(Usuario.nombre)
+    )
+    alumnos = result.scalars().all()
+
+    # 2. Obtener todos los alumnos inscritos en proyectos de este evento
+    ins_result = await db.execute(
+        select(Inscripcion.id_matricula.distinct()).where(
+            Inscripcion.id_evento == id_evento
+        )
+    )
+    inscritos = {row[0] for row in ins_result.all()}
+
+    # 3. Retornar solo los que no están inscritos
+    return [
+        {
+            "id_matricula": a.id_matricula,
+            "nombre": a.nombre,
+            "carrera": a.carrera,
+            "semestre": a.semestre,
+            "correo": a.correo,
+        }
+        for a in alumnos
+        if a.id_matricula not in inscritos
+    ]
+
+
+async def crear_inscripcion(
+    db: AsyncSession,
+    id_matricula: str,
+    id_proyecto: int,
+    actor_matricula: str | None = None,
+    ip_origen: str | None = None,
+) -> dict:
+    """
+    Crea una nueva inscripción de alumno en un proyecto.
+    Valida que el alumno existe, está registrado en el evento y tiene cupo disponible.
+    """
+    from fastapi import HTTPException
+
+    # 1. Verificar que el alumno existe
+    result = await db.execute(
+        select(Usuario).where(Usuario.id_matricula == id_matricula)
+    )
+    alumno = result.scalar_one_or_none()
+    if not alumno:
+        raise HTTPException(status_code=404, detail=f"Alumno {id_matricula} no encontrado")
+
+    # 2. Verificar que el proyecto existe
+    result = await db.execute(
+        select(Proyecto)
+        .options(selectinload(Proyecto.empresa), selectinload(Proyecto.evento))
+        .where(Proyecto.id_proyecto == id_proyecto)
+    )
+    proyecto = result.scalar_one_or_none()
+    if not proyecto:
+        raise HTTPException(status_code=404, detail="Proyecto no encontrado")
+
+    # 3. Verificar que el alumno está registrado en el evento
+    ue_result = await db.execute(
+        select(UsuarioEvento).where(
+            UsuarioEvento.id_matricula == id_matricula,
+            UsuarioEvento.id_evento == proyecto.id_evento,
+        )
+    )
+    if not ue_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"El alumno {id_matricula} no está registrado en el evento",
+        )
+
+    # 4. Verificar que no está ya inscrito en otro proyecto del mismo evento
+    ins_result = await db.execute(
+        select(Inscripcion).where(
+            Inscripcion.id_matricula == id_matricula,
+            Inscripcion.id_evento == proyecto.id_evento,
+        )
+    )
+    if ins_result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail=f"El alumno ya está inscrito en un proyecto de este evento",
+        )
+
+    # 5. Verificar que el proyecto tiene cupo disponible
+    if proyecto.cupo_actual >= proyecto.capacidad_max:
+        raise HTTPException(
+            status_code=400,
+            detail="El proyecto está lleno. No hay cupo disponible",
+        )
+
+    # 6. Crear la inscripción
+    inscripcion = Inscripcion(
+        id_inscripcion=uuid.uuid4(),
+        id_matricula=id_matricula,
+        id_proyecto=id_proyecto,
+        id_evento=proyecto.id_evento,
+    )
+    proyecto.cupo_actual += 1
+    db.add(inscripcion)
+
+    # 7. Registrar en auditoría
+    db.add(
+        LogAuditoria(
+            tipo_evento="INSCRIPCION_CREADA_ADMIN",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=(
+                f"Admin agregó inscripción de {id_matricula} ({alumno.nombre}) "
+                f"al proyecto {proyecto.id_proyecto} ({proyecto.nombre_proyecto})"
+            ),
+        )
+    )
+
+    await db.commit()
+    await db.refresh(proyecto)
+
+    return {
+        "ok": True,
+        "mensaje": f"{alumno.nombre} ha sido inscrito exitosamente",
+        "id_inscripcion": str(inscripcion.id_inscripcion),
+        "id_proyecto": proyecto.id_proyecto,
+        "nombre_alumno": alumno.nombre,
+        "cupo_actual": proyecto.cupo_actual,
+        "capacidad_max": proyecto.capacidad_max,
     }

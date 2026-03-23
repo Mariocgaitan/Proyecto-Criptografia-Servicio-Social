@@ -8,7 +8,7 @@ Endpoints:
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
 """
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -26,11 +26,15 @@ class ProyectoCreate(BaseModel):
     nombre_proyecto: str
     descripcion: str | None = None
     capacidad_max: int
-    capacidad_espera_max: int = 0
 
 
 class CapacidadUpdate(BaseModel):
     nueva_capacidad_max: int
+
+
+class InscripcionCreate(BaseModel):
+    id_matricula: str
+    id_proyecto: int
 
 
 # ── API Endpoints ──────────────────────────────────────────────────────────────
@@ -61,18 +65,51 @@ async def api_ampliar_cupo(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    """Amplía la capacidad de un proyecto y promueve alumnos de lista de espera."""
+    """Amplía la capacidad de un proyecto."""
     return await admin_service.ampliar_cupo(db, id_proyecto, datos.nueva_capacidad_max)
 
 
-@router.post("/api/v1/admin/proyectos/{id_proyecto}/credenciales", tags=["Admin"])
-async def api_generar_credenciales(
-    id_proyecto: int,
+@router.delete("/api/v1/admin/inscripciones/{id_inscripcion}", tags=["Admin"])
+async def api_eliminar_inscripcion(
+    id_inscripcion: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(get_current_admin),
+):
+    """Elimina una inscripción de alumno y ajusta cupo del proyecto."""
+    return await admin_service.eliminar_inscripcion(
+        db,
+        id_inscripcion,
+        actor_matricula=current_admin.id_matricula,
+        ip_origen=request.client.host if request.client else None,
+    )
+
+
+@router.post("/api/v1/admin/inscripciones", status_code=status.HTTP_201_CREATED, tags=["Admin"])
+async def api_crear_inscripcion(
+    datos: InscripcionCreate,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(get_current_admin),
+):
+    """Crea una nueva inscripción de alumno en un proyecto."""
+    return await admin_service.crear_inscripcion(
+        db,
+        datos.id_matricula,
+        datos.id_proyecto,
+        actor_matricula=current_admin.id_matricula,
+        ip_origen=request.client.host if request.client else None,
+    )
+
+
+@router.get("/api/v1/admin/alumnos-disponibles", tags=["Admin"])
+async def api_alumnos_disponibles(
+    id_evento: int,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    """Genera o regenera credenciales de acceso para el representante de empresa del proyecto."""
-    return await admin_service.generar_credenciales_para_proyecto(db, id_proyecto)
+    """Retorna alumnos registrados en un evento que no están inscritos en ningún proyecto."""
+    return await admin_service.listar_alumnos_disponibles(db, id_evento)
 
 
 

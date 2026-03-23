@@ -176,7 +176,7 @@ async def generar_qr_payload(
         "matricula": id_matricula,
         "totp": codigo,
         "id_evento": id_evento,
-    })
+    }, separators=(",", ":"))
 
     return {
         "qr_data": payload,

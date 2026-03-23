@@ -6,8 +6,15 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.services.auth_service import LoginError, login_alumno
-from app.services.empresa_service import EscanerError, obtener_info_proyecto, validar_y_inscribir
+from app.services.empresa_service import (
+    EscanerError,
+    eliminar_inscripcion_proyecto,
+    obtener_id_empresa_de_proyecto,
+    obtener_info_proyecto,
+    obtener_proyectos_empresa,
+    proyecto_pertenece_a_empresa,
+    validar_y_inscribir,
+)
 
 router = APIRouter()
 
@@ -39,12 +46,27 @@ async def _get_empresa_user(request: Request, db: AsyncSession):
     return user
 
 
+async def _resolver_id_empresa(user, db: AsyncSession) -> int:
+    """
+    Obtiene la empresa del usuario empresa.
+    Prioriza id_empresa (nuevo modelo) y usa id_proyecto como fallback legacy.
+    """
+    if user.id_empresa:
+        return user.id_empresa
+
+    if user.id_proyecto:
+        return await obtener_id_empresa_de_proyecto(db, user.id_proyecto)
+
+    raise HTTPException(status_code=400, detail="Sin empresa asignada")
+
+
 
 
 # ── API: Validar QR ───────────────────────────────────────────────────────────
 
 class QRScan(BaseModel):
     qr_data: str  # El JSON crudo del QR escaneado
+    id_proyecto: int | None = None
 
 
 @router.post("/api/v1/empresa/escanear", tags=["Empresa"])
@@ -55,15 +77,24 @@ async def api_escanear_qr(
 ):
     """
     Valida y procesa un QR escaneado.
-    El usuario empresa solo puede inscribir alumnos en su propio proyecto.
+    El usuario empresa solo puede inscribir alumnos en proyectos de su empresa.
     """
     user = await _get_empresa_user(request, db)
+    id_empresa = await _resolver_id_empresa(user, db)
 
-    if not user.id_proyecto:
-        raise HTTPException(status_code=400, detail="Sin proyecto asignado")
+    if payload.id_proyecto is None:
+        proyectos = await obtener_proyectos_empresa(db, id_empresa)
+        if not proyectos:
+            raise HTTPException(status_code=404, detail="La empresa no tiene proyectos")
+        id_proyecto_objetivo = proyectos[0]["id_proyecto"]
+    else:
+        id_proyecto_objetivo = payload.id_proyecto
+
+    if not await proyecto_pertenece_a_empresa(db, id_empresa, id_proyecto_objetivo):
+        raise HTTPException(status_code=403, detail="El proyecto no pertenece a tu empresa")
 
     try:
-        resultado = await validar_y_inscribir(db, user.id_proyecto, payload.qr_data)
+        resultado = await validar_y_inscribir(db, id_proyecto_objetivo, payload.qr_data)
     except EscanerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -73,12 +104,71 @@ async def api_escanear_qr(
 # ── API: Info proyecto ────────────────────────────────────────────────────────
 
 @router.get("/api/v1/empresa/proyecto", tags=["Empresa"])
-async def api_info_proyecto(request: Request, db: AsyncSession = Depends(get_db)):
-    """Devuelve la información del proyecto asignado al representante logueado."""
+async def api_info_proyecto(
+    request: Request,
+    id_proyecto: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Devuelve la información de un proyecto de la empresa del usuario logueado."""
     user = await _get_empresa_user(request, db)
-    if not user.id_proyecto:
-        raise HTTPException(status_code=400, detail="Sin proyecto asignado")
+    id_empresa = await _resolver_id_empresa(user, db)
+
+    if id_proyecto is None:
+        proyectos = await obtener_proyectos_empresa(db, id_empresa)
+        if not proyectos:
+            raise HTTPException(status_code=404, detail="La empresa no tiene proyectos")
+        id_proyecto_objetivo = proyectos[0]["id_proyecto"]
+    else:
+        id_proyecto_objetivo = id_proyecto
+
+    if not await proyecto_pertenece_a_empresa(db, id_empresa, id_proyecto_objetivo):
+        raise HTTPException(status_code=403, detail="El proyecto no pertenece a tu empresa")
+
     try:
-        return await obtener_info_proyecto(db, user.id_proyecto)
+        return await obtener_info_proyecto(db, id_proyecto_objetivo)
+    except EscanerError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.get("/api/v1/empresa/proyectos", tags=["Empresa"])
+async def api_lista_proyectos_empresa(request: Request, db: AsyncSession = Depends(get_db)):
+    """Lista proyectos/eventos disponibles para la empresa del usuario logueado."""
+    user = await _get_empresa_user(request, db)
+    id_empresa = await _resolver_id_empresa(user, db)
+    proyectos = await obtener_proyectos_empresa(db, id_empresa)
+    return {"proyectos": proyectos}
+
+
+@router.delete("/api/v1/empresa/inscripciones/{id_inscripcion}", tags=["Empresa"])
+async def api_eliminar_inscripcion_empresa(
+    id_inscripcion: str,
+    request: Request,
+    id_proyecto: int | None = None,
+    db: AsyncSession = Depends(get_db),
+):
+    """Elimina una inscripción dentro de un proyecto de la empresa autenticada."""
+    user = await _get_empresa_user(request, db)
+    id_empresa = await _resolver_id_empresa(user, db)
+
+    if id_proyecto is None:
+        proyectos = await obtener_proyectos_empresa(db, id_empresa)
+        if not proyectos:
+            raise HTTPException(status_code=404, detail="La empresa no tiene proyectos")
+        id_proyecto_objetivo = proyectos[0]["id_proyecto"]
+    else:
+        id_proyecto_objetivo = id_proyecto
+
+    if not await proyecto_pertenece_a_empresa(db, id_empresa, id_proyecto_objetivo):
+        raise HTTPException(status_code=403, detail="El proyecto no pertenece a tu empresa")
+
+    try:
+        return await eliminar_inscripcion_proyecto(
+            db,
+            id_empresa=id_empresa,
+            id_proyecto=id_proyecto_objetivo,
+            id_inscripcion=id_inscripcion,
+            actor_matricula=user.id_matricula,
+            ip_origen=request.client.host if request.client else None,
+        )
     except EscanerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

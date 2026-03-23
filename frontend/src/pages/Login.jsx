@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useNavigate, Link } from "react-router-dom";
-import { Loader2, Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
@@ -33,6 +33,14 @@ export default function Login() {
   const navigate = useNavigate();
   const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
+  const normalizeLoginIdentifier = (value) => {
+    const trimmed = value.trim();
+    if (/^[aA]0\d{7}$/.test(trimmed)) {
+      return `${trimmed.toLowerCase()}@tec.mx`;
+    }
+    return trimmed;
+  };
+
   const triggerErrorAnimation = () => {
     shakeControls.start({
       x: [0, -6, 6, -4, 4, 0],
@@ -56,20 +64,44 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const normalizedEmail = correo.trim();
+    
+    const normalizedEmail = normalizeLoginIdentifier(correo);
+    
+    // Validar que el correo no esté vacío
+    if (!normalizedEmail.trim()) {
+      setError("Ingresa tu correo o matrícula.");
+      triggerErrorAnimation();
+      return;
+    }
+
+    // Validar que la contraseña no esté vacía
+    if (!password.trim()) {
+      setError("Se requiere contraseña.");
+      triggerErrorAnimation();
+      return;
+    }
+
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
     if (!isValidEmail) {
-      setError("Ingresa un correo válido.");
+      setError("Ingresa un correo válido o una matrícula con formato A0 + 7 dígitos.");
       triggerErrorAnimation();
       return;
+    }
+
+    if (normalizedEmail !== correo) {
+      setCorreo(normalizedEmail);
     }
 
     setIsLoading(true);
     setError(null);
     const result = await login(normalizedEmail, password);
     if (!result.success) {
-      setError(result.error);
+      // Manejar error como string para evitar "[object Object]"
+      const errorMessage = typeof result.error === "string" 
+        ? result.error 
+        : result.error?.detail || result.error?.message || "Error al iniciar sesión.";
+      setError(errorMessage);
       triggerErrorAnimation();
     }
     setIsLoading(false);
@@ -117,10 +149,10 @@ export default function Login() {
       {/* ─── Top Navigation Bar (bounces from top) ─── */}
       <motion.nav
         {...bounceIn(0)}
-        className="relative z-20 flex items-center justify-between px-6 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
+        className="relative z-20 flex items-center justify-between px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
       >
         <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-10 sm:h-12 w-auto brightness-0 invert drop-shadow-md" />
-        <div className="hidden sm:flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <SocialIcon href="https://www.facebook.com/TecCCM">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
           </SocialIcon>
@@ -169,7 +201,7 @@ export default function Login() {
             </AnimatePresence>
 
             <form onSubmit={handleSubmit} noValidate className="space-y-3">
-              {/* Email input */}
+              {/* Login input */}
               <motion.div {...fadeIn(0.5)}>
                 <div className="relative">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10">
@@ -177,12 +209,13 @@ export default function Login() {
                   </div>
                   <Input
                     id="correo"
-                    type="email"
+                    type="text"
                     value={correo}
                     onChange={(e) => setCorreo(e.target.value)}
+                    onBlur={() => setCorreo((prev) => normalizeLoginIdentifier(prev))}
                     required
                     className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
-                    placeholder="Correo institucional"
+                    placeholder="Correo o matrícula (A01234567)"
                   />
                 </div>
               </motion.div>
@@ -219,7 +252,7 @@ export default function Login() {
                   disabled={isLoading}
                   className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
                 >
-                  {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Ingresar"}
+                  {isLoading ? "Ingresando..." : "Ingresar"}
                 </Button>
               </motion.div>
             </form>
@@ -237,9 +270,9 @@ export default function Login() {
       {/* ─── Bottom Footer Bar (bounces from bottom) ─── */}
       <motion.footer
         {...bounceUp(0.2)}
-        className="relative z-20 flex items-center justify-between px-6 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+        className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
-        <div className="flex items-center gap-6">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
           <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
@@ -247,7 +280,7 @@ export default function Login() {
             Ethos
           </a>
         </div>
-        <p className="text-white/40 text-[11px] font-medium">
+        <p className="text-white/40 text-[11px] font-medium text-center">
           © {new Date().getFullYear()} <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey.</a>
         </p>
       </motion.footer>

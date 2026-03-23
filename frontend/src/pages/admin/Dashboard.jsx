@@ -1,72 +1,142 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
-  LogOut, LayoutDashboard, Building2, Calendar, Plus, RefreshCw,
-  Copy, Check, QrCode, Users, TrendingUp, BarChart3,
-  PieChart, Activity, ChevronRight, ChevronDown, Search, Bell,
-  Settings, Sun, Moon, List
+  LogOut, Building2, Calendar, Plus, LayoutDashboard,
+  Users, TrendingUp, BarChart3,
+  PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
+  PanelLeftClose, PanelLeftOpen, Command, Trash2,
+  List
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
+import { apiUrl } from "@/lib/api";
+import EstadisticasPanel from "./EstadisticasPanel";
+import SystemDashboardPanel from "./SystemDashboardPanel";
+import tecLogo from "@/assets/tec_logo.png";
+import campusImg1 from "@/assets/login_images/ser_social_header.png";
+import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
+import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
+import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
 
-// ─── Sidebar Nav Item ────────────────────────────────────────────
-function SidebarItem({ icon: Icon, label, active, onClick, badge }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group relative
-        ${active
-          ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/25"
-          : "text-slate-400 hover:text-white hover:bg-white/5"
-        }`}
-    >
-      <Icon className={`w-5 h-5 flex-shrink-0 ${active ? "text-white" : "text-slate-500 group-hover:text-blue-400"}`} />
-      <span className="flex-1 text-left">{label}</span>
-      {badge && (
-        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${active ? "bg-white/20 text-white" : "bg-blue-500/10 text-blue-400"}`}>
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
+const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
+
+const normalizeSearchText = (value) =>
+  (value || "")
+    .toString()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const ALL_COMPANIES_FILTER = "todas";
+const ADMIN_SYNC_MS = 5000;
+
+const resolveCompanyGroupKey = (companyName, groupKeys) => {
+  const normalizedCompany = normalizeSearchText(companyName);
+  if (!normalizedCompany) return null;
+
+  const exactMatch = groupKeys.find((key) => normalizeSearchText(key) === normalizedCompany);
+  if (exactMatch) return exactMatch;
+
+  return groupKeys.find((key) => {
+    const normalizedKey = normalizeSearchText(key);
+    return normalizedKey.includes(normalizedCompany) || normalizedCompany.includes(normalizedKey);
+  }) || null;
+};
+
+const isLooseSubsequence = (text, query) => {
+  if (!query) return true;
+  let textIndex = 0;
+  let queryIndex = 0;
+
+  while (textIndex < text.length && queryIndex < query.length) {
+    if (text[textIndex] === query[queryIndex]) queryIndex += 1;
+    textIndex += 1;
+  }
+
+  return queryIndex === query.length;
+};
+
+const boundedLevenshtein = (a, b, maxDistance) => {
+  const lenA = a.length;
+  const lenB = b.length;
+
+  if (Math.abs(lenA - lenB) > maxDistance) return maxDistance + 1;
+  if (!lenA) return lenB;
+  if (!lenB) return lenA;
+
+  let previous = Array.from({ length: lenB + 1 }, (_, idx) => idx);
+
+  for (let i = 1; i <= lenA; i += 1) {
+    const current = [i];
+    let rowMin = current[0];
+
+    for (let j = 1; j <= lenB; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      const value = Math.min(
+        previous[j] + 1,
+        current[j - 1] + 1,
+        previous[j - 1] + cost
+      );
+
+      current[j] = value;
+      if (value < rowMin) rowMin = value;
+    }
+
+    if (rowMin > maxDistance) return maxDistance + 1;
+    previous = current;
+  }
+
+  return previous[lenB];
+};
+
+const hasNearWordMatch = (text, query) => {
+  if (query.length < 4) return false;
+
+  const words = text.split(/\s+/).filter(Boolean);
+  if (!words.length) return false;
+
+  const maxDistance = query.length <= 5 ? 1 : 2;
+  return words.some((word) => boundedLevenshtein(word, query, maxDistance) <= maxDistance);
+};
+
+const textMatchesQuery = (value, query) => {
+  if (!query) return true;
+  const normalizedValue = normalizeSearchText(value);
+  if (!normalizedValue) return false;
+
+  return normalizedValue.includes(query)
+    || isLooseSubsequence(normalizedValue, query)
+    || hasNearWordMatch(normalizedValue, query);
+};
 
 // ─── KPI Stat Card ───────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, subtitle, color, index, dark }) {
-  const lightMap = {
-    orange: { bg: "bg-orange-50", icon: "bg-orange-100 text-orange-600", border: "border-orange-100" },
-    blue:   { bg: "bg-blue-50",   icon: "bg-blue-100 text-blue-600",     border: "border-blue-100" },
-    teal:   { bg: "bg-teal-50",   icon: "bg-teal-100 text-teal-600",     border: "border-teal-100" },
-    purple: { bg: "bg-purple-50", icon: "bg-purple-100 text-purple-600", border: "border-purple-100" },
+function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
+  const toneMap = {
+    orange: "text-amber-200 bg-amber-400/10 border-amber-400/20",
+    blue: "text-blue-200 bg-blue-500/10 border-blue-400/20",
+    teal: "text-emerald-200 bg-emerald-500/10 border-emerald-400/20",
+    purple: "text-violet-200 bg-violet-500/10 border-violet-400/20",
   };
-  const darkMap = {
-    orange: { bg: "bg-orange-950/30", icon: "bg-orange-900/40 text-orange-400", border: "border-orange-900/30" },
-    blue:   { bg: "bg-blue-950/30",   icon: "bg-blue-900/40 text-blue-400",     border: "border-blue-900/30" },
-    teal:   { bg: "bg-teal-950/30",   icon: "bg-teal-900/40 text-teal-400",     border: "border-teal-900/30" },
-    purple: { bg: "bg-purple-950/30", icon: "bg-purple-900/40 text-purple-400", border: "border-purple-900/30" },
-  };
-  const c = (dark ? darkMap : lightMap)[color] || (dark ? darkMap : lightMap).blue;
+  const tone = toneMap[color] || toneMap.blue;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, duration: 0.4 }}>
-      <div className={`${c.bg} border ${c.border} rounded-2xl p-5 hover:shadow-lg transition-shadow duration-300`}>
+      <div className="rounded-2xl border border-white/15 bg-black/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-colors duration-300 hover:bg-black/45">
         <div className="flex items-start justify-between">
           <div>
-            <p className={`text-xs font-semibold uppercase tracking-wider mb-2 ${dark ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
-            <p className={`text-3xl font-extrabold tracking-tight ${dark ? 'text-white' : 'text-slate-800'}`}>{value}</p>
-            <p className={`text-xs mt-1.5 flex items-center gap-1 ${dark ? 'text-slate-500' : 'text-slate-500'}`}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 text-white/55">{label}</p>
+            <p className="text-3xl font-extrabold tracking-tight text-white">{value}</p>
+            <p className="text-xs mt-1.5 flex items-center gap-1 text-white/55">
               <TrendingUp className="w-3 h-3 text-emerald-500" />
               {subtitle}
             </p>
           </div>
-          <div className={`w-12 h-12 ${c.icon} rounded-xl flex items-center justify-center`}>
+          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${tone}`}>
             <Icon className="w-6 h-6" />
           </div>
         </div>
@@ -76,20 +146,20 @@ function StatCard({ icon: Icon, label, value, subtitle, color, index, dark }) {
 }
 
 // ─── Chart Placeholder ───────────────────────────────────────────
-function ChartPlaceholder({ title, icon: Icon, colSpan = 1, height = "h-56", dark }) {
+function ChartPlaceholder({ title, icon: Icon, colSpan = 1, height = "h-56" }) {
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className={colSpan === 2 ? "md:col-span-2" : ""}>
-      <div className={`rounded-2xl border shadow-sm overflow-hidden ${dark ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
-        <div className={`flex items-center justify-between px-5 py-4 border-b ${dark ? 'border-slate-700' : 'border-slate-100'}`}>
-          <h3 className={`font-semibold text-sm ${dark ? 'text-slate-200' : 'text-slate-700'}`}>{title}</h3>
-          <button className="text-xs text-blue-500 hover:text-blue-700 font-medium transition-colors">Ver todo</button>
+      <div className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+          <h3 className="font-semibold text-sm text-white">{title}</h3>
+          <button className="text-[11px] uppercase tracking-wider text-blue-300 hover:text-blue-200 font-semibold transition-colors">Ver todo</button>
         </div>
         <div className={`${height} flex flex-col items-center justify-center gap-3 px-5`}>
-          <div className={`w-14 h-14 rounded-2xl border-2 border-dashed flex items-center justify-center ${dark ? 'bg-slate-800 border-slate-600' : 'bg-slate-50 border-slate-200'}`}>
-            <Icon className={`w-7 h-7 ${dark ? 'text-slate-500' : 'text-slate-300'}`} />
+          <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-white/25 bg-black/25 flex items-center justify-center">
+            <Icon className="w-7 h-7 text-white/40" />
           </div>
-          <p className={`text-sm font-medium ${dark ? 'text-slate-400' : 'text-slate-400'}`}>Gráfica en desarrollo</p>
-          <p className={`text-[11px] ${dark ? 'text-slate-600' : 'text-slate-300'}`}>Los datos se conectarán aquí próximamente</p>
+          <p className="text-sm font-medium text-white/70">Gráfica en desarrollo</p>
+          <p className="text-[11px] text-white/35">Los datos se conectarán aquí próximamente</p>
         </div>
       </div>
     </motion.div>
@@ -97,15 +167,15 @@ function ChartPlaceholder({ title, icon: Icon, colSpan = 1, height = "h-56", dar
 }
 
 // ─── Progress Bar ────────────────────────────────────────────────
-function OccupancyBar({ current, max, dark }) {
+function OccupancyBar({ current, max }) {
   const pct = max > 0 ? Math.round((current / max) * 100) : 0;
   const color = pct >= 100 ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
   return (
     <div className="flex items-center gap-3 min-w-[140px]">
-      <div className={`flex-1 h-2 rounded-full overflow-hidden ${dark ? 'bg-slate-700' : 'bg-slate-100'}`}>
+      <div className="flex-1 h-2 rounded-full overflow-hidden bg-white/10">
         <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
-      <span className={`text-xs font-mono font-bold w-16 text-right ${dark ? 'text-slate-400' : 'text-slate-600'}`}>{current}/{max}</span>
+      <span className="text-xs font-mono font-bold w-16 text-right text-white/70">{current}/{max}</span>
     </div>
   );
 }
@@ -119,20 +189,31 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
-  const [darkMode, setDarkMode] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+  const commandInputRef = useRef(null);
+  const commandItemRefs = useRef([]);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [proyectosView, setProyectosView] = useState("all"); // "all" | "byEmpresa"
-  const [expandedEmpresa, setExpandedEmpresa] = useState(null);
+  const [availability, setAvailability] = useState("todas");
+  const [empresaFilter, setEmpresaFilter] = useState(ALL_COMPANIES_FILTER);
+  const [sortMode, setSortMode] = useState("demanda");
+  const [expandedEmpresas, setExpandedEmpresas] = useState([]);
 
   // Modals Info
   const [isCrearProyectoOpen, setIsCrearProyectoOpen] = useState(false);
   const [isCrearEmpresaOpen, setIsCrearEmpresaOpen] = useState(false);
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
-  const [credsModalInfo, setCredsModalInfo] = useState(null);
+  const [isAgregarAlumnoOpen, setIsAgregarAlumnoOpen] = useState(false);
+  const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
+  const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
+  const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
 
   // Forms
-  const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
+  const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
   const [formEmpresa, setFormEmpresa] = useState({ id_asociado: "", nombre: "", razon: "", desc: "", calle: "" });
   const [formEvento, setFormEvento] = useState({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
   const [nuevaCapacidad, setNuevaCapacidad] = useState(0);
@@ -140,14 +221,16 @@ export default function AdminDashboard() {
   // Status
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorText, setErrorText] = useState("");
-  const [copiedField, setCopiedField] = useState(null);
+  const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
+  const [deleteModalInfo, setDeleteModalInfo] = useState(null);
+  const [preserveFiltersOnNextSearch, setPreserveFiltersOnNextSearch] = useState(false);
 
   const fetchData = async () => {
     try {
       const [ps, es, evs] = await Promise.all([
-        fetch("http://localhost:8000/api/v1/admin/proyectos", { credentials: "include" }).then(res => res.json()),
-        fetch("http://localhost:8000/api/v1/admin/empresas", { credentials: "include" }).then(res => res.json()),
-        fetch("http://localhost:8000/api/v1/admin/eventos", { credentials: "include" }).then(res => res.json())
+        fetch(apiUrl("/api/v1/admin/proyectos"), { credentials: "include" }).then(res => res.json()),
+        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()),
+        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json())
       ]);
       setProyectos(ps); setEmpresas(es); setEventos(evs);
     } catch (err) { console.error(err); }
@@ -155,37 +238,103 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleCopy = (text, fieldName) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
+  useEffect(() => {
+    const syncIfVisible = () => {
+      if (document.hidden) return;
+      fetchData();
+    };
+
+    const intervalId = setInterval(syncIfVisible, ADMIN_SYNC_MS);
+    const onVisibilityChange = () => {
+      if (!document.hidden) syncIfVisible();
+    };
+
+    window.addEventListener("focus", syncIfVisible);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+
+    return () => {
+      clearInterval(intervalId);
+      window.removeEventListener("focus", syncIfVisible);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
+    }, 20000);
+    return () => clearInterval(intervalId);
+  }, []);
 
   // === HANDLERS ===
   const handleCrearProyecto = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/proyectos", {
+      const res = await fetch(apiUrl("/api/v1/admin/proyectos"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({
           id_empresa: parseInt(formProyecto.id_empresa), id_evento: parseInt(formProyecto.id_evento),
           nombre_proyecto: formProyecto.nombre, descripcion: formProyecto.desc || null,
-          capacidad_max: parseInt(formProyecto.cap_max), capacidad_espera_max: parseInt(formProyecto.espera)
+          capacidad_max: parseInt(formProyecto.cap_max)
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Error al crear");
       setIsCrearProyectoOpen(false);
-      setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10, espera: 0 });
+      setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
       fetchData();
-      setCredsModalInfo({ nombre: data.nombre_proyecto, correo: data.credenciales.correo, password: data.credenciales.password });
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleAbreModalAgregarAlumno = async (proyecto) => {
+    setSelectedProyectoForAlumno(proyecto);
+    setSelectedAlumnoMatricula("");
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/alumnos-disponibles?id_evento=${proyecto.id_evento}`), {
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al obtener alumnos");
+      setAlumnosDisponibles(data || []);
+      setIsAgregarAlumnoOpen(true);
+    } catch (err) {
+      setErrorText(err.message || "No se pudo cargar los alumnos disponibles");
+    }
+  };
+
+  const handleAgregarAlumno = async (e) => {
+    e.preventDefault();
+    if (!selectedAlumnoMatricula || !selectedProyectoForAlumno) return;
+
+    setIsSubmitting(true);
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl("/api/v1/admin/inscripciones"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          id_matricula: selectedAlumnoMatricula,
+          id_proyecto: selectedProyectoForAlumno.id_proyecto,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Error al agregar alumno");
+      setIsAgregarAlumnoOpen(false);
+      setSelectedAlumnoMatricula("");
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "No se pudo agregar el alumno");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCrearEmpresa = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/empresas", {
+      const res = await fetch(apiUrl("/api/v1/admin/empresas"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ id_asociado: formEmpresa.id_asociado, nombre_empresa: formEmpresa.nombre, razon_social: formEmpresa.razon, descripcion: formEmpresa.desc || null, calle: formEmpresa.calle || null })
       });
@@ -199,7 +348,7 @@ export default function AdminDashboard() {
   const handleCrearEvento = async (e) => {
     e.preventDefault(); setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch("http://localhost:8000/api/v1/admin/eventos", {
+      const res = await fetch(apiUrl("/api/v1/admin/eventos"), {
         method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ nombre: formEvento.nombre, periodo: formEvento.periodo, anio: parseInt(formEvento.anio), semestre: formEvento.semestre, activo: formEvento.activo })
       });
@@ -214,7 +363,7 @@ export default function AdminDashboard() {
     if (!cupoModalInfo) return;
     setIsSubmitting(true); setErrorText("");
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/proyectos/${cupoModalInfo.id}/capacidad`, {
+      const res = await fetch(apiUrl(`/api/v1/admin/proyectos/${cupoModalInfo.id}/capacidad`), {
         method: "PATCH", headers: { "Content-Type": "application/json" }, credentials: "include",
         body: JSON.stringify({ nueva_capacidad_max: parseInt(nuevaCapacidad) })
       });
@@ -223,14 +372,33 @@ export default function AdminDashboard() {
     } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
-  const handleRegenerarCreds = async (id, nombre) => {
-    if (!confirm(`¿Regenerar contraseña para: ${nombre}? La anterior dejará de funcionar.`)) return;
+  const handleEliminarInscripcion = async (alumno) => {
+    if (!alumno?.id_inscripcion) return;
+
+    setDeleteModalInfo(alumno);
+  };
+
+  const confirmarEliminarInscripcion = async () => {
+    const alumno = deleteModalInfo;
+    if (!alumno?.id_inscripcion) return;
+
+    setDeletingInscripcionId(alumno.id_inscripcion);
+    setErrorText("");
+
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/admin/proyectos/${id}/credenciales`, { method: "POST", credentials: "include" });
-      if (!res.ok) throw new Error("Fallo de red");
+      const res = await fetch(apiUrl(`/api/v1/admin/inscripciones/${alumno.id_inscripcion}`), {
+        method: "DELETE",
+        credentials: "include",
+      });
       const data = await res.json();
-      setCredsModalInfo({ nombre, correo: data.correo, password: data.password });
-    } catch(err) { alert(err.message); }
+      if (!res.ok) throw new Error(data.detail || data.mensaje || "No se pudo eliminar la inscripción");
+      setDeleteModalInfo(null);
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "No se pudo eliminar la inscripción");
+    } finally {
+      setDeletingInscripcionId(null);
+    }
   };
 
   // Computed stats
@@ -239,10 +407,72 @@ export default function AdminDashboard() {
   const eventosActivos = eventos.filter(e => e.activo).length;
 
   // Search filtering
-  const q = searchQuery.toLowerCase().trim();
-  const filteredProyectos = q ? proyectos.filter(p => p.nombre_proyecto?.toLowerCase().includes(q) || p.empresa?.toLowerCase().includes(q)) : proyectos;
-  const filteredEmpresas = q ? empresas.filter(e => e.nombre_empresa?.toLowerCase().includes(q) || e.razon_social?.toLowerCase().includes(q) || e.id_asociado?.toLowerCase().includes(q)) : empresas;
-  const filteredEventos = q ? eventos.filter(e => e.nombre?.toLowerCase().includes(q) || e.periodo?.toLowerCase().includes(q)) : eventos;
+  const q = normalizeSearchText(searchQuery);
+  const empresasEnProyectos = useMemo(() => {
+    return [...new Set(proyectos.map((p) => p.empresa).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  }, [proyectos]);
+
+  const filteredProyectos = useMemo(() => {
+    const base = proyectos.filter((p) => {
+      const alumnoMatchesQuery = Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.some((alumno) => {
+        return textMatchesQuery(alumno?.nombre, q)
+          || textMatchesQuery(alumno?.matricula, q)
+          || textMatchesQuery(alumno?.carrera, q)
+          || textMatchesQuery(alumno?.correo, q);
+      });
+
+      const matchesQuery = !q
+        || textMatchesQuery(p.nombre_proyecto, q)
+        || textMatchesQuery(p.empresa, q)
+        || textMatchesQuery(p.descripcion, q)
+        || alumnoMatchesQuery;
+
+      const remaining = Math.max((p.capacidad_max || 0) - (p.cupo_actual || 0), 0);
+      const isFull = (p.cupo_actual || 0) >= (p.capacidad_max || 0);
+      const matchesAvailability =
+        availability === "todas"
+        || (availability === "disponibles" && !isFull)
+        || (availability === "ultimos" && !isFull && remaining <= 2)
+        || (availability === "llenos" && isFull);
+
+      const matchesEmpresa = empresaFilter === ALL_COMPANIES_FILTER || p.empresa === empresaFilter;
+
+      return matchesQuery && matchesAvailability && matchesEmpresa;
+    });
+
+    base.sort((a, b) => {
+      if (sortMode === "alfabetico") {
+        return (a.nombre_proyecto || "").localeCompare(b.nombre_proyecto || "");
+      }
+      if (sortMode === "disponibilidad") {
+        const remainingA = Math.max((a.capacidad_max || 0) - (a.cupo_actual || 0), 0);
+        const remainingB = Math.max((b.capacidad_max || 0) - (b.cupo_actual || 0), 0);
+        return remainingA - remainingB;
+      }
+
+      const demandScore = (project) => {
+        const cap = project.capacidad_max || 0;
+        const current = project.cupo_actual || 0;
+        const pct = cap > 0 ? Math.round((current / cap) * 100) : 0;
+        const remaining = Math.max(cap - current, 0);
+        const isFull = current >= cap;
+        return isFull ? 1000 : (pct * 2) + (remaining <= 2 ? 40 : remaining <= 5 ? 20 : 0);
+      };
+
+      return demandScore(b) - demandScore(a);
+    });
+
+    return base;
+  }, [proyectos, q, availability, empresaFilter, sortMode]);
+
+  const filteredEmpresas = empresas;
+  const filteredEventos = q
+    ? eventos.filter(
+        (e) =>
+          textMatchesQuery(e.nombre, q)
+          || textMatchesQuery(e.periodo, q)
+      )
+    : eventos;
 
   // Group projects by empresa
   const proyectosPorEmpresa = {};
@@ -251,108 +481,389 @@ export default function AdminDashboard() {
     if (!proyectosPorEmpresa[key]) proyectosPorEmpresa[key] = [];
     proyectosPorEmpresa[key].push(p);
   });
+  const companyGroupKeys = Object.keys(proyectosPorEmpresa);
 
-  // Dark mode classes
-  const dm = darkMode;
+  useEffect(() => {
+    if (activeSection !== "proyectos") return;
+    setExpandedEmpresas((prev) => {
+      if (!prev.length) return companyGroupKeys;
+      return prev.filter((name) => companyGroupKeys.includes(name));
+    });
+  }, [activeSection, filteredProyectos]);
+
+  const handleSectionChange = (section) => {
+    setActiveSection(section);
+  };
+
+  const applySearchQuery = (nextQuery, options = {}) => {
+    const { preserveFilters = false } = options;
+
+    if (preserveFilters) {
+      setPreserveFiltersOnNextSearch(true);
+      setSearchQuery(nextQuery);
+      return;
+    }
+
+    setPreserveFiltersOnNextSearch(false);
+    setSearchQuery(nextQuery);
+    setAvailability("todas");
+    setEmpresaFilter(ALL_COMPANIES_FILTER);
+    setExpandedEmpresas([]);
+  };
+
+  useEffect(() => {
+    if (!preserveFiltersOnNextSearch) return;
+    setPreserveFiltersOnNextSearch(false);
+  }, [searchQuery, preserveFiltersOnNextSearch]);
+
+  const sectionMeta = {
+    overview: {
+      title: "Dashboard",
+      description: "Observabilidad del sistema: salud, requests, latencia y actividad de login",
+    },
+    estadisticas: {
+      title: "Estadísticas",
+      description: "Métricas de negocio con vistas General y Particular",
+    },
+    proyectos: {
+      title: "Directorio de Proyectos",
+      description: "Oferta de plazas para el Servicio Social",
+    },
+    gestion: {
+      title: "Gestión de Empresas y Eventos",
+      description: "Socios formadores, periodos académicos y registro operativo",
+    },
+  };
+
+  const studentCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = [];
+
+    proyectos.forEach((proyecto) => {
+      if (!Array.isArray(proyecto.alumnos_inscritos)) return;
+
+      proyecto.alumnos_inscritos.forEach((alumno) => {
+        const nombre = alumno?.nombre || "Alumno sin nombre";
+        const matricula = alumno?.matricula || "Sin matrícula";
+        const carrera = alumno?.carrera || "";
+        const correo = alumno?.correo || "";
+
+        const searchable = [
+          nombre,
+          matricula,
+          carrera,
+          correo,
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+        ].map((value) => normalizeSearchText(value)).join(" ");
+
+        if (!textMatchesQuery(searchable, normalized)) return;
+
+        items.push({
+          id: `student-${proyecto.id_proyecto}-${alumno.id_inscripcion || matricula}`,
+          label: `Alumno: ${nombre}`,
+          hint: `Proyecto: ${proyecto.nombre_proyecto || "Sin proyecto"} - ${proyecto.empresa || "Sin Empresa"}`,
+          keepSearchContext: true,
+          action: () => {
+            setActiveSection("proyectos");
+            setExpandedEmpresas((prev) => {
+              const companyKey = proyecto.empresa || "Sin Empresa";
+              if (prev.includes(companyKey)) return prev;
+              return [...prev, companyKey];
+            });
+            setAvailability("todas");
+            setEmpresaFilter(proyecto.empresa || ALL_COMPANIES_FILTER);
+            applySearchQuery(alumno?.matricula || alumno?.nombre || "", { preserveFilters: true });
+          },
+        });
+      });
+    });
+
+    return items.slice(0, 30);
+  }, [proyectos, commandQuery]);
+
+  const projectCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = proyectos
+      .filter((proyecto) => {
+        const searchable = [
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+          proyecto?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((proyecto) => ({
+        id: `project-${proyecto.id_proyecto}`,
+        label: `Proyecto: ${proyecto.nombre_proyecto || "Sin nombre"}`,
+        hint: `Empresa: ${proyecto.empresa || "Sin Empresa"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          setEmpresaFilter(ALL_COMPANIES_FILTER);
+          setExpandedEmpresas([]);
+          applySearchQuery(proyecto?.nombre_proyecto || "", { preserveFilters: true });
+        },
+      }));
+
+    return items;
+  }, [proyectos, commandQuery]);
+
+  const companyCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = empresas
+      .filter((empresa) => {
+        const searchable = [
+          empresa?.nombre_empresa || "",
+          empresa?.razon_social || "",
+          empresa?.id_asociado || "",
+          empresa?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((empresa) => ({
+        id: `company-${empresa.id_empresa}`,
+        label: `Empresa: ${empresa.nombre_empresa || "Sin nombre"}`,
+        hint: `ID: ${empresa.id_asociado || "N/A"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          const selectedCompanyName = empresa?.nombre_empresa || "";
+          const companyGroupKey = resolveCompanyGroupKey(selectedCompanyName, companyGroupKeys);
+
+          setEmpresaFilter(companyGroupKey || ALL_COMPANIES_FILTER);
+          setExpandedEmpresas(companyGroupKey ? [companyGroupKey] : companyGroupKeys);
+          applySearchQuery(companyGroupKey || selectedCompanyName, { preserveFilters: true });
+        },
+      }));
+
+    return items;
+  }, [empresas, commandQuery, companyGroupKeys]);
+
+  const commandItems = useMemo(() => {
+    const baseItems = [
+      { id: "sec-overview", label: "Ir a Dashboard", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("overview") },
+      { id: "sec-stats", label: "Ir a Estadísticas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("estadisticas") },
+      { id: "sec-projects", label: "Ir a Proyectos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("proyectos") },
+      { id: "sec-manage", label: "Ir a Gestión Integral", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("gestion") },
+      { id: "act-new-project", label: "Abrir: Registrar Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsCrearProyectoOpen(true); } },
+      { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
+      { id: "act-new-event", label: "Abrir: Aperturar Periodo", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEventoOpen(true); } },
+      { id: "act-add-alumno", label: "Abrir: Agregar Alumno a Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsAgregarAlumnoOpen(true); setSelectedProyectoForAlumno(null); } },
+      { id: "act-toggle-sidebar", label: sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral", hint: "Vista", keepSearchContext: false, action: () => setSidebarCollapsed((prev) => !prev) },
+    ];
+
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return baseItems;
+
+    const filteredBaseItems = baseItems.filter((item) =>
+      textMatchesQuery(item.label, normalized)
+      || textMatchesQuery(item.hint, normalized)
+    );
+
+    return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
+  }, [commandQuery, sidebarCollapsed, studentCommandItems, projectCommandItems, companyCommandItems]);
+
+  const runCommandItem = (item) => {
+    if (!item) return;
+
+    item.action();
+    if (!item.keepSearchContext) {
+      applySearchQuery("");
+    }
+    setCommandOpen(false);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      const isOpenShortcut = (event.ctrlKey || event.metaKey) && key === "k";
+
+      if (isOpenShortcut) {
+        event.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setCommandOpen(false);
+        return;
+      }
+
+      if (!commandOpen) return;
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => {
+          if (!commandItems.length) return 0;
+          return (prev + 1) % commandItems.length;
+        });
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => {
+          if (!commandItems.length) return 0;
+          return (prev - 1 + commandItems.length) % commandItems.length;
+        });
+        return;
+      }
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        const selected = commandItems[activeCommandIndex];
+        if (selected) {
+          runCommandItem(selected);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [commandOpen, commandItems, activeCommandIndex]);
+
+  useEffect(() => {
+    if (!commandOpen) {
+      setCommandQuery("");
+      setActiveCommandIndex(0);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      commandInputRef.current?.focus();
+      commandInputRef.current?.select();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [commandOpen]);
+
+  useEffect(() => {
+    setActiveCommandIndex(0);
+  }, [commandQuery]);
+
+  useEffect(() => {
+    if (!commandOpen) return;
+
+    const activeElement = commandItemRefs.current[activeCommandIndex];
+    if (activeElement) {
+      activeElement.scrollIntoView({ block: "nearest" });
+    }
+  }, [commandOpen, activeCommandIndex]);
 
   // ─── RENDER ──────────────────────────────────────────────────
   return (
-    <div className={`flex h-screen overflow-hidden transition-colors duration-300 ${dm ? 'dark-dashboard' : ''}`} style={{ fontFamily: "'Geist Variable', sans-serif" }}>
+    <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'Geist Variable', sans-serif" }}>
+      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <AnimatePresence mode="sync" initial={false}>
+          <motion.img
+            key={currentBgIndex}
+            src={campusImages[currentBgIndex]}
+            alt="Campus"
+            className="w-full h-full object-cover fixed inset-0 blur-[4px] scale-105"
+            initial={{ x: "100%" }}
+            animate={{ x: "0%" }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 3, ease: "easeInOut" }}
+          />
+        </AnimatePresence>
+        <div className="fixed inset-0 bg-black/70" />
+        <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
+      </div>
 
-      {/* ═══════════ SIDEBAR ═══════════ */}
-      <aside className={`w-[260px] flex-shrink-0 flex flex-col border-r transition-colors duration-300 ${dm ? 'bg-[#0a0e1a] border-slate-800' : 'bg-[#0f172a] border-slate-800'}`}>
-        {/* Brand */}
-        <div className="px-5 pt-6 pb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <LayoutDashboard className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="font-bold text-white text-base leading-none">Centro de Control</h1>
-              <p className="text-[10px] text-slate-500 font-medium tracking-wider uppercase mt-0.5">Servicio Social</p>
-            </div>
+      <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5">
+        <div className="flex items-center gap-3 min-w-0">
+          <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
+          <div>
+            <p className="text-white/70 text-xs sm:text-sm font-semibold tracking-wide uppercase">Portal Administracion</p>
+            <p className="text-white/45 text-[11px] sm:text-xs">Sistema de Servicio Social</p>
           </div>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-          <p className="px-4 pt-4 pb-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Principal</p>
-          <SidebarItem icon={LayoutDashboard} label="Dashboard" active={activeSection === "overview"} onClick={() => setActiveSection("overview")} />
-          <SidebarItem icon={BarChart3} label="Proyectos" active={activeSection === "proyectos"} onClick={() => setActiveSection("proyectos")} badge={proyectos.length || null} />
+        <div className="inline-flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setSidebarCollapsed((prev) => !prev)}
+            className="hidden lg:inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white transition-colors"
+            title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+          </button>
 
-          <p className="px-4 pt-6 pb-2 text-[10px] font-bold text-slate-600 uppercase tracking-widest">Administración</p>
-          <SidebarItem icon={Building2} label="Empresas" active={activeSection === "empresas"} onClick={() => setActiveSection("empresas")} badge={empresas.length || null} />
-          <SidebarItem icon={Calendar} label="Eventos" active={activeSection === "eventos"} onClick={() => setActiveSection("eventos")} badge={eventosActivos || null} />
-        </nav>
+          <button
+            type="button"
+            onClick={() => setCommandOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white transition-colors"
+            title="Command palette"
+          >
+            <Command className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-semibold">Ctrl+K</span>
+          </button>
 
-        {/* User Card */}
-        <div className="px-4 py-4 border-t border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md">
-              {user?.nombre?.charAt(0) || "A"}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-white font-semibold truncate">{user?.nombre || "Admin"}</p>
-              <p className="text-[10px] text-slate-500 font-medium">Superadmin</p>
-            </div>
-            <button
-              onClick={logout}
-              className="p-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-              title="Cerrar Sesión"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            onClick={logout}
+            className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
+            title="Cerrar Sesión"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm font-semibold">Cerrar Sesión</span>
+          </button>
         </div>
-      </aside>
+      </header>
 
-      {/* ═══════════ MAIN CONTENT ═══════════ */}
-      <main className={`flex-1 overflow-y-auto transition-colors duration-300 ${dm ? 'bg-[#111827]' : ''}`} style={!dm ? { backgroundColor: "#f8f6f1" } : undefined}>
-        {/* Top Bar */}
-        <header className={`sticky top-0 z-30 backdrop-blur-xl border-b px-8 py-4 transition-colors duration-300 ${dm ? 'bg-[#1f2937]/80 border-slate-700' : 'bg-white/80 border-slate-100'}`}>
-          <div className="flex items-center justify-between">
+      <div className="relative z-10 flex flex-1 min-h-0">
+        <aside className={`${sidebarCollapsed ? "hidden" : "hidden lg:block"} w-72 shrink-0 px-4 py-6`}>
+          <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-3 space-y-4">
             <div>
-              <h2 className={`text-xl font-bold ${dm ? 'text-white' : 'text-slate-800'}`}>
-                {activeSection === "overview" && "Dashboard"}
-                {activeSection === "proyectos" && "Directorio de Proyectos"}
-                {activeSection === "empresas" && "Afiliación Corporativa"}
-                {activeSection === "eventos" && "Periodos Académicos"}
+              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Principal</p>
+              <div className="mt-2 space-y-1">
+                <button onClick={() => handleSectionChange("overview")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><LayoutDashboard className="w-4 h-4" /> Dashboard</span></button>
+                <button onClick={() => handleSectionChange("estadisticas")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Estadísticas</span></button>
+                <button onClick={() => handleSectionChange("proyectos")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><List className="w-4 h-4" /> Proyectos ({proyectos.length})</span></button>
+              </div>
+            </div>
+
+            <div>
+              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Gestión</p>
+              <div className="mt-2 space-y-1">
+                <button onClick={() => handleSectionChange("gestion")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><Activity className="w-4 h-4" /> Gestión Integral</span></button>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
+        <div className="w-full">
+          <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+            <div>
+              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
+                {sectionMeta[activeSection]?.title}
               </h2>
-              <p className={`text-sm mt-0.5 ${dm ? 'text-slate-400' : 'text-slate-400'}`}>
-                {activeSection === "overview" && "Resumen general del sistema"}
-                {activeSection === "proyectos" && "Oferta de plazas para el Servicio Social"}
-                {activeSection === "empresas" && "Socios formadores autorizados"}
-                {activeSection === "eventos" && "Control de semestres e inscripciones"}
+              <p className="text-xs sm:text-sm mt-0.5 text-white/60">
+                {sectionMeta[activeSection]?.description}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Search className={`w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 ${dm ? 'text-slate-500' : 'text-slate-400'}`} />
-                <input
-                  type="text"
-                  placeholder="Buscar proyectos, empresas..."
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  className={`pl-9 pr-4 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 w-64 transition-all ${dm ? 'bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500' : 'bg-slate-50 border border-slate-200 text-slate-700 placeholder:text-slate-400'}`}
-                />
-              </div>
-              <button
-                onClick={() => setDarkMode(!dm)}
-                className={`p-2.5 rounded-xl border transition-colors ${dm ? 'bg-slate-800 border-slate-700 text-yellow-400 hover:bg-slate-700' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}
-                title={dm ? 'Modo Claro' : 'Modo Oscuro'}
-              >
-                {dm ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-              <button className={`p-2.5 rounded-xl border transition-colors relative ${dm ? 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white' : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-100'}`}>
-                <Bell className="w-4 h-4" />
-                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
-              </button>
-            </div>
-          </div>
-        </header>
 
-        {/* Content Area */}
-        <div className="p-8">
+            <div className="flex lg:hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
+            <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
+            <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
+            <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+          </div>
+        </div>
+
           <AnimatePresence mode="wait">
             {/* ─── OVERVIEW ────────────────────── */}
             {activeSection === "overview" && (
@@ -364,244 +875,247 @@ export default function AdminDashboard() {
                 transition={{ duration: 0.25 }}
                 className="space-y-8"
               >
-                {/* KPI Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  <StatCard icon={BarChart3} label="Total Proyectos" value={proyectos.length} subtitle={`${totalCapacidad} plazas totales`} color="orange" index={0} dark={dm} />
-                  <StatCard icon={Building2} label="Empresas" value={empresas.length} subtitle="Socios formadores activos" color="blue" index={1} dark={dm} />
-                  <StatCard icon={Calendar} label="Eventos Activos" value={eventosActivos} subtitle={`de ${eventos.length} registrados`} color="teal" index={2} dark={dm} />
-                  <StatCard icon={Users} label="Alumnos Inscritos" value={totalAlumnos} subtitle={`de ${totalCapacidad} capacidad`} color="purple" index={3} dark={dm} />
-                </div>
-
-                {/* Chart Placeholders */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                  <ChartPlaceholder title="Ocupación por Proyecto" icon={BarChart3} dark={dm} />
-                  <ChartPlaceholder title="Distribución por Empresa" icon={PieChart} dark={dm} />
-                  <ChartPlaceholder title="Tendencia de Inscripciones" icon={Activity} dark={dm} />
-                </div>
-
-                {/* Project Summary Table */}
-                <div className={`rounded-2xl border shadow-sm overflow-hidden ${dm ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
-                  <div className={`flex items-center justify-between px-6 py-4 border-b ${dm ? 'border-slate-700' : 'border-slate-100'}`}>
-                    <h3 className={`font-semibold ${dm ? 'text-slate-200' : 'text-slate-700'}`}>Resumen de Proyectos</h3>
-                    <button
-                      onClick={() => setActiveSection("proyectos")}
-                      className="text-xs text-blue-500 hover:text-blue-700 font-medium flex items-center gap-1 transition-colors"
-                    >
-                      Ver todos <ChevronRight className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className={`border-b ${dm ? 'border-slate-700' : 'border-slate-50'}`}>
-                          <th className={`text-left text-[11px] font-semibold uppercase tracking-wider px-6 py-3 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Proyecto</th>
-                          <th className={`text-left text-[11px] font-semibold uppercase tracking-wider px-4 py-3 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Empresa</th>
-                          <th className={`text-left text-[11px] font-semibold uppercase tracking-wider px-4 py-3 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Ocupación</th>
-                          <th className={`text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Estatus</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredProyectos.slice(0, 5).map((p) => (
-                          <tr key={p.id_proyecto} className={`border-b last:border-0 transition-colors ${dm ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-slate-50 hover:bg-slate-50/50'}`}>
-                            <td className="px-6 py-3.5">
-                              <p className={`text-sm font-semibold ${dm ? 'text-slate-200' : 'text-slate-700'}`}>{p.nombre_proyecto}</p>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <p className={`text-sm ${dm ? 'text-slate-400' : 'text-slate-500'}`}>{p.empresa}</p>
-                            </td>
-                            <td className="px-4 py-3.5">
-                              <OccupancyBar current={p.cupo_actual} max={p.capacidad_max} dark={dm} />
-                            </td>
-                            <td className="px-4 py-3.5 text-center">
-                              {p.cupo_actual >= p.capacidad_max ? (
-                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${dm ? 'text-red-400 bg-red-900/30 border border-red-800/30' : 'text-red-600 bg-red-50 border border-red-100'}`}>
-                                  <span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno
-                                </span>
-                              ) : (
-                                <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${dm ? 'text-emerald-400 bg-emerald-900/30 border border-emerald-800/30' : 'text-emerald-600 bg-emerald-50 border border-emerald-100'}`}>
-                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                        {!filteredProyectos.length && (
-                          <tr>
-                            <td colSpan={4} className={`text-center py-12 text-sm ${dm ? 'text-slate-500' : 'text-slate-400'}`}>{q ? 'Sin resultados para la búsqueda.' : 'No hay proyectos registrados aún.'}</td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                <SystemDashboardPanel />
               </motion.div>
             )}
 
             {/* ─── PROYECTOS ───────────────────── */}
             {activeSection === "proyectos" && (
               <motion.div key="proyectos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="space-y-6">
-                {/* Header with view toggle and create button */}
-                <div className="flex items-center justify-between">
-                  <div className={`flex items-center gap-1 p-1 rounded-xl border ${dm ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
-                    <button onClick={() => setProyectosView('all')} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${proyectosView === 'all' ? (dm ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 shadow-sm') : (dm ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}`}>
-                      <List className="w-3.5 h-3.5" /> Todos
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEmpresas(companyGroupKeys)}
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Expandir todas
                     </button>
-                    <button onClick={() => setProyectosView('byEmpresa')} className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${proyectosView === 'byEmpresa' ? (dm ? 'bg-blue-600 text-white' : 'bg-white text-slate-800 shadow-sm') : (dm ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-800')}`}>
-                      <Building2 className="w-3.5 h-3.5" /> Por Empresa
+                    <button
+                      type="button"
+                      onClick={() => setExpandedEmpresas([])}
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                      Colapsar todas
                     </button>
                   </div>
-                  <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Button 
+                      onClick={() => setIsAgregarAlumnoOpen(true)}
+                      className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all"
+                    >
+                      <Users className="w-4 h-4 mr-2" /> Agregar Alumno
+                    </Button>
+                    <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-blue-600/20 transition-all hover:scale-[1.02]">
+                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all">
                         <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-xl bg-white border border-slate-200 text-slate-900 shadow-2xl">
+                    <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
                       <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-slate-800">Nuevo Puesto de Proyecto</DialogTitle>
-                        <DialogDescription className="text-slate-500">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
+                        <DialogTitle className="text-xl font-extrabold tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
+                        <DialogDescription className="text-white/60">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
-                        {errorText && <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm font-medium">{errorText}</div>}
-                        <div className="grid grid-cols-2 gap-4">
+                        {errorText && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm font-medium">{errorText}</div>}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-slate-600 text-sm">Empresa Receptora</Label>
+                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Empresa Receptora</Label>
                             <Select required onValueChange={v => setFormProyecto({...formProyecto, id_empresa: v})}>
-                              <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                              <SelectContent className="bg-white border-slate-200 text-slate-900">
-                                {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()} className="hover:bg-slate-50 cursor-pointer">{e.nombre_empresa}</SelectItem>)}
+                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                              <SelectContent className="bg-slate-950 border-white/15 text-white">
+                                {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()}>{e.nombre_empresa}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-slate-600 text-sm">Evento Activo</Label>
+                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Evento Activo</Label>
                             <Select required onValueChange={v => setFormProyecto({...formProyecto, id_evento: v})}>
-                              <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                              <SelectContent className="bg-white border-slate-200 text-slate-900">
-                                {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()} className="hover:bg-slate-50 cursor-pointer">{ev.nombre}</SelectItem>)}
+                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                              <SelectContent className="bg-slate-950 border-white/15 text-white">
+                                {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()}>{ev.nombre}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-slate-600 text-sm">Título Oficial del Proyecto</Label>
-                          <Input required className="bg-slate-50 border-slate-200" value={formProyecto.nombre} onChange={e => setFormProyecto({...formProyecto, nombre: e.target.value})} />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Título Oficial del Proyecto</Label>
+                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.nombre} onChange={e => setFormProyecto({...formProyecto, nombre: e.target.value})} />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-slate-600 text-sm">Descripción (Opcional)</Label>
-                          <Input className="bg-slate-50 border-slate-200" value={formProyecto.desc} onChange={e => setFormProyecto({...formProyecto, desc: e.target.value})} />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Descripción (Opcional)</Label>
+                          <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({...formProyecto, desc: e.target.value})} />
                         </div>
-                        <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div className="bg-black/30 p-4 rounded-xl border border-white/10">
                           <div className="space-y-2">
-                            <Label className="text-slate-600 text-sm">Límite de Alumnos</Label>
-                            <Input type="number" required min="1" className="bg-white border-slate-200 font-bold text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
-                          </div>
-                          <div className="space-y-2">
-                            <Label className="text-slate-600 text-sm">Espera Máx.</Label>
-                            <Input type="number" min="0" className="bg-white border-slate-200 font-bold text-lg text-center" value={formProyecto.espera} onChange={e => setFormProyecto({...formProyecto, espera: e.target.value})} />
+                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Límite de Alumnos</Label>
+                            <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-bold text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-lg">Finalizar e Instanciar Credenciales</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold shadow-none">Finalizar y Crear Proyecto</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
+                  </div>
                 </div>
 
-                {/* ALL VIEW */}
-                {proyectosView === 'all' && (
-                  <div className={`rounded-2xl border shadow-sm overflow-hidden ${dm ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className={`border-b ${dm ? 'border-slate-700 bg-slate-800/50' : 'border-slate-100 bg-slate-50/50'}`}>
-                            <th className={`text-left text-[11px] font-semibold uppercase tracking-wider px-6 py-3.5 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Nombre del Proyecto</th>
-                            <th className={`text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3.5 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Ocupación</th>
-                            <th className={`text-center text-[11px] font-semibold uppercase tracking-wider px-4 py-3.5 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Estatus</th>
-                            <th className={`text-right text-[11px] font-semibold uppercase tracking-wider px-6 py-3.5 ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredProyectos?.map((p) => (
-                            <tr key={p.id_proyecto} className={`border-b last:border-0 transition-colors group ${dm ? 'border-slate-700/50 hover:bg-slate-700/30' : 'border-slate-50 hover:bg-blue-50/30'}`}>
-                              <td className="px-6 py-4">
-                                <p className={`font-semibold text-sm transition-colors ${dm ? 'text-slate-200 group-hover:text-blue-400' : 'text-slate-800 group-hover:text-blue-600'}`}>{p.nombre_proyecto}</p>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                  <Building2 className="w-3 h-3 text-blue-400" />
-                                  <p className={`text-xs ${dm ? 'text-slate-500' : 'text-slate-400'}`}>{p.empresa}</p>
-                                </div>
-                              </td>
-                              <td className="px-4 py-4"><div className="flex justify-center"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} dark={dm} /></div></td>
-                              <td className="px-4 py-4 text-center">
-                                {p.cupo_actual >= p.capacidad_max ? (
-                                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${dm ? 'text-red-400 bg-red-900/30 border border-red-800/30' : 'text-red-600 bg-red-50 border border-red-100'}`}><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
-                                ) : (
-                                  <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full ${dm ? 'text-emerald-400 bg-emerald-900/30 border border-emerald-800/30' : 'text-emerald-600 bg-emerald-50 border border-emerald-100'}`}><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
-                                )}
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <div className="flex items-center justify-end gap-2">
-                                  <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-100 px-3 py-1.5 rounded-lg transition-colors">+ Cupo</button>
-                                  <button onClick={() => handleRegenerarCreds(p.id_proyecto, p.nombre_proyecto)} className="text-xs font-semibold text-amber-600 hover:text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-100 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Re-Keys</button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                          {!filteredProyectos.length && (
-                            <tr><td colSpan={4} className={`text-center py-16 text-sm ${dm ? 'text-slate-500' : 'text-slate-400'}`}>{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</td></tr>
-                          )}
-                        </tbody>
-                      </table>
+                <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-semibold mr-1">
+                      <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
                     </div>
+
+                    {[
+                      { key: "todas", label: "Todas" },
+                      { key: "disponibles", label: "Disponibles" },
+                      { key: "ultimos", label: "Ultimos lugares" },
+                      { key: "llenos", label: "Llenos" },
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setAvailability(item.key)}
+                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${availability === item.key ? "bg-blue-500/25 border-blue-400/40 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
                   </div>
-                )}
+
+                  <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                    <div className="w-full md:w-auto md:min-w-[260px]">
+                      <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
+                      <select
+                        id="empresa-filter-select"
+                        value={empresaFilter}
+                        onChange={(e) => setEmpresaFilter(e.target.value)}
+                        className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+                      >
+                        <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
+                        {empresasEnProyectos.map((empresa) => (
+                          <option key={empresa} value={empresa} className="bg-slate-900 text-white">
+                            {empresa}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <select
+                      value={sortMode}
+                      onChange={(e) => setSortMode(e.target.value)}
+                      className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+                    >
+                      <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
+                      <option value="disponibilidad" className="bg-slate-900 text-white">Ordenar: Ultimos lugares</option>
+                      <option value="alfabetico" className="bg-slate-900 text-white">Ordenar: A-Z</option>
+                    </select>
+                  </div>
+                </div>
 
                 {/* BY EMPRESA VIEW */}
-                {proyectosView === 'byEmpresa' && (
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     {Object.entries(proyectosPorEmpresa).map(([empresaName, proys]) => (
-                      <div key={empresaName} className={`rounded-2xl border shadow-sm overflow-hidden transition-all ${dm ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
+                      <div key={empresaName} className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden transition-all">
                         <button
-                          onClick={() => setExpandedEmpresa(expandedEmpresa === empresaName ? null : empresaName)}
-                          className={`w-full flex items-center justify-between px-6 py-4 transition-colors ${dm ? 'hover:bg-slate-700/30' : 'hover:bg-slate-50'}`}
+                          onClick={() => setExpandedEmpresas((prev) => prev.includes(empresaName) ? prev.filter((name) => name !== empresaName) : [...prev, empresaName])}
+                          className="w-full flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/[0.03]"
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${dm ? 'bg-blue-900/40 text-blue-400' : 'bg-blue-50 text-blue-500'}`}>
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
                               <Building2 className="w-4 h-4" />
                             </div>
                             <div className="text-left">
-                              <p className={`font-bold text-sm ${dm ? 'text-white' : 'text-slate-800'}`}>{empresaName}</p>
-                              <p className={`text-xs ${dm ? 'text-slate-500' : 'text-slate-400'}`}>{proys.length} proyecto{proys.length !== 1 ? 's' : ''}</p>
+                              <p className="font-bold text-sm text-white">{empresaName}</p>
+                              <p className="text-xs text-white/55">{proys.length} proyecto{proys.length !== 1 ? 's' : ''}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className={`text-xs font-mono font-bold px-2 py-1 rounded-md ${dm ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                            <span className="text-xs font-mono font-bold px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
                               {proys.reduce((s, p) => s + (p.cupo_actual||0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max||0), 0)} plazas
                             </span>
-                            <motion.div animate={{ rotate: expandedEmpresa === empresaName ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                              <ChevronDown className={`w-4 h-4 ${dm ? 'text-slate-500' : 'text-slate-400'}`} />
+                            <motion.div animate={{ rotate: expandedEmpresas.includes(empresaName) ? 180 : 0 }} transition={{ duration: 0.2 }}>
+                              <ChevronDown className="w-4 h-4 text-white/55" />
                             </motion.div>
                           </div>
                         </button>
                         <AnimatePresence>
-                          {expandedEmpresa === empresaName && (
+                          {expandedEmpresas.includes(empresaName) && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
-                              <div className={`border-t ${dm ? 'border-slate-700' : 'border-slate-100'}`}>
+                              <div className="border-t border-white/10">
                                 {proys.map(p => (
-                                  <div key={p.id_proyecto} className={`flex items-center justify-between px-6 py-3.5 border-b last:border-0 transition-colors ${dm ? 'border-slate-700/50 hover:bg-slate-700/20' : 'border-slate-50 hover:bg-blue-50/20'}`}>
-                                    <div className="flex-1">
-                                      <p className={`text-sm font-semibold ${dm ? 'text-slate-200' : 'text-slate-700'}`}>{p.nombre_proyecto}</p>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                      <div className="w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} dark={dm} /></div>
-                                      {p.cupo_actual >= p.capacidad_max ? (
-                                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center ${dm ? 'text-red-400 bg-red-900/30' : 'text-red-600 bg-red-50 border border-red-100'}`}><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
-                                      ) : (
-                                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center ${dm ? 'text-emerald-400 bg-emerald-900/30' : 'text-emerald-600 bg-emerald-50 border border-emerald-100'}`}><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
-                                      )}
-                                      <div className="flex gap-1.5">
-                                        <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-lg">+ Cupo</button>
-                                        <button onClick={() => handleRegenerarCreds(p.id_proyecto, p.nombre_proyecto)} className="text-xs font-semibold text-amber-600 bg-amber-50 border border-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Re-Keys</button>
+                                  <div key={p.id_proyecto} className="px-6 py-3.5 border-b last:border-0 transition-colors border-white/10 hover:bg-white/[0.03]">
+                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                      <div className="flex-1">
+                                        <p className="text-sm font-semibold text-white">{p.nombre_proyecto}</p>
                                       </div>
+                                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                                        <div className="w-full md:w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div>
+                                        {p.cupo_actual >= p.capacidad_max ? (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
+                                        ) : (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
+                                        )}
+                                        <div className="flex gap-1.5">
+                                          <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg">+ Cupo</button>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="mt-3 rounded-xl border border-white/10 bg-black/25 overflow-hidden">
+                                      <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Alumnos enrolados</p>
+                                        <p className="text-xs text-white/55">{Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos.length : 0}</p>
+                                      </div>
+
+                                      {Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.length > 0 ? (
+                                        <div className="overflow-x-auto">
+                                          <table className="w-full min-w-[900px]">
+                                            <thead>
+                                              <tr className="border-b border-white/10">
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Alumno</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Matricula</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Carrera</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Correo</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Fecha Registro</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Hora Registro</th>
+                                                <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Accion</th>
+                                              </tr>
+                                            </thead>
+                                            <tbody>
+                                              {p.alumnos_inscritos.map((alumno) => {
+                                                const fecha = alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion) : null;
+                                                const fechaStr = fecha ? fecha.toLocaleDateString("es-MX") : "--";
+                                                const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--";
+                                                return (
+                                                <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
+                                                  <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
+                                                  <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
+                                                  <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
+                                                  <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
+                                                  <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
+                                                  <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
+                                                  <td className="px-3 py-2 text-right">
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleEliminarInscripcion(alumno)}
+                                                      disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                                    >
+                                                      <Trash2 className="w-3.5 h-3.5" />
+                                                      {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                                    </button>
+                                                  </td>
+                                                </tr>
+                                                );
+                                              })}
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      ) : (
+                                        <div className="px-3 py-4 text-xs text-white/45">Este proyecto no tiene alumnos inscritos todavia.</div>
+                                      )}
                                     </div>
                                   </div>
                                 ))}
@@ -612,15 +1126,27 @@ export default function AdminDashboard() {
                       </div>
                     ))}
                     {!Object.keys(proyectosPorEmpresa).length && (
-                      <div className={`text-center py-16 text-sm rounded-2xl border ${dm ? 'text-slate-500 bg-slate-800/50 border-slate-700' : 'text-slate-400 bg-white border-slate-100'}`}>{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</div>
+                      <div className="text-center py-16 text-sm rounded-2xl border border-white/15 bg-black/35 text-white/45">{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</div>
                     )}
-                  </div>
-                )}
+                </div>
+              </motion.div>
+            )}
+
+            {activeSection === "estadisticas" && (
+              <motion.div
+                key="estadisticas"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -12 }}
+                transition={{ duration: 0.25 }}
+                className="space-y-6"
+              >
+                <EstadisticasPanel eventos={eventos} empresas={empresas} />
               </motion.div>
             )}
 
             {/* ─── EMPRESAS ────────────────────── */}
-            {activeSection === "empresas" && (
+            {activeSection === "gestion" && (
               <motion.div
                 key="empresas"
                 initial={{ opacity: 0, y: 12 }}
@@ -629,53 +1155,72 @@ export default function AdminDashboard() {
                 transition={{ duration: 0.25 }}
                 className="space-y-6"
               >
-                <div className="flex items-center justify-end">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <Button
+                    onClick={() => {
+                      setActiveSection("proyectos");
+                      setIsCrearProyectoOpen(true);
+                    }}
+                    className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors"
+                  >
+                    <Plus className="w-4 h-4 mr-2" /> Registrar Proyecto
+                  </Button>
+
                   <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02]">
+                      <Button className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors">
                         <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg bg-white border border-slate-200 text-slate-900">
-                      <DialogHeader><DialogTitle className="text-xl font-bold text-slate-800">Registrar Socio Formador</DialogTitle></DialogHeader>
+                    <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+                      <DialogHeader><DialogTitle className="text-xl font-extrabold tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
                       <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
-                        {errorText && <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">{errorText}</div>}
+                        {errorText && <div className="text-sm text-red-200 bg-red-500/10 p-2 rounded border border-red-500/30">{errorText}</div>}
                         <div className="space-y-1">
-                          <Label className="text-slate-600 text-sm">ID Asociado / Convenio</Label>
-                          <Input required className="bg-slate-50 border-slate-200" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({...formEmpresa, id_asociado: e.target.value})} placeholder="Ej. SF-XXX24" />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">ID Asociado / Convenio</Label>
+                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({...formEmpresa, id_asociado: e.target.value})} placeholder="Ej. SF-XXX24" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-slate-600 text-sm">Nombre Público (Comercial)</Label>
-                          <Input required className="bg-slate-50 border-slate-200" value={formEmpresa.nombre} onChange={e => setFormEmpresa({...formEmpresa, nombre: e.target.value})} />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Nombre Público (Comercial)</Label>
+                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.nombre} onChange={e => setFormEmpresa({...formEmpresa, nombre: e.target.value})} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-slate-600 text-sm">Denominación Legal (Razón Social)</Label>
-                          <Input required className="bg-slate-50 border-slate-200" value={formEmpresa.razon} onChange={e => setFormEmpresa({...formEmpresa, razon: e.target.value})} />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Denominación Legal (Razón Social)</Label>
+                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.razon} onChange={e => setFormEmpresa({...formEmpresa, razon: e.target.value})} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-slate-600 text-sm">Descripción de Giro Corporativo</Label>
-                          <Input className="bg-slate-50 border-slate-200" value={formEmpresa.desc} onChange={e => setFormEmpresa({...formEmpresa, desc: e.target.value})} />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Descripción de Giro Corporativo</Label>
+                          <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.desc} onChange={e => setFormEmpresa({...formEmpresa, desc: e.target.value})} />
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold mt-4">Matricular Entidad</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-bold mt-4">Matricular Entidad</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                  <div className="px-5 py-3 border-b border-white/10">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/55">Empresas registradas</p>
+                  </div>
                   {filteredEmpresas?.map((emp, i) => (
                     <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
-                      <div className={`border rounded-2xl p-5 shadow-sm hover:shadow-md transition-all duration-300 group ${dm ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100'}`}>
-                        <div className="flex items-start justify-between mb-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${dm ? 'bg-blue-900/40 text-blue-400 border border-blue-800/30' : 'bg-blue-50 border border-blue-100 text-blue-500'}`}>
-                            <Building2 className="w-5 h-5" />
+                      <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
+                              <Building2 className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-sm text-white truncate">{emp.nombre_empresa}</p>
+                              <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
+                            </div>
                           </div>
-                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md ${dm ? 'text-slate-500 bg-slate-700 border border-slate-600' : 'text-slate-400 bg-slate-50 border border-slate-100'}`}>#{emp.id_asociado}</span>
-                        </div>
-                        <h4 className={`font-bold text-base transition-colors ${dm ? 'text-white group-hover:text-blue-400' : 'text-slate-800 group-hover:text-blue-600'}`}>{emp.nombre_empresa}</h4>
-                        <p className={`text-sm mt-1 leading-relaxed min-h-[40px] ${dm ? 'text-slate-500' : 'text-slate-400'}`}>{emp.descripcion || "Organización receptora con convenio vigente."}</p>
-                        <div className={`mt-4 pt-3 border-t ${dm ? 'border-slate-700' : 'border-slate-100'}`}>
-                          <span className={`text-xs font-medium px-2.5 py-1 rounded-md ${dm ? 'text-blue-400 bg-blue-900/30 border border-blue-800/30' : 'text-blue-600 bg-blue-50 border border-blue-100'}`}>{emp.razon_social}</span>
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">#{emp.id_asociado}</span>
+                            {emp.razon_social ? (
+                              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
+                            ) : null}
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -685,7 +1230,7 @@ export default function AdminDashboard() {
             )}
 
             {/* ─── EVENTOS ─────────────────────── */}
-            {activeSection === "eventos" && (
+            {activeSection === "gestion" && (
               <motion.div
                 key="eventos"
                 initial={{ opacity: 0, y: 12 }}
@@ -697,65 +1242,65 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-end">
                   <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold px-5 py-5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all hover:scale-[1.02]">
+                      <Button className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors">
                         <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-md bg-white border border-slate-200 text-slate-900">
-                      <DialogHeader><DialogTitle className="text-xl font-bold text-slate-800">Inaugurar Semestre</DialogTitle></DialogHeader>
+                    <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+                      <DialogHeader><DialogTitle className="text-xl font-extrabold tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
                       <form onSubmit={handleCrearEvento} className="space-y-4 mt-2">
                         <div className="space-y-1">
-                          <Label className="text-slate-600 text-sm">Distintivo del Periodo</Label>
-                          <Input required className="bg-slate-50 border-slate-200" value={formEvento.nombre} onChange={e => setFormEvento({...formEvento, nombre: e.target.value})} placeholder="Ej. Feria Institucional SJR" />
+                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Distintivo del Periodo</Label>
+                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEvento.nombre} onChange={e => setFormEvento({...formEvento, nombre: e.target.value})} placeholder="Ej. Feria Institucional SJR" />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <Label className="text-slate-600 text-sm">Ciclo</Label>
+                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Ciclo</Label>
                             <Select value={formEvento.periodo} onValueChange={v => setFormEvento({...formEvento, periodo: v})}>
-                              <SelectTrigger className="bg-slate-50 border-slate-200"><SelectValue/></SelectTrigger>
-                              <SelectContent className="bg-white border-slate-200 text-slate-900">
+                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue/></SelectTrigger>
+                              <SelectContent className="bg-slate-950 border-white/15 text-white">
                                 {["FEBRERO-JUNIO", "AGOSTO-DICIEMBRE", "VERANO", "INVIERNO"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
                               </SelectContent>
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-slate-600 text-sm">Año</Label>
-                            <Input type="number" required className="bg-slate-50 border-slate-200 text-center font-bold" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
+                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Año</Label>
+                            <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-bold" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold mt-4">Emitir Apertura Global</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-bold mt-4">Emitir Apertura Global</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                  <div className="px-5 py-3 border-b border-white/10">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/55">Periodos y eventos</p>
+                  </div>
                   {filteredEventos?.map((ev, i) => (
                     <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
-                      <div className={`border rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 relative ${ev.activo ? (dm ? 'bg-slate-800/50 border-emerald-800/40' : 'bg-white border-emerald-200') : (dm ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-slate-100')}`}>
-                        {/* Active indicator strip */}
-                        <div className={`absolute left-0 top-0 bottom-0 w-1 ${ev.activo ? 'bg-gradient-to-b from-emerald-400 to-teal-500' : (dm ? 'bg-slate-700' : 'bg-slate-200')}`} />
-                        <div className="pl-6 pr-5 py-5">
-                          <div className="flex items-start justify-between mb-3">
-                            <h4 className={`text-lg font-bold ${dm ? 'text-white' : 'text-slate-800'}`}>{ev.nombre}</h4>
+                      <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${ev.activo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25' : 'bg-white/10 text-white/55 border border-white/10'}`}>
+                              <Calendar className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-semibold text-white">{ev.nombre}</h4>
+                              <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio} - {ev.semestre}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-start sm:justify-end">
                             {ev.activo ? (
-                              <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${dm ? 'text-emerald-400 bg-emerald-900/30 border border-emerald-800/30' : 'text-emerald-600 bg-emerald-50 border border-emerald-200'}`}>
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> En Curso
                               </span>
                             ) : (
-                              <span className={`inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${dm ? 'text-slate-500 bg-slate-700 border border-slate-600' : 'text-slate-400 bg-slate-50 border border-slate-200'}`}>
+                              <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
                                 Archivado
                               </span>
                             )}
-                          </div>
-                          <div className="flex items-center gap-3 mt-2">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${ev.activo ? (dm ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-50 text-emerald-500') : (dm ? 'bg-slate-700 text-slate-500' : 'bg-slate-50 text-slate-400')}`}>
-                              <Calendar className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className={`text-sm font-semibold ${dm ? 'text-slate-200' : 'text-slate-700'}`}>{ev.periodo} {ev.anio}</p>
-                              <p className={`text-[11px] uppercase tracking-wider ${dm ? 'text-slate-500' : 'text-slate-400'}`}>Semestre {ev.semestre}</p>
-                            </div>
                           </div>
                         </div>
                       </div>
@@ -767,63 +1312,198 @@ export default function AdminDashboard() {
           </AnimatePresence>
         </div>
       </main>
+      </div>
 
       {/* ═══════════ GLOBAL MODALS ═══════════ */}
-      {/* Credenciales Modal */}
-      <Dialog open={!!credsModalInfo} onOpenChange={open => !open && setCredsModalInfo(null)}>
-        <DialogContent className="sm:max-w-md bg-white border-0 shadow-2xl p-0 overflow-hidden">
-          <div className="bg-amber-500 p-6 text-white">
-            <DialogTitle className="text-xl flex items-center gap-2"><QrCode className="w-6 h-6"/> Credenciales Privadas</DialogTitle>
-            <DialogDescription className="text-amber-100 mt-1">Comparte esto con el representante de la empresa.</DialogDescription>
+      {/* Cupo Modal */}
+      <Dialog open={!!cupoModalInfo} onOpenChange={open => !open && setCupoModalInfo(null)}>
+        <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Ampliar Cupo</DialogTitle>
+            <DialogDescription className="text-white/60">{cupoModalInfo?.nombre}</DialogDescription>
+          </DialogHeader>
+          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Máximo Actual</Label>
+              <Input disabled value={cupoModalInfo?.max || 0} className="bg-white/5 border-white/10 text-white/45" />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-semibold uppercase tracking-wider">Nueva Capacidad</Label>
+              <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-500/10 border-blue-400/30 text-blue-100 focus-visible:ring-blue-500 text-lg font-bold" />
+            </div>
           </div>
-          <div className="p-6 space-y-4">
-            <div className="text-xs bg-amber-50 text-amber-800 p-3 rounded-lg border border-amber-200">
-              <b>Atención:</b> Esta contraseña no volverá a mostrarse. Guárdala antes de cerrar.
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Correo de Acceso</Label>
-              <div className="flex mt-1">
-                <Input readOnly value={credsModalInfo?.correo || ""} className="font-mono bg-slate-50 border-r-0 rounded-r-none outline-none focus-visible:ring-0 text-slate-700" />
-                <Button onClick={() => handleCopy(credsModalInfo?.correo, 'c')} variant="outline" className="rounded-l-none bg-slate-100 border-l-0 text-slate-500">
-                  {copiedField==='c' ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Contraseña de Proyecto</Label>
-              <div className="flex mt-1">
-                <Input readOnly value={credsModalInfo?.password || ""} className="font-mono bg-emerald-50 border-emerald-200 border-r-0 rounded-r-none outline-none focus-visible:ring-0 text-emerald-700 font-bold" />
-                <Button onClick={() => handleCopy(credsModalInfo?.password, 'p')} variant="outline" className="rounded-l-none bg-emerald-100 border-emerald-200 border-l-0 text-emerald-700 hover:bg-emerald-200">
-                  {copiedField==='p' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-            <Button className="w-full bg-slate-900 hover:bg-slate-800" onClick={() => setCredsModalInfo(null)}>Confirmar Guardado</Button>
+          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold">Salvar Ajuste</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
+        <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogDescription className="text-white/60">Esta acción quitará al alumno del proyecto y liberará su cupo.</DialogDescription>
+          </DialogHeader>
+          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
+          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
+            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+          </div>
+          <div className="flex items-center justify-end gap-2 mt-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => setDeleteModalInfo(null)}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              onClick={confirmarEliminarInscripcion}
+              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+            >
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
 
-      {/* Cupo Modal */}
-      <Dialog open={!!cupoModalInfo} onOpenChange={open => !open && setCupoModalInfo(null)}>
-        <DialogContent className="sm:max-w-sm bg-white border border-slate-200 text-slate-900">
+      {/* Modal Agregar Alumno */}
+      <Dialog open={isAgregarAlumnoOpen} onOpenChange={setIsAgregarAlumnoOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-bold text-slate-800">Ampliar Cupo</DialogTitle>
-            <DialogDescription className="text-slate-500">{cupoModalInfo?.nombre}</DialogDescription>
+            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Agregar Alumno a Proyecto</DialogTitle>
+            <DialogDescription className="text-white/60">
+              {selectedProyectoForAlumno ? selectedProyectoForAlumno.nombre_proyecto : "Selecciona un proyecto"}
+            </DialogDescription>
           </DialogHeader>
-          {errorText && <p className="text-red-600 text-sm">{errorText}</p>}
-          <div className="space-y-4 py-2">
-            <div className="space-y-2">
-              <Label className="text-slate-600 text-sm">Máximo Actual</Label>
-              <Input disabled value={cupoModalInfo?.max || 0} className="bg-slate-50 border-slate-200 text-slate-400" />
+          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
+          
+          {!selectedProyectoForAlumno ? (
+            <div className="space-y-3">
+              <p className="text-sm text-white/70">Selecciona un proyecto:</p>
+              <div className="max-h-64 overflow-y-auto space-y-2">
+                {proyectos.filter(p => p.cupo_actual < p.capacidad_max).map(p => (
+                  <button
+                    key={p.id_proyecto}
+                    onClick={() => handleAbreModalAgregarAlumno(p)}
+                    className="w-full text-left px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
+                  >
+                    <p className="text-sm font-medium text-white">{p.nombre_proyecto}</p>
+                    <p className="text-xs text-white/60">{p.empresa} • {p.cupo_actual}/{p.capacidad_max}</p>
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-slate-700 font-semibold">Nueva Capacidad</Label>
-              <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-50 border-blue-200 text-blue-800 focus-visible:ring-blue-500 text-lg font-bold" />
-            </div>
-          </div>
-          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold">Salvar Ajuste</Button>
+          ) : (
+            <form onSubmit={handleAgregarAlumno} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-white text-[11px] font-semibold uppercase tracking-wider">Alumno</Label>
+                <select
+                  value={selectedAlumnoMatricula}
+                  onChange={e => setSelectedAlumnoMatricula(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-white/15 bg-slate-950 text-white placeholder-white/40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent"
+                >
+                  <option value="">-- Selecciona un alumno --</option>
+                  {alumnosDisponibles.map(a => (
+                    <option key={a.id_matricula} value={a.id_matricula}>
+                      {a.nombre} ({a.id_matricula}) - {a.carrera}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+                  onClick={() => {
+                    setSelectedProyectoForAlumno(null);
+                    setSelectedAlumnoMatricula("");
+                  }}
+                >
+                  Atrás
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!selectedAlumnoMatricula || isSubmitting}
+                  className="flex-1 border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold"
+                >
+                  {isSubmitting ? "Agregando..." : "Agregar"}
+                </Button>
+              </div>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
+
+      <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
+        <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
+          <p className="text-white/50 uppercase tracking-wider font-semibold">Panel Administrativo</p>
+          <p className="text-white/40">Servicio Social Tec - Ecosistema Unificado</p>
+        </div>
+      </footer>
+
+      {commandOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
+          <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-black/75 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="p-3 border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+                <input
+                  ref={commandInputRef}
+                  type="text"
+                  value={commandQuery}
+                  onChange={(e) => setCommandQuery(e.target.value)}
+                  placeholder="Buscar comando, alumno, empresa o proyecto..."
+                  role="combobox"
+                  aria-expanded={commandOpen}
+                  aria-controls="admin-command-list"
+                  aria-activedescendant={commandItems.length ? `admin-command-item-${commandItems[activeCommandIndex]?.id}` : undefined}
+                  className="w-full h-11 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/45 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+              </div>
+            </div>
+
+            <div id="admin-command-list" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
+              {commandItems.length > 0 ? commandItems.map((item, idx) => (
+                <button
+                  key={item.id}
+                  id={`admin-command-item-${item.id}`}
+                  role="option"
+                  aria-selected={idx === activeCommandIndex}
+                  ref={(node) => {
+                    commandItemRefs.current[idx] = node;
+                  }}
+                  type="button"
+                  onClick={() => runCommandItem(item)}
+                  className={`relative w-full text-left px-3 py-2 rounded-lg transition-colors ${idx === activeCommandIndex ? "text-white" : "hover:bg-white/10"}`}
+                >
+                  {idx === activeCommandIndex ? (
+                    <motion.span
+                      layoutId="admin-command-active-highlight"
+                      className="absolute inset-0 rounded-lg border border-blue-400/35 bg-gradient-to-r from-blue-500/20 via-blue-400/10 to-transparent"
+                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                    />
+                  ) : null}
+                  <div className="relative z-10">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-[11px] text-white/50 uppercase tracking-wider">{item.hint}</p>
+                  </div>
+                </button>
+              )) : (
+                <div className="px-3 py-6 text-sm text-white/45">Sin comandos que coincidan.</div>
+              )}
+            </div>
+
+            <div className="px-4 py-2 border-t border-white/10 text-[11px] text-white/45 uppercase tracking-wider">
+              Navegación: ↑ ↓ Enter - Abrir: Ctrl+K - Cerrar: Esc - Busca alumnos, empresas y proyectos
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

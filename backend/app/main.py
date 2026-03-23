@@ -1,4 +1,5 @@
 import os
+from datetime import UTC, datetime
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -11,8 +12,10 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.db.ssh_manager import ssh_tunnel_manager
+from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
-from app.routers import auth, alumno, admin, empresa
+from app.models.request_metric import RequestMetric
+from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -46,9 +49,21 @@ app = FastAPI(
 )
 
 # ── CORS Middleware ────────────────────────────────────────────────────────────
+# En desarrollo: acepta cualquier origen en red privada local (LAN) para
+# poder probar desde celular u otras máquinas sin hardcodear IPs.
+# En producción: solo los orígenes de settings.ALLOWED_ORIGINS.
+_LOCAL_ORIGIN_REGEX = (
+    r"http://(localhost|127\.0\.0\.1"
+    r"|192\.168\.\d{1,3}\.\d{1,3}"
+    r"|10\.\d{1,3}\.\d{1,3}\.\d{1,3}"
+    r"|172\.(1[6-9]|2\d|3[01])\.\d{1,3}\.\d{1,3}"
+    r"):(5173|4173|3000|8080)"
+)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origin_regex=_LOCAL_ORIGIN_REGEX if settings.APP_ENV == "development" else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -95,6 +110,36 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     return response
 
 
+@app.middleware("http")
+async def request_metrics_middleware(request: Request, call_next) -> Response:
+    started_at = datetime.now(UTC)
+    status_code = 500
+
+    try:
+        response = await call_next(request)
+        status_code = response.status_code
+        return response
+    finally:
+        if request.url.path.startswith("/api/"):
+            ended_at = datetime.now(UTC)
+            duration_ms = max((ended_at - started_at).total_seconds() * 1000, 0.0)
+
+            async with AsyncSessionLocal() as session:
+                try:
+                    session.add(
+                        RequestMetric(
+                            request_timestamp=started_at,
+                            endpoint=request.url.path[:255],
+                            method=request.method,
+                            status_code=int(status_code),
+                            duration_ms=round(duration_ms, 3),
+                        )
+                    )
+                    await session.commit()
+                except Exception:
+                    await session.rollback()
+
+
 # ── Rate Limiter ───────────────────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -106,6 +151,8 @@ app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
 app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
+app.include_router(estadisticas.router, tags=["Estadisticas"])
+app.include_router(system_metrics.router, tags=["Sistema"])
 
 # Servir Frontend compilado (React SPA) en la raíz
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")

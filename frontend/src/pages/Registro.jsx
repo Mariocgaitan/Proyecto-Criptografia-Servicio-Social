@@ -1,39 +1,73 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Loader2, ArrowRight, Eye, EyeOff, User, Lock, Hash, GraduationCap, BookOpen, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { motion, AnimatePresence } from "framer-motion";
-import tecLogo from "@/assets/logo_tec.png";
-import campus1 from "@/assets/campus_1.png";
-import campus2 from "@/assets/campus_2.png";
-import campus3 from "@/assets/campus_3.png";
+import { apiUrl } from "@/lib/api";
+import tecLogo from "@/assets/tec_logo.png";
+import serSocialLogo from "@/assets/ser_social.png";
+import campusImg1 from "@/assets/login_images/ser_social_header.png";
+import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
+import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
+import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
 
-const images = [campus1, campus2, campus3];
+function SocialIcon({ children, href = "#" }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-white/50 hover:bg-white/10 transition-all duration-200">
+      {children}
+    </a>
+  );
+}
+
+const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
+
+const bounceIn = (delay = 0) => ({
+  initial: { y: -80, opacity: 0 },
+  animate: { y: 0, opacity: 1 },
+  transition: { type: "spring", stiffness: 120, damping: 14, delay },
+});
+
+const bounceUp = (delay = 0) => ({
+  initial: { y: 80, opacity: 0 },
+  animate: { y: 0, opacity: 1 },
+  transition: { type: "spring", stiffness: 120, damping: 14, delay },
+});
+
+const fadeIn = (delay = 0) => ({
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  transition: { duration: 0.8, ease: "easeOut", delay },
+});
 
 export default function Registro() {
   const navigate = useNavigate();
   const [eventos, setEventos] = useState([]);
+  const [carreras, setCarreras] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-  const [currentImage, setCurrentImage] = useState(0);
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [formData, setFormData] = useState({
-    nombre: "", correo: "", matricula: "", carrera: "", semestre: "", password: "", password_confirm: "", eventos_seleccionados: [],
+    nombre: "", matricula: "", carrera: "", semestre: "", password: "", password_confirm: "", eventos_seleccionados: [],
   });
 
   useEffect(() => {
-    fetch("http://localhost:8000/api/v1/auth/eventos")
-      .then(res => res.json())
-      .then(data => setEventos(data))
+    Promise.all([
+      fetch(apiUrl("/api/v1/auth/eventos")).then(res => res.json()),
+      fetch(apiUrl("/api/v1/auth/carreras")).then(res => res.json()),
+    ])
+      .then(([eventosData, carrerasData]) => {
+        setEventos(eventosData);
+        setCarreras(Array.isArray(carrerasData) ? carrerasData : []);
+      })
       .catch(err => console.error(err));
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImage(prev => (prev + 1) % images.length);
-    }, 5000);
+      setCurrentBgIndex(prev => (prev + 1) % campusImages.length);
+    }, 20000);
     return () => clearInterval(interval);
   }, []);
 
@@ -61,10 +95,13 @@ export default function Registro() {
     if (formData.eventos_seleccionados.length === 0) {
       setError("Selecciona al menos un evento."); setIsLoading(false); return;
     }
+    if (!formData.carrera) {
+      setError("Selecciona una carrera."); setIsLoading(false); return;
+    }
 
     try {
       const payload = { ...formData, semestre: parseInt(formData.semestre, 10) };
-      const res = await fetch("http://localhost:8000/api/v1/auth/registro", {
+      const res = await fetch(apiUrl("/api/v1/auth/registro"), {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
       });
       const data = await res.json();
@@ -75,177 +112,217 @@ export default function Registro() {
   };
 
   return (
-    <div className="min-h-screen bg-tec-deep flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-        <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute -top-[30%] -right-[10%] w-[80%] h-[80%] rounded-full bg-tec-primary/10 blur-[130px]" />
-        <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }} className="absolute bottom-[0%] -left-[20%] w-[60%] h-[60%] rounded-full bg-tec-denim/8 blur-[100px]" />
+    <div className="min-h-screen relative flex flex-col overflow-hidden">
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <AnimatePresence mode="sync" initial={false}>
+          <motion.img
+            key={currentBgIndex}
+            src={campusImages[currentBgIndex]}
+            alt="Campus"
+            className="w-full h-full object-cover absolute inset-0"
+            initial={{ x: "100%" }}
+            animate={{ x: "0%" }}
+            exit={{ x: "-100%" }}
+            transition={{ duration: 3, ease: "easeInOut" }}
+          />
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-black/50" />
       </div>
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff04_1px,transparent_1px),linear-gradient(to_bottom,#ffffff04_1px,transparent_1px)] bg-[size:40px_40px]" />
 
-      {/* Main Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.7, ease: "easeOut" }}
-        className="relative z-10 w-full max-w-[1050px] bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] shadow-[0_25px_80px_rgba(0,0,0,0.6)] overflow-hidden flex min-h-[640px]"
+      <motion.nav
+        {...bounceIn(0)}
+        className="relative z-20 flex items-center justify-between px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
       >
-        {/* Left Panel - Image Carousel */}
-        <div className="hidden lg:block w-[40%] relative overflow-hidden">
-          <AnimatePresence mode="wait">
-            <motion.img
-              key={currentImage}
-              src={images[currentImage]}
-              alt="Tec de Monterrey"
-              initial={{ opacity: 0, scale: 1.1 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 1, ease: "easeInOut" }}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </AnimatePresence>
-          <div className="absolute inset-0 bg-gradient-to-r from-transparent to-tec-deep/40" />
-          <div className="absolute inset-0 bg-tec-deep/20" />
-
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2.5 z-10">
-            {images.map((_, i) => (
-              <button key={i} onClick={() => setCurrentImage(i)}
-                className={`h-2 rounded-full transition-all duration-500 ${i === currentImage ? "w-8 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)]" : "w-2 bg-white/40 hover:bg-white/60"}`}
-              />
-            ))}
-          </div>
+        <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-10 sm:h-12 w-auto brightness-0 invert drop-shadow-md" />
+        <div className="flex items-center gap-2 sm:gap-3">
+          <SocialIcon href="https://www.facebook.com/TecCCM">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
+          </SocialIcon>
+          <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </SocialIcon>
+          <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+          </SocialIcon>
         </div>
+      </motion.nav>
 
-        {/* Right Panel - Form */}
-        <div className="flex-1 px-8 sm:px-10 py-10 overflow-y-auto max-h-[90vh]">
-          {/* Logo + Heading */}
-          <div className="mb-6">
-            <motion.img initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
-              src={tecLogo} alt="Tec de Monterrey" className="h-20 w-auto mb-4 drop-shadow-[0_0_15px_rgba(255,255,255,0.1)]"
-            />
-            <h1 className="text-2xl font-extrabold text-white tracking-tight leading-tight">
-              Alta de <span className="bg-clip-text text-transparent bg-gradient-to-r from-tec-light to-blue-300">Alumno</span>
-            </h1>
-          </div>
+      <div className="flex-1 flex items-start justify-center relative z-10 px-4 py-8 overflow-y-auto">
+        <motion.div {...fadeIn(0.3)} className="w-full max-w-[560px] flex flex-col items-center">
+          <motion.div {...fadeIn(0.4)} className="mb-6 px-4 py-3 rounded-2xl bg-black/45 backdrop-blur-md border border-white/25 shadow-2xl flex flex-col items-center">
+            <div className="px-4 py-2 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-xl">
+              <img src={serSocialLogo} alt="Ser Social" className="h-16 sm:h-20 w-auto" />
+            </div>
+            <p className="mt-2 text-white/95 text-[10px] font-semibold tracking-[0.15em] uppercase text-center">
+              Feria de Servicio Social
+            </p>
+          </motion.div>
 
-          {/* Tabs */}
-          <div className="flex gap-1 mb-6">
-            <Link to="/login" className="px-5 py-2 text-sm font-medium text-white/40 border-b-2 border-transparent hover:text-white/70 hover:border-white/20 transition-colors">
-              Ingresar
-            </Link>
-            <Link to="/registro" className="px-5 py-2 text-sm font-bold text-white border-b-2 border-tec-light transition-colors">
-              Registro
-            </Link>
-          </div>
-
-          {/* Error */}
-          <AnimatePresence mode="wait">
-            {error && (
-              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mb-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 relative overflow-hidden">
-                <div className="w-1 h-full absolute left-0 top-0 bottom-0 bg-red-500 rounded-l-xl" />
-                <p className="text-red-300 text-sm font-semibold pl-2">{error}</p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Row 1 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Nombre Completo</Label>
-                <Input name="nombre" value={formData.nombre} onChange={handleChange} required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="Juan Pérez" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Matrícula</Label>
-                <Input name="matricula" value={formData.matricula} onChange={handleChange} required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="A0..." />
-              </div>
+          <motion.div {...fadeIn(0.5)} className="w-full bg-black/45 backdrop-blur-md border border-white/25 rounded-2xl shadow-2xl p-6 sm:p-8 space-y-4">
+            <div className="flex gap-1 border-b border-white/10 mb-2">
+              <Link to="/login" className="px-4 py-2 text-sm font-medium text-white/45 border-b-2 border-transparent hover:text-white/70 transition-colors -mb-px">
+                Ingresar
+              </Link>
+              <Link to="/registro" className="px-4 py-2 text-sm font-bold text-white border-b-2 border-white/70 transition-colors -mb-px">
+                Registro
+              </Link>
             </div>
 
-            {/* Row 2 */}
-            <div className="space-y-1">
-              <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Correo Institucional</Label>
-              <Input type="email" name="correo" value={formData.correo} onChange={handleChange} required
-                className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="A0...@tec.mx" />
-            </div>
+            <AnimatePresence mode="wait">
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-xl px-4 py-3 overflow-hidden"
+                >
+                  <p className="text-red-200 text-sm font-semibold text-center">{error}</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {/* Row 3 */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Carrera (Siglas)</Label>
-                <Input name="carrera" value={formData.carrera} onChange={handleChange} required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 uppercase hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="ITC" />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Semestre</Label>
-                <Input type="number" min="1" max="15" name="semestre" value={formData.semestre} onChange={handleChange} required
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/20 rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" placeholder="1-12" />
-              </div>
-            </div>
-
-            {/* Row 4 - Passwords */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Contraseña</Label>
+            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <User className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                  <Input name="nombre" value={formData.nombre} onChange={handleChange} required
+                    placeholder="Nombre completo"
+                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                </div>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <Hash className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                  <Input name="matricula" value={formData.matricula} onChange={handleChange} required
+                    placeholder="Matrícula (A0...)"
+                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <GraduationCap className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                  <select
+                    name="carrera"
+                    value={formData.carrera}
+                    onChange={handleChange}
+                    required
+                    className="w-full appearance-none bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-10 focus:outline-none focus:ring-2 focus:ring-white/45 focus:border-white/60 text-sm font-medium backdrop-blur-md"
+                  >
+                    <option value="" className="text-slate-700">Selecciona carrera</option>
+                    {carreras.map((carrera) => (
+                      <option key={carrera} value={carrera} className="text-slate-900">
+                        {carrera}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 pointer-events-none">
+                    <ChevronDown className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                </div>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <BookOpen className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                  <Input type="number" min="1" max="15" name="semestre" value={formData.semestre} onChange={handleChange} required
+                    placeholder="Semestre"
+                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <Lock className="w-4 h-4 text-slate-700/90" />
+                  </div>
                   <Input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleChange} required
-                    className="bg-white/5 border-white/10 text-white rounded-xl h-11 pr-10 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors">
+                    placeholder="Contraseña"
+                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-10 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-700/80 hover:text-slate-900 transition-colors z-10">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <div className="relative">
+                  <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10 pointer-events-none">
+                    <Lock className="w-4 h-4 text-slate-700/90" />
+                  </div>
+                  <Input type={showPassword ? "text" : "password"} name="password_confirm" value={formData.password_confirm} onChange={handleChange} required
+                    placeholder="Confirmar"
+                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100" />
+                </div>
               </div>
-              <div className="space-y-1">
-                <Label className="text-white/50 text-xs font-semibold uppercase tracking-widest">Confirmar</Label>
-                <Input type={showPassword ? "text" : "password"} name="password_confirm" value={formData.password_confirm} onChange={handleChange} required
-                  className="bg-white/5 border-white/10 text-white rounded-xl h-11 hover:bg-white/[0.07] focus-visible:ring-tec-primary/60" />
-              </div>
-            </div>
 
-            {/* Eventos */}
-            <div className="pt-3 border-t border-white/5">
-              <Label className="text-white text-sm font-bold mb-3 block">Eventos Disponibles <span className="text-white/40 font-normal">(máx. 2)</span></Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {eventos.map(ev => {
-                  const isSelected = formData.eventos_seleccionados.includes(ev.id_evento);
-                  const isDisabled = !isSelected && formData.eventos_seleccionados.length >= 2;
-                  return (
-                    <motion.div
-                      whileHover={!isDisabled ? { scale: 1.02 } : {}}
-                      whileTap={!isDisabled ? { scale: 0.98 } : {}}
-                      key={ev.id_evento}
-                      onClick={() => !isDisabled && handleEventoToggle(ev.id_evento)}
-                      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all backdrop-blur-sm relative overflow-hidden
-                        ${isSelected ? "border-tec-primary bg-tec-primary/15 shadow-[0_0_15px_rgba(0,57,166,0.3)]" : "border-white/10 hover:border-white/25 bg-white/[0.03]"}
-                        ${isDisabled ? "opacity-35 cursor-not-allowed grayscale" : ""}
-                      `}
-                    >
-                      {isSelected && <div className="absolute top-0 right-0 w-1.5 h-full bg-tec-primary" />}
-                      <h3 className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-blue-100/70'}`}>{ev.nombre}</h3>
-                      <p className={`text-[10px] mt-1 font-mono uppercase tracking-widest ${isSelected ? 'text-blue-300' : 'text-white/35'}`}>
-                        Semestre {ev.semestre} {ev.anio}
-                      </p>
-                    </motion.div>
-                  );
-                })}
-                {!eventos.length && <div className="col-span-full py-6 text-center text-white/25 text-sm border border-dashed border-white/10 rounded-2xl">Buscando eventos vigentes...</div>}
+              <div className="pt-2 border-t border-white/15">
+                <p className="text-white/80 text-xs font-bold uppercase tracking-widest mb-3">
+                  Eventos disponibles <span className="text-white/40 font-normal normal-case">(max. 2)</span>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {eventos.map(ev => {
+                    const isSelected = formData.eventos_seleccionados.includes(ev.id_evento);
+                    const isDisabled = !isSelected && formData.eventos_seleccionados.length >= 2;
+                    return (
+                      <motion.div
+                        whileHover={!isDisabled ? { scale: 1.02 } : {}}
+                        whileTap={!isDisabled ? { scale: 0.98 } : {}}
+                        key={ev.id_evento}
+                        onClick={() => !isDisabled && handleEventoToggle(ev.id_evento)}
+                        className={[
+                          "p-3 rounded-xl border cursor-pointer transition-all backdrop-blur-sm relative overflow-hidden select-none",
+                          isSelected ? "border-white/50 bg-white/20 shadow-[0_0_12px_rgba(255,255,255,0.1)]" : "border-white/20 hover:border-white/35 bg-white/5",
+                          isDisabled ? "opacity-35 cursor-not-allowed grayscale" : "",
+                        ].join(" ")}
+                      >
+                        <h3 className="font-bold text-sm text-white leading-tight">{ev.nombre}</h3>
+                        <p className="text-[10px] mt-0.5 font-mono uppercase tracking-widest text-white/50">
+                          Semestre {ev.semestre} · {ev.anio}
+                        </p>
+                      </motion.div>
+                    );
+                  })}
+                  {!eventos.length && (
+                    <div className="col-span-full py-4 text-center text-white/30 text-xs border border-dashed border-white/15 rounded-xl">
+                      Buscando eventos vigentes...
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-white/5">
               <Button type="submit" disabled={isLoading}
-                className="w-full sm:w-auto h-12 px-8 bg-gradient-to-r from-tec-primary to-tec-denim hover:from-tec-denim hover:to-tec-primary text-white rounded-xl font-bold transition-all hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(0,57,166,0.5)] flex items-center gap-2"
+                className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
               >
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                  <>Completar Registro <ArrowRight className="w-4 h-4" /></>
-                )}
+                {isLoading
+                  ? <Loader2 className="w-5 h-5 animate-spin" />
+                  : <><ArrowRight className="w-4 h-4" /> Completar Registro</>
+                }
               </Button>
-            </div>
-          </form>
+            </form>
+          </motion.div>
+        </motion.div>
+      </div>
+
+      <motion.footer
+        {...bounceUp(0.2)}
+        className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
+      >
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Aviso de Privacidad
+          </a>
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Ethos
+          </a>
         </div>
-      </motion.div>
+        <p className="text-white/40 text-[11px] font-medium text-center">
+          © {new Date().getFullYear()} {" "}
+          <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">
+            Tecnologico de Monterrey.
+          </a>
+        </p>
+      </motion.footer>
     </div>
   );
 }
