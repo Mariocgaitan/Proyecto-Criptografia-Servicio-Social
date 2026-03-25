@@ -58,3 +58,6 @@ SID Local.session.sql
 *.tmp
 *.bak
 *.local
+#Commits
+commits_20.txt
+commits_40.txt
