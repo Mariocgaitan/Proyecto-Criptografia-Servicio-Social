@@ -15,7 +15,7 @@ from app.db.ssh_manager import ssh_tunnel_manager
 from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
 from app.models.request_metric import RequestMetric
-from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics
+from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -153,6 +153,7 @@ app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
 app.include_router(estadisticas.router, tags=["Estadisticas"])
 app.include_router(system_metrics.router, tags=["Sistema"])
+app.include_router(exports.router, tags=["Export"])
 
 # Servir Frontend compilado (React SPA) en la raíz
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")

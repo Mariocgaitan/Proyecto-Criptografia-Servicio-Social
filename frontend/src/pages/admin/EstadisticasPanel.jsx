@@ -14,9 +14,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { RefreshCw } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 
-import { apiUrl } from "@/lib/api";
+import { apiUrl, downloadCsvExport } from "@/lib/api";
 
 function KpiCard({ label, value, helper }) {
   return (
@@ -132,6 +132,9 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
   });
   const [timelineRange, setTimelineRange] = useState("24h");
   const [selectedCarrera, setSelectedCarrera] = useState("");
+  const [exportDataset, setExportDataset] = useState("inscripciones");
+  const [exportScope, setExportScope] = useState("filtered");
+  const [exportingCsv, setExportingCsv] = useState(false);
 
   const [generalData, setGeneralData] = useState(null);
   const [particularData, setParticularData] = useState(null);
@@ -244,6 +247,33 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
       setLoading(false);
     }
   }, [subTab, fetchGeneral, fetchParticular, fetchEmbudo, fetchAlertas, fetchTimelineGeneral, fetchTimelineParticular]);
+
+  const handleExportCsv = useCallback(async () => {
+    setError("");
+    setExportingCsv(true);
+    try {
+      const filtersToSend = exportScope === "filtered"
+        ? {
+            evento_id: subTab === "particular" ? filters.eventoId : "",
+            empresa_id: subTab === "particular" ? filters.empresaId : "",
+            proyecto_id: subTab === "particular" ? filters.proyectoId : "",
+            carrera: subTab === "particular" ? filters.carrera : "",
+            fecha_inicio: filters.fechaInicio,
+            fecha_fin: filters.fechaFin,
+          }
+        : {};
+
+      await downloadCsvExport({
+        dataset: exportDataset,
+        scope: exportScope,
+        filters: filtersToSend,
+      });
+    } catch (err) {
+      setError(err.message || "No se pudo exportar el CSV.");
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [exportDataset, exportScope, filters, subTab]);
 
   useEffect(() => {
     fetchActiveView();
@@ -417,13 +447,46 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
             </button>
           </div>
 
-          <button
-            onClick={fetchActiveView}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
-            disabled={loading}
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refrescar
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={exportDataset}
+              onChange={(e) => setExportDataset(e.target.value)}
+              className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs text-white"
+              disabled={exportingCsv}
+            >
+              <option value="inscripciones" className="bg-slate-900 text-white">CSV: Inscripciones</option>
+              <option value="proyectos" className="bg-slate-900 text-white">CSV: Proyectos</option>
+              <option value="empresas" className="bg-slate-900 text-white">CSV: Empresas</option>
+              <option value="usuarios_padron" className="bg-slate-900 text-white">CSV: Usuarios/Padrón</option>
+              <option value="logs" className="bg-slate-900 text-white">CSV: Logs</option>
+            </select>
+
+            <select
+              value={exportScope}
+              onChange={(e) => setExportScope(e.target.value)}
+              className="rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-xs text-white"
+              disabled={exportingCsv}
+            >
+              <option value="all" className="bg-slate-900 text-white">Todos</option>
+              <option value="filtered" className="bg-slate-900 text-white">Filtrados</option>
+            </select>
+
+            <button
+              onClick={handleExportCsv}
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-400/30 bg-blue-500/20 px-3 py-2 text-xs font-semibold text-blue-100 hover:bg-blue-500/30"
+              disabled={exportingCsv}
+            >
+              <Download className="h-3.5 w-3.5" /> {exportingCsv ? "Exportando..." : "Exportar CSV"}
+            </button>
+
+            <button
+              onClick={fetchActiveView}
+              className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refrescar
+            </button>
+          </div>
         </div>
 
         <div className={`grid grid-cols-1 gap-3 ${subTab === "general" ? "md:grid-cols-2 lg:grid-cols-2" : "md:grid-cols-3 lg:grid-cols-6"}`}>
