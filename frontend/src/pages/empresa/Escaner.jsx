@@ -4,6 +4,7 @@ import {
   Activity,
   AlertCircle,
   CheckCircle2,
+  Download,
   LogOut,
   QrCode,
   ScanLine,
@@ -26,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, downloadCsvExport } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
@@ -196,6 +197,9 @@ export default function EmpresaEscaner() {
   const [activeTab, setActiveTab] = useState("sensor");
   const [lastSync, setLastSync] = useState(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [exportDataset, setExportDataset] = useState("inscripciones");
+  const [exportScope, setExportScope] = useState("filtered");
+  const [exportingCsv, setExportingCsv] = useState(false);
   const scannerRef = useRef(null);
   const scannerMountingRef = useRef(false);
   const activeProjectIdRef = useRef(null);
@@ -581,6 +585,34 @@ export default function EmpresaEscaner() {
     );
   }, [proyecto, searchQuery]);
 
+  const handleExportCsv = useCallback(async () => {
+    setExportingCsv(true);
+    try {
+      const activeProjectId = selectedProjectId || proyecto?.id_proyecto || "";
+      const filters = exportScope === "filtered"
+        ? {
+            proyecto_id: activeProjectId,
+            evento_id: proyecto?.id_evento || "",
+          }
+        : {};
+
+      await downloadCsvExport({
+        dataset: exportDataset,
+        scope: exportScope,
+        filters,
+      });
+    } catch (error) {
+      setResult({
+        status: "error",
+        name: "Exportación fallida",
+        message: error?.message || "No se pudo exportar el CSV",
+      });
+      setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
+    } finally {
+      setExportingCsv(false);
+    }
+  }, [exportDataset, exportScope, proyecto?.id_evento, proyecto?.id_proyecto, selectedProjectId]);
+
   if (initializing) {
     return null;
   }
@@ -690,6 +722,38 @@ export default function EmpresaEscaner() {
                     <p className="mt-3 text-xs text-white/50">
                       {proyectosEmpresa.length} proyecto(s) asociado(s) a tu empresa.
                     </p>
+
+                    <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <select
+                        value={exportDataset}
+                        onChange={(e) => setExportDataset(e.target.value)}
+                        className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
+                        disabled={exportingCsv}
+                      >
+                        <option value="inscripciones" className="text-slate-900">CSV: Inscripciones</option>
+                        <option value="proyectos" className="text-slate-900">CSV: Proyectos</option>
+                        <option value="empresas" className="text-slate-900">CSV: Empresas</option>
+                      </select>
+
+                      <select
+                        value={exportScope}
+                        onChange={(e) => setExportScope(e.target.value)}
+                        className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
+                        disabled={exportingCsv}
+                      >
+                        <option value="all" className="text-slate-900">Todos</option>
+                        <option value="filtered" className="text-slate-900">Filtrados</option>
+                      </select>
+
+                      <Button
+                        onClick={handleExportCsv}
+                        disabled={exportingCsv}
+                        className="h-10 rounded-xl border border-blue-400/35 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"
+                      >
+                        <Download className="mr-2 h-4 w-4" />
+                        {exportingCsv ? "Exportando..." : "Exportar CSV"}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>
