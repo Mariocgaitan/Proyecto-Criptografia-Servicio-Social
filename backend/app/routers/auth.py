@@ -3,7 +3,14 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
-from app.schemas.auth import LoginRequest, TokenResponse
+from app.schemas.auth import (
+    LoginRequest,
+    TokenResponse,
+    GoogleAuthRequest,
+    PreAuthResponse,
+    VerifyTOTPRequest,
+    RoleRedirectResponse,
+)
 from app.schemas.usuario import RegistroRequest
 from app.services.auth_service import (
     LoginError,
@@ -14,6 +21,8 @@ from app.services.auth_service import (
     obtener_eventos_disponibles,
     refresh_session,
     registrar_alumno,
+    login_or_register_google,
+    verify_totp_and_get_token,
 )
 from app.core.limiter import limiter
 
@@ -129,3 +138,76 @@ async def api_me(
         "rol": user.rol,
         "id_proyecto": getattr(user, "id_proyecto", None)
     }
+
+
+# ── Google OAuth ──────────────────────────────────────────────────────────────
+
+@router.post("/api/v1/auth/google", response_model=PreAuthResponse, tags=["Autenticación"], summary="Iniciar sesión con Google")
+async def api_google_auth(
+    datos: GoogleAuthRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Autentica con Google. Si es válido, retorna temp_token que requiere TOTP.
+    Si es primera vez, incluye QR code para vincular Authenticator.
+    """
+    from fastapi import HTTPException
+    ip = request.client.host if request.client else None
+    
+    try:
+        temp_token, totp_qr = await login_or_register_google(db, datos.id_token, ip)
+        return PreAuthResponse(
+            status="requires_2fa",
+            temp_token=temp_token,
+            totp_qr_code=totp_qr,
+        )
+    except LoginError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+@router.post("/api/v1/auth/verify-totp", response_model=RoleRedirectResponse, tags=["Autenticación"], summary="Verificar TOTP y obtener token final")
+async def api_verify_totp(
+    datos: VerifyTOTPRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verifica el código TOTP usando el temp_token del pre-auth.
+    Si es válido, retorna access_token, rol y URL de redirección.
+    """
+    from fastapi import HTTPException
+    ip = request.client.host if request.client else None
+    
+    try:
+        access_token, raw_refresh, rol, redirect_url = await verify_totp_and_get_token(
+            db, datos.temp_token, datos.totp_code, ip
+        )
+        
+        response = JSONResponse(content={
+            "access_token": access_token,
+            "token_type": "bearer",
+            "rol": rol,
+            "redirect_url": redirect_url,
+        })
+        
+        # Guardar refresh token en cookie
+        response.set_cookie(
+            key="refresh_token",
+            value=raw_refresh,
+            httponly=True,
+            secure=False,
+            samesite="strict",
+            max_age=REFRESH_COOKIE_MAX_AGE,
+        )
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=False,
+            secure=False,
+            samesite="strict",
+            max_age=15 * 60,
+        )
+        return response
+    except LoginError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)

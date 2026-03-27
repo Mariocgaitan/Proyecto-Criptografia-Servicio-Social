@@ -48,6 +48,8 @@ backend/migrations/__pycache__/
 CV_proyecto.md
 Llaves_empresas.md
 MATRIZ_DATOS_GRAFICAS_ADMIN.md
+PLAN_AUTENTICACION.md
+./BACKEND_GOOGLE_AUTH.md
 
 # Archivos de sesión de herramientas de BD (DBeaver, DataGrip, etc.)
 *.session.sql
@@ -58,3 +60,6 @@ SID Local.session.sql
 *.tmp
 *.bak
 *.local
+#Commits
+commits_20.txt
+commits_40.txt

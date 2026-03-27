@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
-import { apiUrl } from "@/lib/api";
+import { apiUrl, downloadCsvExport } from "@/lib/api";
 import EstadisticasPanel from "./EstadisticasPanel";
 import SystemDashboardPanel from "./SystemDashboardPanel";
 import tecLogo from "@/assets/tec_logo.png";
@@ -189,7 +189,7 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
@@ -400,6 +400,16 @@ export default function AdminDashboard() {
       setDeletingInscripcionId(null);
     }
   };
+
+  const handleQuickExport = useCallback(async (dataset) => {
+    setErrorText("");
+    try {
+      await downloadCsvExport({ dataset, scope: "all" });
+      setActiveSection("estadisticas");
+    } catch (err) {
+      setErrorText(err.message || "No se pudo exportar el CSV");
+    }
+  }, []);
 
   // Computed stats
   const totalAlumnos = proyectos.reduce((sum, p) => sum + (p.cupo_actual || 0), 0);
@@ -662,6 +672,11 @@ export default function AdminDashboard() {
       { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
       { id: "act-new-event", label: "Abrir: Aperturar Periodo", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEventoOpen(true); } },
       { id: "act-add-alumno", label: "Abrir: Agregar Alumno a Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsAgregarAlumnoOpen(true); setSelectedProyectoForAlumno(null); } },
+      { id: "act-export-ins", label: "Exportar CSV: Inscripciones", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("inscripciones"); } },
+      { id: "act-export-proy", label: "Exportar CSV: Proyectos", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("proyectos"); } },
+      { id: "act-export-emp", label: "Exportar CSV: Empresas", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("empresas"); } },
+      { id: "act-export-padron", label: "Exportar CSV: Usuarios/Padrón", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("usuarios_padron"); } },
+      { id: "act-export-logs", label: "Exportar CSV: Logs", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("logs"); } },
       { id: "act-toggle-sidebar", label: sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral", hint: "Vista", keepSearchContext: false, action: () => setSidebarCollapsed((prev) => !prev) },
     ];
 
@@ -674,7 +689,7 @@ export default function AdminDashboard() {
     );
 
     return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
-  }, [commandQuery, sidebarCollapsed, studentCommandItems, projectCommandItems, companyCommandItems]);
+  }, [commandQuery, sidebarCollapsed, studentCommandItems, projectCommandItems, companyCommandItems, handleQuickExport]);
 
   const runCommandItem = (item) => {
     if (!item) return;

@@ -54,3 +54,47 @@ def hash_refresh_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
+# ── Pre-Auth Temp Token ────────────────────────────────────────────────────────
+
+def generate_pre_auth_token() -> str:
+    """Genera un token temporal para el pre-auth (antes de TOTP). URL-safe, 32 bytes."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_pre_auth_token(raw_token: str) -> str:
+    """Hashea un pre-auth token con SHA-256 para guardarlo en DB."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+# ── Google OAuth Validation ────────────────────────────────────────────────────
+
+def validate_google_token(id_token: str) -> dict:
+    """
+    Valida un ID Token de Google y retorna los datos del usuario.
+    
+    Lanza ValueError si el token es inválido o la signa no es de Google.
+    Retorna: {"email": "...", "name": "...", "picture": "...", ...}
+    """
+    from google.auth.transport import requests
+    from google.oauth2 import id_token as google_id_token
+    
+    try:
+        # Validar que el token viene de Google
+        idinfo = google_id_token.verify_oauth2_token(
+            id_token,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+        
+        # Verificar que no es un token expirado o de otro origen
+        if not idinfo.get("email_verified"):
+            raise ValueError("Email no verificado en Google")
+            
+        return idinfo
+    except ValueError as e:
+        raise ValueError(f"Token de Google inválido: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Error al validar token de Google: {str(e)}")
+
+
+
