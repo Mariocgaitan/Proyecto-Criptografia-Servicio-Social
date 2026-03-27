@@ -13,3 +13,4 @@ from app.models.request_metric import RequestMetric  # noqa: F401
 from app.models.empresa import Empresa  # noqa: F401
 from app.models.proyecto import Proyecto  # noqa: F401
 from app.models.inscripcion import Inscripcion  # noqa: F401
+from app.models.pre_auth_token import PreAuthToken  # noqa: F401

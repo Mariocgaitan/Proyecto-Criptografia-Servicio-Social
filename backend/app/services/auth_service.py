@@ -286,3 +286,197 @@ async def logout_alumno(db: AsyncSession, raw_token: str, id_matricula: str | No
 
     await _log(db, "LOGOUT", id_matricula=id_matricula)
     await db.commit()
+
+
+# ── ETAPA 3: Google OAuth + Pre-Auth ─────────────────────────────────────────
+
+async def login_or_register_google(
+    db: AsyncSession,
+    id_token: str,
+    ip_origen: str | None = None,
+) -> tuple[str, str | None]:
+    """
+    Autentica con Google SSO o crea nuevo usuario.
+    Retorna: (temp_token, totp_qr_code_url)
+    - temp_token: Token temporal que requiere TOTP para completar auth
+    - totp_qr_code_url: QR code si es primera vez configurando TOTP, None si ya existe
+    
+    Raises: LoginError si el id_token es inválido.
+    """
+    from app.core.security import validate_google_token, generate_pre_auth_token, hash_pre_auth_token
+    from app.models.pre_auth_token import PreAuthToken
+    
+    try:
+        google_info = validate_google_token(id_token)
+    except ValueError as e:
+        await _log(db, "GOOGLE_LOGIN_FALLIDO", ip_origen=ip_origen, detalle=f"Token inválido: {str(e)}")
+        await db.commit()
+        raise LoginError(f"Google token inválido: {str(e)}", 401)
+    
+    correo = google_info.get("email", "").lower()
+    nombre = google_info.get("name", "Usuario de Google")
+    
+    if not correo:
+        raise LoginError("No se pudo obtener email de Google", 400)
+    
+    # 1. Buscar usuario existente
+    result = await db.execute(select(Usuario).where(Usuario.correo == correo))
+    usuario = result.scalar_one_or_none()
+    
+    # 2. Si no existe, crear nuevo usuario (registro automático)
+    if not usuario:
+        # Generar matrícula temporal (usar correo como base)
+        # Para usuarios Google, usamos el correo como ID temporal
+        import uuid
+        temp_matricula = f"GGL-{uuid.uuid4().hex[:8].upper()}"
+        
+        usuario = Usuario(
+            id_matricula=temp_matricula,
+            nombre=nombre,
+            correo=correo,
+            carrera="ITC",  # Por defecto
+            semestre=1,  # Por defecto
+            password_hash=None,  # No tiene contraseña, es Google login
+            is_google_login=True,
+            totp_secret=pyotp.random_base32(),  # Generar TOTP nuevo
+        )
+        db.add(usuario)
+        await db.flush()
+        await _log(db, "REGISTRO_GOOGLE_NUEVO", id_matricula=temp_matricula, ip_origen=ip_origen)
+        totp_qr = _generate_totp_qr(correo, usuario.totp_secret)
+    else:
+        # Usuario existente - si no tiene TOTP, generarlo
+        if not usuario.totp_secret or usuario.totp_secret == "":
+            usuario.totp_secret = pyotp.random_base32()
+            await db.flush()
+            totp_qr = _generate_totp_qr(correo, usuario.totp_secret)
+        else:
+            totp_qr = None
+        
+        await _log(db, "LOGIN_GOOGLE_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+    
+    # 3. Generar temp_token (pre-auth)
+    raw_temp = generate_pre_auth_token()
+    temp_hash = hash_pre_auth_token(raw_temp)
+    expira_en = datetime.now(timezone.utc) + timedelta(minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES)
+    
+    db.add(PreAuthToken(
+        token_hash=temp_hash,
+        id_matricula=usuario.id_matricula,
+        expira_en=expira_en,
+        usado=False,
+    ))
+    
+    await db.commit()
+    return raw_temp, totp_qr
+
+
+async def verify_totp_and_get_token(
+    db: AsyncSession,
+    temp_token: str,
+    totp_code: str,
+    ip_origen: str | None = None,
+) -> tuple[str, str, str]:
+    """
+    Verifica el código TOTP usando el temp_token del pre-auth.
+    Retorna: (access_token, rol, redirect_url)
+    
+    Raises: LoginError si el temp_token es inválido o el TOTP es incorrecto.
+    """
+    from app.core.security import hash_pre_auth_token, create_access_token
+    from app.models.pre_auth_token import PreAuthToken
+    
+    temp_hash = hash_pre_auth_token(temp_token)
+    now = datetime.now(timezone.utc)
+    
+    # 1. Validar temp_token
+    result = await db.execute(
+        select(PreAuthToken).where(
+            PreAuthToken.token_hash == temp_hash,
+            PreAuthToken.usado == False,  # noqa: E712
+            PreAuthToken.expira_en > now,
+        )
+    )
+    pre_auth_record = result.scalar_one_or_none()
+    if not pre_auth_record:
+        raise LoginError("Temp token inválido, expirado o ya usado", 401)
+    
+    # 2. Obtener usuario
+    result = await db.execute(
+        select(Usuario).where(Usuario.id_matricula == pre_auth_record.id_matricula)
+    )
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise LoginError("Usuario no encontrado", 404)
+    
+    # 3. Validar TOTP
+    totp_obj = pyotp.TOTP(usuario.totp_secret)
+    if not totp_obj.verify(totp_code):
+        await _log(db, "TOTP_FALLIDO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+        await db.commit()
+        raise LoginError("Código TOTP inválido", 401)
+    
+    # 4. Marcar temp_token como usado
+    pre_auth_record.usado = True
+    
+    # 5. Generar tokens finales
+    access_token = create_access_token({
+        "sub": usuario.id_matricula,
+        "rol": usuario.rol,
+        "nombre": usuario.nombre,
+    })
+    
+    raw_refresh = generate_refresh_token()
+    token_hash = hash_refresh_token(raw_refresh)
+    expira_en = datetime.now(timezone.utc) + timedelta(hours=settings.REFRESH_TOKEN_EXPIRE_HOURS)
+    
+    db.add(RefreshToken(
+        token_hash=token_hash,
+        id_matricula=usuario.id_matricula,
+        expira_en=expira_en,
+        revocado=False,
+    ))
+    
+    # 6. Determinar redirección según rol
+    redirect_map = {
+        "alumno": "/dashboard",
+        "empresa": "/empresa/escaner",
+        "admin": "/admin/dashboard",
+    }
+    redirect_url = redirect_map.get(usuario.rol, "/dashboard")
+    
+    # 7. Guardar refresh token en cookie (se hace en el endpoint)
+    await _log(db, "TOTP_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+    await db.commit()
+    
+    return access_token, raw_refresh, usuario.rol, redirect_url
+
+
+# ── Utilidades TOTP ──────────────────────────────────────────────────────────
+
+def _generate_totp_qr(email: str, secret: str) -> str:
+    """Genera URL del código QR para vincular Authenticator."""
+    totp_obj = pyotp.TOTP(secret)
+    qr_uri = totp_obj.provisioning_uri(
+        name=email,
+        issuer_name="SID-Cripto"
+    )
+    
+    # Usar qrcode para generar la imagen
+    import qrcode
+    import io
+    import base64
+    
+    qr = qrcode.QRCode(version=1, box_size=10, border=4)
+    qr.add_data(qr_uri)
+    qr.make(fit=True)
+    
+    img = qr.make_image(fill_color="black", back_color="white")
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    
+    # Convertir a base64 para enviar como data URL
+    qr_base64 = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/png;base64,{qr_base64}"
+

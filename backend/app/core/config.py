@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_HOURS: int = 8
+    PRE_AUTH_TOKEN_EXPIRE_MINUTES: int = 10  # El temp_token expira en 10 minutos
+
+    # Google OAuth
+    GOOGLE_CLIENT_ID: str = "(configurar en .env)"
 
     # App
     APP_ENV: str = "development"
