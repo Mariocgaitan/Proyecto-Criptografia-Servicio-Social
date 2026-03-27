@@ -15,7 +15,7 @@ from app.db.ssh_manager import ssh_tunnel_manager
 from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
 from app.models.request_metric import RequestMetric
-from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics
+from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports
 
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
@@ -80,15 +80,19 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data:; "
-        "connect-src 'self';"
+        "img-src 'self' data: https://*.googleusercontent.com; "
+        "connect-src 'self' http://localhost:8000 https://accounts.google.com; "
+        "frame-src 'self' https://accounts.google.com;"
     )
-    response.headers["X-Frame-Options"] = "DENY"
+    # Permitir que Google monte su iframe invisible
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+    # COOP en unsafe-none es requerido por Google Identity Services (GSI)
+    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
 
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -153,6 +157,7 @@ app.include_router(admin.router, tags=["Admin"])
 app.include_router(empresa.router, tags=["Empresa"])
 app.include_router(estadisticas.router, tags=["Estadisticas"])
 app.include_router(system_metrics.router, tags=["Sistema"])
+app.include_router(exports.router, tags=["Export"])
 
 # Servir Frontend compilado (React SPA) en la raíz
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
