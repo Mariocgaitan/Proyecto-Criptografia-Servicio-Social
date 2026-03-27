@@ -25,12 +25,15 @@ export const AuthProvider = ({ children }) => {
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+        return data;
       } else {
         setUser(null);
+        return null;
       }
     } catch (error) {
       console.error("Failed to fetch user", error);
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
@@ -50,8 +53,8 @@ export const AuthProvider = ({ children }) => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.detail || "Login failed");
-      await fetchUser();
-      return { success: true };
+      const userData = await fetchUser();
+      return { success: true, user: userData };
     } catch (error) {
       return { success: false, error: error.message };
     }

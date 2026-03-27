@@ -318,6 +318,17 @@ async def login_or_register_google(
     
     if not correo:
         raise LoginError("No se pudo obtener email de Google", 400)
+
+    # Solo se permiten cuentas institucionales del Tec.
+    if not correo.endswith("@tec.mx"):
+        await _log(
+            db,
+            "GOOGLE_LOGIN_FALLIDO",
+            ip_origen=ip_origen,
+            detalle=f"Dominio no permitido: {correo}",
+        )
+        await db.commit()
+        raise LoginError("Solo se permite iniciar sesión con correos @tec.mx", 403)
     
     # 1. Buscar usuario existente
     result = await db.execute(select(Usuario).where(Usuario.correo == correo))

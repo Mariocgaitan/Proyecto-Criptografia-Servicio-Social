@@ -5,6 +5,8 @@ import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck, U
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/hooks/useAuth";
+import { apiUrl } from "@/lib/api";
 
 import tecLogo from "@/assets/tec_logo.png";
 import serSocialLogo from "@/assets/ser_social.png";
@@ -43,6 +45,7 @@ const slideVariants = {
 export default function AuthWizard() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { login, fetchUser } = useAuth();
   const isLogin = location.pathname === "/login";
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
@@ -63,16 +66,25 @@ export default function AuthWizard() {
     totpQrCode: null
   });
 
+  const normalizeLoginIdentifier = (value) => {
+    const trimmed = value.trim();
+    if (/^[aA]0\d{7}$/.test(trimmed)) {
+      return `${trimmed.toLowerCase()}@tec.mx`;
+    }
+    return trimmed.toLowerCase();
+  };
+
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     setError(null);
     try {
       // Usar la ruta relativa para aprovechar el proxy configurado en vite.config.js
       // Esto previene los bloqueos CORS del navegador y problemas con COOP
-      const response = await fetch("/api/v1/auth/google", {
+      const response = await fetch(apiUrl("/api/v1/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential })
+        body: JSON.stringify({ id_token: credentialResponse.credential }),
+        credentials: "include"
       });
       
       const data = await response.json();
@@ -118,11 +130,12 @@ export default function AuthWizard() {
 
   const handleStep1Submit = (e) => {
     e.preventDefault();
-    if (!authData.email.trim()) {
-      setError("Por favor, ingresa tu correo.");
+    const normalizedIdentifier = normalizeLoginIdentifier(authData.email);
+    if (!normalizedIdentifier) {
+      setError("Por favor, ingresa tu correo o matrícula.");
       return;
     }
-    // TODO: Verify email format
+    setAuthData((prev) => ({ ...prev, email: normalizedIdentifier }));
     nextStep();
   };
 
@@ -132,12 +145,33 @@ export default function AuthWizard() {
       setError("Ingresa tu contraseña.");
       return;
     }
-    // Simulate auth check
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      nextStep();
-    }, 700);
+
+    const doLogin = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+          const normalizedEmail = normalizeLoginIdentifier(authData.email);
+        const result = await login(normalizedEmail, authData.password);
+        if (!result.success) {
+          throw new Error(result.error || "No se pudo iniciar sesión.");
+        }
+
+        const usuario = result.user || await fetchUser();
+        const targetByRole = {
+          admin: "/admin/dashboard",
+          empresa: "/empresa/escaner",
+          alumno: "/dashboard",
+        };
+        navigate(targetByRole[usuario?.rol] || "/dashboard", { replace: true });
+      } catch (err) {
+        console.error(err);
+        setError(err.message || "No se pudo iniciar sesión.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void doLogin();
   };
 
   const handleStep3Submit = async (e) => {
@@ -152,13 +186,14 @@ export default function AuthWizard() {
     
     try {
       // Usar ruta relativa
-      const response = await fetch("/api/v1/auth/verify-totp", {
+      const response = await fetch(apiUrl("/api/v1/auth/verify-totp"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           temp_token: authData.tempToken,
           totp_code: authData.totpCode
-        })
+        }),
+        credentials: "include"
       });
       
       const data = await response.json();
@@ -167,8 +202,13 @@ export default function AuthWizard() {
         throw new Error(data.detail || "Código TOTP inválido.");
       }
       
-      // Asignación completa, redireccionar según rol
-      navigate(data.redirect_url || "/dashboard");
+      const usuario = await fetchUser();
+      const targetByRole = {
+        admin: "/admin/dashboard",
+        empresa: "/empresa/escaner",
+        alumno: "/dashboard",
+      };
+      navigate(data.redirect_url || targetByRole[usuario?.rol] || "/dashboard", { replace: true });
     } catch (err) {
       console.error(err);
       setError(err.message || "Error al verificar código TOTP.");
@@ -196,7 +236,7 @@ export default function AuthWizard() {
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">
                 {isLogin ? "Inicia sesión" : "Crea tu cuenta"}
               </h2>
-              <p className="text-white/60 text-base">Ingresa tu correo institucional para continuar.</p>
+              <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
             </div>
             
             <div className="relative">
@@ -204,10 +244,11 @@ export default function AuthWizard() {
                 <Mail className="w-5 h-5 text-slate-700/90" />
               </div>
               <Input
-                type="email"
-                placeholder="A01234567@tec.mx"
+                type="text"
+                placeholder="Correo o matrícula (A01234567)"
                 value={authData.email}
                 onChange={(e) => setAuthData({...authData, email: e.target.value})}
+                onBlur={() => setAuthData((prev) => ({ ...prev, email: normalizeLoginIdentifier(prev.email) }))}
                 className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-14 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90"
                 autoFocus
               />
@@ -267,7 +308,7 @@ export default function AuthWizard() {
               </button>
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-white text-slate-900 hover:bg-slate-100 font-bold text-lg rounded-full shadow-lg transition-all flex items-center justify-center gap-2">
+            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-lg rounded-xl backdrop-blur-md shadow-lg shadow-black/25 transition-all flex items-center justify-center gap-2">
               {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Iniciar Sesión"}
             </Button>
             
@@ -389,7 +430,7 @@ export default function AuthWizard() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col overflow-hidden">
+    <div className="min-h-screen relative flex flex-col overflow-x-hidden">
       {/* Background Image Carousel */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <AnimatePresence mode="sync" initial={false}>
@@ -408,19 +449,26 @@ export default function AuthWizard() {
       </div>
 
       {/* Top Nav */}
-      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-10 py-4 bg-black/20 backdrop-blur-md border-b border-white/5">
+      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5">
         <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-10 sm:h-12 w-auto brightness-0 invert drop-shadow-md" />
-        <div className="flex items-center gap-2 sm:gap-3">
-          <SocialIcon href="#"><svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg></SocialIcon>
-          <SocialIcon href="#"><svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204... "/></svg></SocialIcon>
+        <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <SocialIcon href="https://www.facebook.com/TecCCM">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
+          </SocialIcon>
+          <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          </SocialIcon>
+          <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+          </SocialIcon>
         </div>
       </nav>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8">
+      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8 sm:py-10 overflow-y-auto">
         
         {/* Form area: Integrated style, no bounding box backdrop */}
-        <div className="w-full max-w-[560px] p-4 sm:p-2 relative z-10 my-auto flex flex-col justify-center">
+        <div className="w-full max-w-[560px] p-4 sm:p-2 relative z-10 my-auto flex flex-col justify-center min-h-[600px] sm:min-h-[560px]">
           
           <div className="flex justify-center mb-12 w-full">
             <div className="px-8 py-5 rounded-[2rem] bg-white/95 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
@@ -454,7 +502,7 @@ export default function AuthWizard() {
           </AnimatePresence>
 
           {/* Animated Form Steps */}
-          <div className="relative min-h-[220px]">
+          <div className="relative min-h-[420px] sm:min-h-[380px]">
             <AnimatePresence custom={direction} mode="wait">
               <motion.div
                 key={step}
@@ -490,9 +538,18 @@ export default function AuthWizard() {
       </div>
 
       {/* Footer */}
-      <footer className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5">
-        <p className="text-white/40 text-[11px] font-medium text-center mx-auto">
-          © {new Date().getFullYear()} <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey.</a>
+      <footer className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5">
+        <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Aviso de Privacidad
+          </a>
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+            Ethos
+          </a>
+        </div>
+        <p className="text-white/40 text-[11px] font-medium text-center">
+          © {new Date().getFullYear()} {" "}
+          <a href="https://tec.mx/es" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white transition-colors">Tecnológico de Monterrey</a>
         </p>
       </footer>
     </div>
