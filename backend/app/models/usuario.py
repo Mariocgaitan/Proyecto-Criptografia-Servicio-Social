@@ -17,7 +17,8 @@ class Usuario(Base):
     correo: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     carrera: Mapped[str] = mapped_column(String(100), nullable=False)
     semestre: Mapped[int] = mapped_column(Integer, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    auth_provider: Mapped[str] = mapped_column(String(50), server_default="local", nullable=False)
     totp_secret: Mapped[str] = mapped_column(String(64), nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False, server_default="alumno")
     id_empresa: Mapped[int | None] = mapped_column(

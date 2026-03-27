@@ -9,6 +9,7 @@ Rutas API JSON (protegidas por JWT en header Authorization):
   GET  /api/v1/alumno/estado-inscripcion  → Estado de inscripción en todos los eventos
 """
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.session import get_db

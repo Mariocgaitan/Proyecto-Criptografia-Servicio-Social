@@ -58,3 +58,7 @@ SID Local.session.sql
 *.tmp
 *.bak
 *.local
+
+commits_20.txt
+commits_40.txt
+PLAN_AUTENTICACION.md

@@ -12,15 +12,15 @@ async def fix_and_migrate():
         versions = [row[0] for row in result.fetchall()]
         print(f"   BD tiene: {versions}")
 
-        # Corrección conocida: revisión fantasma que no existe en el repo.
-        if "c3d4e5f6a7b8" in versions:
-            print("   ⚠️  Encontrada revisión fantasma c3d4e5f6a7b8, corrigiendo a b2c3d4e5f6a7...")
+        # Corrección de versión fantasma por compañero que no está sincronizada
+        if "g0a1b2c3d4e5" in versions:
+            print("   ⚠️  Encontrada revisión fantasma g0a1b2c3d4e5, corrigiendo a e1f2a3b4c5d6...")
             await db.execute(
                 text(
                     """
                     UPDATE alembic_version
-                    SET version_num = 'b2c3d4e5f6a7'
-                    WHERE version_num = 'c3d4e5f6a7b8'
+                    SET version_num = 'e1f2a3b4c5d6'
+                    WHERE version_num = 'g0a1b2c3d4e5'
                     """
                 )
             )
