@@ -23,10 +23,10 @@ uv sync
 ### 2. Crear el archivo de entorno
 
 ```bash
-cp .env.example .env
+cp ../.env.example ../.env
 ```
 
-Edita `.env` con tus valores reales. Si usas la **base de datos remota**, configura la sección del túnel SSH:
+Edita el archivo `../.env` con tus valores reales (env unico compartido por frontend y backend). Si usas la **base de datos remota**, configura la sección del tunel SSH:
 
 ```env
 # Habilita el túnel SSH
