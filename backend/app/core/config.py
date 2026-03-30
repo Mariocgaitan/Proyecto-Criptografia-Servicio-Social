@@ -1,11 +1,17 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ROOT_ENV_FILE = PROJECT_ROOT / ".env"
 
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=str(ROOT_ENV_FILE),
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore"
     )
 
     # Base de datos
@@ -38,6 +44,12 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = True
     SHOW_DOCS: bool = True  # False en producción para ocultar ReDoc
+
+    # Role switch para pruebas locales: permite simular un rol distinto para
+    # un correo especifico sin persistir cambios en la BD.
+    TEST_ROLE_SWITCH_ENABLED: bool = False
+    TEST_ROLE_SWITCH_EMAIL: str = ""
+    TEST_ROLE_SWITCH_ROLE: str = ""
 
     # CORS — orígenes permitidos explícitos (producción). En desarrollo se
     # acepta automáticamente cualquier IP de red privada + localhost.

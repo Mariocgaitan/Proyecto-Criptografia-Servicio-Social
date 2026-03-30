@@ -67,7 +67,6 @@ _CARRERAS = ["ITC", "ISC", "ICI", "IIA", "IIS", "IMT"]
 # 40 alumnos — matrícula + nombre completo + carrera + semestre (padrón oficial)
 PADRON_DATA = [
     {"id_matricula": "A03459128", "nombre_completo": "Juan Pérez García", "carrera": _CARRERAS[0], "semestre": 3},
-    {"id_matricula": "A01659147", "nombre_completo": "Luis Alan Morales Castillo", "carrera": _CARRERAS[1], "semestre": 4},
     {"id_matricula": "A01234567", "nombre_completo": "María Fernanda López Torres", "carrera": _CARRERAS[2], "semestre": 5},
     {"id_matricula": "A01345678", "nombre_completo": "Carlos Eduardo Ramírez Vega", "carrera": _CARRERAS[3], "semestre": 6},
     {"id_matricula": "A01456789", "nombre_completo": "Ana Sofía Hernández Cruz", "carrera": _CARRERAS[4], "semestre": 7},

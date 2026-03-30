@@ -2,8 +2,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
 
-import Login from "./pages/Login";
-import Registro from "./pages/Registro";
+import AuthWizard from "./pages/AuthWizard";
 import AlumnoDashboard from "./pages/alumno/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import EmpresaEscaner from "./pages/empresa/Escaner";
@@ -21,8 +20,8 @@ function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/registro" element={<Registro />} />
+      <Route path="/login" element={<AuthWizard />} />
+      <Route path="/registro" element={<AuthWizard />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
       
       {/* Legacy Login Redirects */}

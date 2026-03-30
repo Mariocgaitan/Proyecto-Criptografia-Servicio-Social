@@ -80,15 +80,19 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com; "
+        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com; "
+        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
         "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data:; "
-        "connect-src 'self';"
+        "img-src 'self' data: https://*.googleusercontent.com; "
+        "connect-src 'self' http://localhost:8000 https://accounts.google.com; "
+        "frame-src 'self' https://accounts.google.com;"
     )
-    response.headers["X-Frame-Options"] = "DENY"
+    # Permitir que Google monte su iframe invisible
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+    # COOP en unsafe-none es requerido por Google Identity Services (GSI)
+    response.headers["Cross-Origin-Opener-Policy"] = "unsafe-none"
 
     if not settings.DEBUG:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
