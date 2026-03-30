@@ -4,6 +4,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck, User, Hash, GraduationCap, BookOpen, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
@@ -86,13 +87,13 @@ export default function AuthWizard() {
         body: JSON.stringify({ id_token: credentialResponse.credential }),
         credentials: "include"
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.detail || "Error al autenticar con Google");
       }
-      
+
       if (data.status === "requires_2fa") {
         setAuthData(prev => ({
           ...prev,
@@ -119,13 +120,13 @@ export default function AuthWizard() {
   const nextStep = () => {
     setDirection(1);
     setError(null);
-    setStep((prev) => prev + 1);
+    setStep((prev) => Math.min(prev + 1, 4));
   };
 
   const prevStep = () => {
     setDirection(-1);
     setError(null);
-    setStep((prev) => prev - 1);
+    setStep((prev) => Math.max(prev - 1, 1));
   };
 
   const handleStep1Submit = (e) => {
@@ -150,7 +151,7 @@ export default function AuthWizard() {
       setIsLoading(true);
       setError(null);
       try {
-          const normalizedEmail = normalizeLoginIdentifier(authData.email);
+        const normalizedEmail = normalizeLoginIdentifier(authData.email);
         const result = await login(normalizedEmail, authData.password);
         if (!result.success) {
           throw new Error(result.error || "No se pudo iniciar sesión.");
@@ -180,10 +181,10 @@ export default function AuthWizard() {
       setError("El código debe ser de 6 dígitos.");
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Usar ruta relativa
       const response = await fetch(apiUrl("/api/v1/auth/verify-totp"), {
@@ -195,13 +196,13 @@ export default function AuthWizard() {
         }),
         credentials: "include"
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.detail || "Código TOTP inválido.");
       }
-      
+
       const usuario = await fetchUser();
       const targetByRole = {
         admin: "/admin/dashboard",
@@ -231,14 +232,14 @@ export default function AuthWizard() {
     switch (step) {
       case 1:
         return (
-          <form onSubmit={handleStep1Submit} className="space-y-5 w-full">
+          <form id="auth-wizard-form" onSubmit={handleStep1Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">
                 {isLogin ? "Inicia sesión" : "Crea tu cuenta"}
               </h2>
               <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
             </div>
-            
+
             <div className="relative">
               <div className="absolute left-0 top-0 bottom-0 w-14 flex items-center justify-center z-10">
                 <Mail className="w-5 h-5 text-slate-700/90" />
@@ -247,47 +248,23 @@ export default function AuthWizard() {
                 type="text"
                 placeholder="Correo o matrícula (A01234567)"
                 value={authData.email}
-                onChange={(e) => setAuthData({...authData, email: e.target.value})}
+                onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
                 onBlur={() => setAuthData((prev) => ({ ...prev, email: normalizeLoginIdentifier(prev.email) }))}
                 className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-14 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90"
                 autoFocus
               />
             </div>
 
-            <Button type="submit" className="w-full h-14 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-lg rounded-xl backdrop-blur-md shadow-lg shadow-black/25 transition-all">
-              Continuar
-            </Button>
-            
-            <div className="relative flex items-center py-4">
-              <div className="flex-grow border-t border-white/20"></div>
-              <span className="flex-shrink-0 mx-4 text-white/50 text-sm font-medium uppercase">o</span>
-              <div className="flex-grow border-t border-white/20"></div>
-            </div>
-
-            <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
-              <GoogleLogin
-                onSuccess={handleGoogleSuccess}
-                onError={() => setError("La autenticación con Google ha fallado.")}
-                theme="filled_black"
-                shape="pill"
-                size="large"
-                text="continue_with"
-                width="100%"
-              />
-            </div>
           </form>
         );
 
       case 2:
         return (
-          <form onSubmit={handleStep2Submit} className="space-y-5 w-full">
+          <form id="auth-wizard-form" onSubmit={handleStep2Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Ingresa tu contraseña</h2>
-              <div className="inline-flex items-center gap-2 bg-black/20 px-4 py-2 rounded-full border border-white/10 mt-1">
+              <div className="inline-flex items-center bg-black/20 px-4 py-2 rounded-full border border-white/10 mt-1">
                 <span className="text-white/80 text-sm font-mono">{authData.email}</span>
-                <button type="button" onClick={prevStep} className="text-blue-300 hover:text-blue-200 text-sm font-bold uppercase tracking-wider">
-                  Editar
-                </button>
               </div>
             </div>
 
@@ -299,7 +276,7 @@ export default function AuthWizard() {
                 type={showPassword ? "text" : "password"}
                 placeholder="Contraseña"
                 value={authData.password}
-                onChange={(e) => setAuthData({...authData, password: e.target.value})}
+                onChange={(e) => setAuthData({ ...authData, password: e.target.value })}
                 className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-14 pr-14 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
                 autoFocus
               />
@@ -308,21 +285,12 @@ export default function AuthWizard() {
               </button>
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-lg rounded-xl backdrop-blur-md shadow-lg shadow-black/25 transition-all flex items-center justify-center gap-2">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Iniciar Sesión"}
-            </Button>
-            
-            <div className="text-center pt-2">
-              <button type="button" className="text-white/60 text-sm hover:text-white transition-colors underline decoration-white/30 underline-offset-4">
-                ¿Olvidaste tu contraseña?
-              </button>
-            </div>
           </form>
         );
 
       case 3:
         return (
-          <form onSubmit={handleStep3Submit} className="space-y-6 w-full">
+          <form id="auth-wizard-form" onSubmit={handleStep3Submit} className="space-y-6 w-full">
             <div className="text-center mb-4">
               <div className="mx-auto w-16 h-16 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center border border-blue-500/30 mb-4">
                 <ShieldCheck className="w-8 h-8" />
@@ -348,39 +316,30 @@ export default function AuthWizard() {
                 placeholder="000000"
                 maxLength={6}
                 value={authData.totpCode}
-                onChange={(e) => setAuthData({...authData, totpCode: e.target.value.replace(/\D/g, '')})}
+                onChange={(e) => setAuthData({ ...authData, totpCode: e.target.value.replace(/\D/g, '') })}
                 className="bg-white/10 border border-white/30 text-white text-center text-4xl tracking-[0.5em] rounded-2xl h-20 w-[240px] focus-visible:ring-2 focus-visible:ring-blue-400 placeholder:tracking-normal placeholder:text-white/30 [color-scheme:dark]"
                 style={{ backgroundColor: 'rgba(255,255,255,0.10)', color: 'white' }}
                 autoFocus
               />
             </div>
 
-            <Button type="submit" disabled={isLoading || authData.totpCode.length < 6} className="w-full h-14 bg-blue-500 hover:bg-blue-600 text-white font-bold text-lg rounded-full shadow-lg shadow-blue-500/25 transition-all">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Verificar Código"}
-            </Button>
-
-            <div className="text-center pt-3">
-              <button type="button" onClick={prevStep} className="text-white/40 text-xs font-bold uppercase tracking-widest hover:text-white transition-colors flex items-center justify-center mx-auto gap-2">
-                <ArrowLeft className="w-4 h-4" /> Regresar
-              </button>
-            </div>
           </form>
         );
 
       case 4:
         return (
-          <form onSubmit={handleStep4Submit} className="space-y-5 w-full">
+          <form id="auth-wizard-form" onSubmit={handleStep4Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Completa tu perfil</h2>
               <p className="text-white/60 text-base">Necesitamos unos datos extra para finalizar tu registro.</p>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="relative">
                 <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
                   <User className="w-5 h-5 text-slate-700/90" />
                 </div>
-                <Input placeholder="Nombre completo" value={authData.nombre} onChange={(e) => setAuthData({...authData, nombre: e.target.value})}
+                <Input placeholder="Nombre completo" value={authData.nombre} onChange={(e) => setAuthData({ ...authData, nombre: e.target.value })}
                   className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
                 />
               </div>
@@ -388,18 +347,18 @@ export default function AuthWizard() {
                 <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
                   <Hash className="w-5 h-5 text-slate-700/90" />
                 </div>
-                <Input placeholder="Matrícula" value={authData.matricula} onChange={(e) => setAuthData({...authData, matricula: e.target.value})}
+                <Input placeholder="Matrícula" value={authData.matricula} onChange={(e) => setAuthData({ ...authData, matricula: e.target.value })}
                   className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
                 />
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="relative">
                 <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
                   <GraduationCap className="w-5 h-5 text-slate-700/90" />
                 </div>
-                <select value={authData.carrera} onChange={(e) => setAuthData({...authData, carrera: e.target.value})}
+                <select value={authData.carrera} onChange={(e) => setAuthData({ ...authData, carrera: e.target.value })}
                   className="w-full appearance-none bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus:ring-2 focus:ring-white/45 text-base font-medium backdrop-blur-md"
                 >
                   <option value="" className="text-slate-700">Carrera...</option>
@@ -412,15 +371,12 @@ export default function AuthWizard() {
                 <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
                   <BookOpen className="w-5 h-5 text-slate-700/90" />
                 </div>
-                <Input type="number" placeholder="Semestre" value={authData.semestre} onChange={(e) => setAuthData({...authData, semestre: e.target.value})}
+                <Input type="number" placeholder="Semestre" value={authData.semestre} onChange={(e) => setAuthData({ ...authData, semestre: e.target.value })}
                   className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
                 />
               </div>
             </div>
 
-            <Button type="submit" disabled={isLoading} className="w-full h-14 bg-white text-slate-900 hover:bg-slate-100 font-bold text-lg rounded-full shadow-lg transition-all mt-4 flex items-center justify-center gap-2">
-              {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : "Finalizar Registro"}
-            </Button>
           </form>
         );
 
@@ -430,7 +386,7 @@ export default function AuthWizard() {
   };
 
   return (
-    <div className="min-h-screen relative flex flex-col overflow-x-hidden">
+    <div className="h-[100dvh] w-full relative flex flex-col overflow-hidden bg-black">
       {/* Background Image Carousel */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <AnimatePresence mode="sync" initial={false}>
@@ -453,24 +409,28 @@ export default function AuthWizard() {
         <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-10 sm:h-12 w-auto brightness-0 invert drop-shadow-md" />
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           <SocialIcon href="https://www.facebook.com/TecCCM">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z" /></svg>
           </SocialIcon>
           <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
           </SocialIcon>
           <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
+          </SocialIcon>
+          <SocialIcon href="https://x.com/TecdeMonterrey">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current"><g><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></g></svg>
           </SocialIcon>
         </div>
       </nav>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8 sm:py-10 overflow-y-auto">
-        
+      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8 sm:py-10 overflow-y-auto no-visible-scrollbar">
+
         {/* Form area: Integrated style, no bounding box backdrop */}
         <div className="w-full max-w-[560px] p-4 sm:p-2 relative z-10 my-auto flex flex-col justify-center min-h-[600px] sm:min-h-[560px]">
-          
-          <div className="flex justify-center mb-12 w-full">
+
+
+          <div className="flex flex-col items-center justify-center mb-8 w-full">
             <div className="px-8 py-5 rounded-[2rem] bg-white/95 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
               <img src={serSocialLogo} alt="Ser Social" className="h-24 sm:h-28 w-auto drop-shadow-md" />
             </div>
@@ -478,8 +438,8 @@ export default function AuthWizard() {
 
           {!isLogin && step > 1 && (
             <div className="w-full bg-white/10 h-2 rounded-full mb-10 overflow-hidden shadow-inner flex">
-              <motion.div 
-                className="bg-blue-500 h-full rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]" 
+              <motion.div
+                className="bg-blue-500 h-full rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]"
                 initial={{ width: 0 }}
                 animate={{ width: `${((step - 1) / 3) * 100}%` }}
                 transition={{ duration: 0.4, ease: "easeInOut" }}
@@ -500,9 +460,13 @@ export default function AuthWizard() {
               </motion.div>
             )}
           </AnimatePresence>
-
           {/* Animated Form Steps */}
-          <div className="relative min-h-[420px] sm:min-h-[380px]">
+          <div 
+            className="relative w-full transition-all duration-300 ease-in-out"
+            style={{ 
+              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? '260px' : '200px'
+            }}
+          >
             <AnimatePresence custom={direction} mode="wait">
               <motion.div
                 key={step}
@@ -512,13 +476,76 @@ export default function AuthWizard() {
                 animate="center"
                 exit="exit"
                 transition={{ type: "tween", ease: "easeInOut", duration: 0.25 }}
-                className="absolute inset-0 flex"
+                className="w-full flex"
               >
                 {renderStepContent()}
               </motion.div>
             </AnimatePresence>
           </div>
-          
+
+          <div className="w-full flex flex-col items-center mt-6 z-20">
+            <ProgressIndicator 
+              step={step} 
+              totalSteps={3} 
+              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : step === 3 ? 'Verificar Código' : 'Finalizar Registro'} 
+              isLoading={isLoading} 
+              onBack={prevStep} 
+              formId="auth-wizard-form"
+            />
+            
+            <motion.div 
+              animate={{ height: step === 1 || step === 2 ? 100 : 0, opacity: step === 1 || step === 2 ? 1 : 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="w-full flex justify-center relative mt-2 overflow-hidden"
+            >
+              <AnimatePresence mode="wait">
+                {step === 1 && (
+                  <motion.div
+                    key="step-1-footer"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full max-w-sm absolute top-0"
+                  >
+                    <div className="relative flex items-center py-4">
+                      <div className="flex-grow border-t border-white/20"></div>
+                      <span className="flex-shrink-0 mx-4 text-white/50 text-sm font-medium uppercase">o</span>
+                      <div className="flex-grow border-t border-white/20"></div>
+                    </div>
+
+                    <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
+                      <GoogleLogin
+                        onSuccess={handleGoogleSuccess}
+                        onError={() => setError("La autenticación con Google ha fallado.")}
+                        theme="filled_black"
+                        shape="pill"
+                        size="large"
+                        text="continue_with"
+                        width="100%"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div
+                    key="step-2-footer"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute top-6"
+                  >
+                    <button type="button" className="text-white/60 text-sm hover:text-white transition-colors underline decoration-white/30 underline-offset-4">
+                      ¿Olvidaste tu contraseña?
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
         </div>
 
         {/* Global Links Footer */}

@@ -4,7 +4,7 @@ import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  PanelLeftClose, PanelLeftOpen, Command, Trash2,
+  Command, Trash2,
   List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -189,7 +189,6 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
@@ -677,7 +676,6 @@ export default function AdminDashboard() {
       { id: "act-export-emp", label: "Exportar CSV: Empresas", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("empresas"); } },
       { id: "act-export-padron", label: "Exportar CSV: Usuarios/Padrón", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("usuarios_padron"); } },
       { id: "act-export-logs", label: "Exportar CSV: Logs", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("logs"); } },
-      { id: "act-toggle-sidebar", label: sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral", hint: "Vista", keepSearchContext: false, action: () => setSidebarCollapsed((prev) => !prev) },
     ];
 
     const normalized = normalizeSearchText(commandQuery);
@@ -689,7 +687,7 @@ export default function AdminDashboard() {
     );
 
     return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
-  }, [commandQuery, sidebarCollapsed, studentCommandItems, projectCommandItems, companyCommandItems, handleQuickExport]);
+  }, [commandQuery, studentCommandItems, projectCommandItems, companyCommandItems, handleQuickExport]);
 
   const runCommandItem = (item) => {
     if (!item) return;
@@ -810,15 +808,6 @@ export default function AdminDashboard() {
         <div className="inline-flex items-center gap-2">
           <button
             type="button"
-            onClick={() => setSidebarCollapsed((prev) => !prev)}
-            className="hidden lg:inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white transition-colors"
-            title={sidebarCollapsed ? "Mostrar barra lateral" : "Ocultar barra lateral"}
-          >
-            {sidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-          </button>
-
-          <button
-            type="button"
             onClick={() => setCommandOpen(true)}
             className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white transition-colors"
             title="Command palette"
@@ -839,26 +828,6 @@ export default function AdminDashboard() {
       </header>
 
       <div className="relative z-10 flex flex-1 min-h-0">
-        <aside className={`${sidebarCollapsed ? "hidden" : "hidden lg:block"} w-72 shrink-0 px-4 py-6`}>
-          <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-3 space-y-4">
-            <div>
-              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Principal</p>
-              <div className="mt-2 space-y-1">
-                <button onClick={() => handleSectionChange("overview")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><LayoutDashboard className="w-4 h-4" /> Dashboard</span></button>
-                <button onClick={() => handleSectionChange("estadisticas")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><BarChart3 className="w-4 h-4" /> Estadísticas</span></button>
-                <button onClick={() => handleSectionChange("proyectos")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><List className="w-4 h-4" /> Proyectos ({proyectos.length})</span></button>
-              </div>
-            </div>
-
-            <div>
-              <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Gestión</p>
-              <div className="mt-2 space-y-1">
-                <button onClick={() => handleSectionChange("gestion")} className={`w-full text-left px-3 py-2 rounded-xl text-sm border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/10 text-white/70 hover:text-white"}`}><span className="inline-flex items-center gap-2"><Activity className="w-4 h-4" /> Gestión Integral</span></button>
-              </div>
-            </div>
-          </div>
-        </aside>
-
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
         <div className="w-full">
           <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
@@ -871,7 +840,7 @@ export default function AdminDashboard() {
               </p>
             </div>
 
-            <div className="flex lg:hidden gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
             <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
             <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>

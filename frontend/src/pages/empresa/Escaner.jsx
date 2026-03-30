@@ -660,14 +660,14 @@ export default function EmpresaEscaner() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          <Button
-            variant="ghost"
-            className="text-white/70 hover:text-white hover:bg-white/10 transition-colors rounded-xl"
+          <button
             onClick={logout}
+            className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
+            title="Cerrar Sesión"
           >
-            <LogOut className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Cerrar Sesión</span>
-          </Button>
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm font-semibold">Cerrar Sesión</span>
+          </button>
         </div>
       </Motion.nav>
 
