@@ -8,11 +8,12 @@ Endpoints:
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
 """
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_admin
+from app.services.email_service import enviar_correo_baja, enviar_correo_inscripcion
 from app.db.session import get_db
 from app.services import admin_service
 router = APIRouter()
@@ -73,33 +74,53 @@ async def api_ampliar_cupo(
 async def api_eliminar_inscripcion(
     id_inscripcion: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):
     """Elimina una inscripción de alumno y ajusta cupo del proyecto."""
-    return await admin_service.eliminar_inscripcion(
+    resultado = await admin_service.eliminar_inscripcion(
         db,
         id_inscripcion,
         actor_matricula=current_admin.id_matricula,
         ip_origen=request.client.host if request.client else None,
     )
+    if resultado.get("ok") and resultado.get("correo_alumno"):
+        background_tasks.add_task(
+            enviar_correo_baja,
+            to_email=resultado["correo_alumno"],
+            nombre_alumno=resultado["nombre_alumno"],
+            nombre_proyecto=resultado["nombre_proyecto"],
+            nombre_empresa=resultado["nombre_empresa"],
+        )
+    return resultado
 
 
 @router.post("/api/v1/admin/inscripciones", status_code=status.HTTP_201_CREATED, tags=["Admin"])
 async def api_crear_inscripcion(
     datos: InscripcionCreate,
     request: Request,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_admin=Depends(get_current_admin),
 ):
     """Crea una nueva inscripción de alumno en un proyecto."""
-    return await admin_service.crear_inscripcion(
+    resultado = await admin_service.crear_inscripcion(
         db,
         datos.id_matricula,
         datos.id_proyecto,
         actor_matricula=current_admin.id_matricula,
         ip_origen=request.client.host if request.client else None,
     )
+    if resultado.get("ok") and resultado.get("correo_alumno"):
+        background_tasks.add_task(
+            enviar_correo_inscripcion,
+            to_email=resultado["correo_alumno"],
+            nombre_alumno=resultado["nombre_alumno"],
+            nombre_proyecto=resultado["nombre_proyecto"],
+            nombre_empresa=resultado["nombre_empresa"],
+        )
+    return resultado
 
 
 @router.get("/api/v1/admin/alumnos-disponibles", tags=["Admin"])

@@ -540,7 +540,18 @@ export default function Dashboard() {
 
         const nextEventos = prev.eventos.map((evento) => {
           const latestEvento = latestByEventId.get(evento.id_evento);
-          if (!latestEvento || !latestEvento.inscrito) return evento;
+          if (!latestEvento) return evento;
+          
+          if (!latestEvento.inscrito && evento.inscrito) {
+            changed = true;
+            return {
+              ...evento,
+              inscrito: false,
+              inscripcion: null
+            };
+          }
+
+          if (!latestEvento.inscrito) return evento;
 
           const nextInscripcion = latestEvento.proyecto
             ? {
@@ -602,9 +613,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!data?.eventos?.length) return undefined;
-
-    const hasPendingEnrollment = data.eventos.some((evento) => !evento.inscrito);
-    if (!hasPendingEnrollment) return undefined;
 
     refreshEnrollmentStatus();
     const pollId = setInterval(refreshEnrollmentStatus, ENROLLMENT_POLL_MS);

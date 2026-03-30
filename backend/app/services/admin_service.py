@@ -185,7 +185,10 @@ async def eliminar_inscripcion(
 
     result = await db.execute(
         select(Inscripcion)
-        .options(selectinload(Inscripcion.usuario), selectinload(Inscripcion.proyecto))
+        .options(
+            selectinload(Inscripcion.usuario),
+            selectinload(Inscripcion.proyecto).selectinload(Proyecto.empresa)
+        )
         .where(Inscripcion.id_inscripcion == inscripcion_uuid)
     )
     inscripcion = result.scalar_one_or_none()
@@ -220,6 +223,9 @@ async def eliminar_inscripcion(
         "id_proyecto": proyecto.id_proyecto if proyecto else None,
         "cupo_actual": proyecto.cupo_actual if proyecto else None,
         "nombre_alumno": alumno.nombre if alumno else None,
+        "correo_alumno": alumno.correo if alumno else None,
+        "nombre_proyecto": proyecto.nombre_proyecto if proyecto else None,
+        "nombre_empresa": (proyecto.empresa.nombre_empresa if proyecto and proyecto.empresa else None)
     }
 
 
@@ -356,4 +362,7 @@ async def crear_inscripcion(
         "nombre_alumno": alumno.nombre,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
+        "correo_alumno": alumno.correo,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": proyecto.empresa.nombre_empresa if proyecto.empresa else None,
     }

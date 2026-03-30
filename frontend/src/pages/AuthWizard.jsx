@@ -8,6 +8,7 @@ import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
+import { Component as Enable2FACard } from "@/components/ui/enable-2fa-card";
 
 import tecLogo from "@/assets/tec_logo.png";
 import serSocialLogo from "@/assets/ser_social.png";
@@ -290,39 +291,12 @@ export default function AuthWizard() {
 
       case 3:
         return (
-          <form id="auth-wizard-form" onSubmit={handleStep3Submit} className="space-y-6 w-full">
-            <div className="text-center mb-4">
-              <div className="mx-auto w-16 h-16 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center border border-blue-500/30 mb-4">
-                <ShieldCheck className="w-8 h-8" />
-              </div>
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Verificación en dos pasos</h2>
-              <p className="text-white/70 text-base leading-relaxed max-w-[300px] mx-auto">
-                Ingresa el código de 6 dígitos generado por tu aplicación Authenticator.
-              </p>
-            </div>
-
-            {authData.totpQrCode && (
-              <div className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/10 mb-4 backdrop-blur-sm">
-                <p className="text-white/80 text-sm mb-3 font-semibold">¡Nuevo Usuario! Escanea tu código:</p>
-                <div className="bg-white p-3 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                  <img src={authData.totpQrCode} alt="TOTP QR Code" className="w-32 h-32" />
-                </div>
-              </div>
-            )}
-
-            <div className="relative flex justify-center py-2">
-              <Input
-                type="text"
-                placeholder="000000"
-                maxLength={6}
-                value={authData.totpCode}
-                onChange={(e) => setAuthData({ ...authData, totpCode: e.target.value.replace(/\D/g, '') })}
-                className="bg-white/10 border border-white/30 text-white text-center text-4xl tracking-[0.5em] rounded-2xl h-20 w-[240px] focus-visible:ring-2 focus-visible:ring-blue-400 placeholder:tracking-normal placeholder:text-white/30 [color-scheme:dark]"
-                style={{ backgroundColor: 'rgba(255,255,255,0.10)', color: 'white' }}
-                autoFocus
-              />
-            </div>
-
+          <form id="auth-wizard-form" onSubmit={handleStep3Submit} className="space-y-6 w-full flex justify-center">
+            <Enable2FACard 
+              qrCodeData={authData.totpQrCode} 
+              otpCode={authData.totpCode}
+              onOtpChange={(val) => setAuthData({ ...authData, totpCode: val })}
+            />
           </form>
         );
 
@@ -464,7 +438,7 @@ export default function AuthWizard() {
           <div 
             className="relative w-full transition-all duration-300 ease-in-out"
             style={{ 
-              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? '260px' : '200px'
+              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? 'auto' : '200px'
             }}
           >
             <AnimatePresence custom={direction} mode="wait">

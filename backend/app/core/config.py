@@ -40,6 +40,13 @@ class Settings(BaseSettings):
     # Google OAuth
     GOOGLE_CLIENT_ID: str = "(configurar en .env)"
 
+    # Correos (SMTP)
+    SMTP_HOST: str = "smtp.office365.com"  # Servidor SMTP de Outlook/Office365
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    SMTP_FROM_EMAIL: str = "notificaciones@serviciosocial.tec.mx"
+
     # App
     APP_ENV: str = "development"
     DEBUG: bool = True
