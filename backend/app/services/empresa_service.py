@@ -247,6 +247,10 @@ async def validar_y_inscribir(
         }
 
     # 8. Todo ok — inscribir
+    from app.models.empresa import Empresa
+    empresa = await db.get(Empresa, proyecto.id_empresa)
+    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+
     inscripcion = Inscripcion(
         id_matricula=matricula,
         id_proyecto=id_proyecto,
@@ -261,6 +265,9 @@ async def validar_y_inscribir(
         "ok": True,
         "mensaje": f"¡{alumno.nombre} inscrito exitosamente!",
         "nombre_alumno": alumno.nombre,
+        "correo_alumno": alumno.correo,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": nombre_empresa,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }
@@ -303,6 +310,12 @@ async def eliminar_inscripcion_proyecto(
         proyecto.cupo_actual -= 1
 
     alumno = inscripcion.usuario
+    correo_alumno = alumno.correo if alumno else None
+
+    from app.models.empresa import Empresa
+    empresa = await db.get(Empresa, proyecto.id_empresa)
+    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+
     db.add(
         LogAuditoria(
             tipo_evento="INSCRIPCION_ELIMINADA_EMPRESA",
@@ -322,6 +335,9 @@ async def eliminar_inscripcion_proyecto(
         "ok": True,
         "mensaje": "Inscripción eliminada correctamente",
         "nombre_alumno": alumno.nombre if alumno else None,
+        "correo_alumno": correo_alumno,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": nombre_empresa,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }

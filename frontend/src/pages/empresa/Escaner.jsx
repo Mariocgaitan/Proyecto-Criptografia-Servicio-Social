@@ -32,8 +32,8 @@ import { cn } from "@/lib/utils";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
@@ -68,8 +68,8 @@ function StatCard({ label, value, tone = "default" }) {
     <Card className={cn("rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.2)]", toneMap[tone])}>
       <CardContent className="p-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">{label}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{value}</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
+          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -83,12 +83,12 @@ function OccupancyMeter({ current, max, percent }) {
     <div className="rounded-2xl border border-white/15 bg-black/30 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{current}/{max}</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
+          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{current}/{max}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
-          <p className="text-2xl font-semibold text-white">{percent}%</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
+          <p className="text-2xl font-normal text-white">{percent}%</p>
         </div>
       </div>
 
@@ -151,11 +151,11 @@ function ResultBanner({ result }) {
         </Motion.div>
         <div>
           {result.status === "ok" ? (
-            <p className="mb-2 inline-flex rounded-full border border-emerald-300/45 bg-emerald-300/15 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-50">
+            <p className="mb-2 inline-flex rounded-full border border-emerald-300/45 bg-emerald-300/15 px-3 py-1 text-[11px] font-normal uppercase tracking-[0.2em] text-emerald-50">
               Registro exitoso
             </p>
           ) : null}
-          <p className={cn("text-base font-semibold text-white", isSuccess && "text-xl sm:text-2xl font-extrabold tracking-tight")}>{result.name}</p>
+          <p className={cn("text-base font-normal text-white", isSuccess && "text-xl sm:text-2xl font-normal tracking-tight")}>{result.name}</p>
           <p className={cn("mt-1 text-sm leading-relaxed", currentStyle.text, isSuccess && "mt-2 text-base sm:text-lg text-emerald-50")}>{result.message}</p>
         </div>
       </div>
@@ -170,7 +170,7 @@ function TabButton({ active, onClick, icon, children }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+        "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-normal transition-colors border",
         active
           ? "bg-blue-600/30 border-blue-500/40 text-white"
           : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -622,7 +622,7 @@ export default function EmpresaEscaner() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-white relative overflow-hidden px-4 text-center">
         <div className="absolute inset-0 bg-black" />
         <AlertCircle className="relative z-10 w-9 h-9 text-blue-200/70" />
-        <p className="relative z-10 font-semibold tracking-wide uppercase text-blue-100/80 text-sm">No se encontro un proyecto activo para esta empresa</p>
+        <p className="relative z-10 font-normal tracking-wide uppercase text-blue-100/80 text-sm">No se encontro un proyecto activo para esta empresa</p>
       </div>
     );
   }
@@ -656,7 +656,7 @@ export default function EmpresaEscaner() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
-          <p className="text-white/70 text-xs sm:text-sm font-semibold tracking-wide uppercase">Portal Empresa</p>
+          <p className="text-white/70 text-xs sm:text-sm font-normal tracking-wide uppercase">Portal Empresa</p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
@@ -666,7 +666,7 @@ export default function EmpresaEscaner() {
             title="Cerrar Sesión"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm font-semibold">Cerrar Sesión</span>
+            <span className="hidden sm:inline text-sm font-normal">Cerrar Sesión</span>
           </button>
         </div>
       </Motion.nav>
@@ -699,14 +699,14 @@ export default function EmpresaEscaner() {
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
                   <div className="max-w-3xl">
                     <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
-                      <p className="mt-1 text-base font-semibold text-white">{proyecto.nombre_proyecto}</p>
+                      <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
+                      <p className="mt-1 text-base font-normal text-white">{proyecto.nombre_proyecto}</p>
                       <p className="mt-1 text-sm text-white/55">Ultima sincronizacion: {lastSync ? lastSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</p>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
+                    <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
                     <select
                       value={selectedProjectId || ""}
                       onChange={onSelectProject}
@@ -778,8 +778,8 @@ export default function EmpresaEscaner() {
                   <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
                     <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
-                        <h3 className="mt-1 text-lg font-bold text-white">Alumnos registrados</h3>
+                        <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
+                        <h3 className="mt-1 text-lg font-normal text-white">Alumnos registrados</h3>
                       </div>
                       <div className="relative w-full lg:w-80">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
@@ -823,7 +823,7 @@ export default function EmpresaEscaner() {
                                     type="button"
                                     onClick={() => handleEliminarInscripcion(alumno)}
                                     disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                     {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
@@ -863,13 +863,13 @@ export default function EmpresaEscaner() {
                 <div className="rounded-3xl border border-white/15 bg-black/30 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md sm:p-5">
                   <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
-                      <h3 className="mt-1 text-xl font-bold text-white">Escaneo QR en sitio</h3>
+                      <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
+                      <h3 className="mt-1 text-xl font-normal text-white">Escaneo QR en sitio</h3>
                     </div>
                     <Button
                       onClick={toggleScanner}
                       className={cn(
-                        "rounded-xl px-5 font-semibold shadow-none",
+                        "rounded-xl px-5 font-normal shadow-none",
                         scanning
                           ? "border border-red-400/25 bg-red-500/15 text-red-100 hover:bg-red-500/25"
                           : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
@@ -913,10 +913,10 @@ export default function EmpresaEscaner() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>
@@ -929,14 +929,14 @@ export default function EmpresaEscaner() {
       <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
         <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogTitle className="text-xl font-normal tracking-tight text-white">Confirmar baja de registro</DialogTitle>
             <DialogDescription className="text-white/70">
               Esta acción quitará al alumno del proyecto y liberará su cupo.
             </DialogDescription>
           </DialogHeader>
 
           <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
-            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+            <p className="font-normal text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
             <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
           </div>
 

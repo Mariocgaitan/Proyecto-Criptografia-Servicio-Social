@@ -8,13 +8,14 @@ import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
+import { Component as Enable2FACard } from "@/components/ui/enable-2fa-card";
 
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
+import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 function SocialIcon({ children, href = "#" }) {
   return (
@@ -234,7 +235,7 @@ export default function AuthWizard() {
         return (
           <form id="auth-wizard-form" onSubmit={handleStep1Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">
+              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">
                 {isLogin ? "Inicia sesión" : "Crea tu cuenta"}
               </h2>
               <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
@@ -262,7 +263,7 @@ export default function AuthWizard() {
         return (
           <form id="auth-wizard-form" onSubmit={handleStep2Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Ingresa tu contraseña</h2>
+              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">Ingresa tu contraseña</h2>
               <div className="inline-flex items-center bg-black/20 px-4 py-2 rounded-full border border-white/10 mt-1">
                 <span className="text-white/80 text-sm font-mono">{authData.email}</span>
               </div>
@@ -290,39 +291,12 @@ export default function AuthWizard() {
 
       case 3:
         return (
-          <form id="auth-wizard-form" onSubmit={handleStep3Submit} className="space-y-6 w-full">
-            <div className="text-center mb-4">
-              <div className="mx-auto w-16 h-16 bg-blue-500/20 text-blue-300 rounded-full flex items-center justify-center border border-blue-500/30 mb-4">
-                <ShieldCheck className="w-8 h-8" />
-              </div>
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Verificación en dos pasos</h2>
-              <p className="text-white/70 text-base leading-relaxed max-w-[300px] mx-auto">
-                Ingresa el código de 6 dígitos generado por tu aplicación Authenticator.
-              </p>
-            </div>
-
-            {authData.totpQrCode && (
-              <div className="flex flex-col items-center justify-center p-4 bg-white/5 rounded-2xl border border-white/10 mb-4 backdrop-blur-sm">
-                <p className="text-white/80 text-sm mb-3 font-semibold">¡Nuevo Usuario! Escanea tu código:</p>
-                <div className="bg-white p-3 rounded-xl shadow-[0_0_20px_rgba(255,255,255,0.2)]">
-                  <img src={authData.totpQrCode} alt="TOTP QR Code" className="w-32 h-32" />
-                </div>
-              </div>
-            )}
-
-            <div className="relative flex justify-center py-2">
-              <Input
-                type="text"
-                placeholder="000000"
-                maxLength={6}
-                value={authData.totpCode}
-                onChange={(e) => setAuthData({ ...authData, totpCode: e.target.value.replace(/\D/g, '') })}
-                className="bg-white/10 border border-white/30 text-white text-center text-4xl tracking-[0.5em] rounded-2xl h-20 w-[240px] focus-visible:ring-2 focus-visible:ring-blue-400 placeholder:tracking-normal placeholder:text-white/30 [color-scheme:dark]"
-                style={{ backgroundColor: 'rgba(255,255,255,0.10)', color: 'white' }}
-                autoFocus
-              />
-            </div>
-
+          <form id="auth-wizard-form" onSubmit={handleStep3Submit} className="space-y-6 w-full flex justify-center">
+            <Enable2FACard
+              qrCodeData={authData.totpQrCode}
+              otpCode={authData.totpCode}
+              onOtpChange={(val) => setAuthData({ ...authData, totpCode: val })}
+            />
           </form>
         );
 
@@ -330,7 +304,7 @@ export default function AuthWizard() {
         return (
           <form id="auth-wizard-form" onSubmit={handleStep4Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-4 tracking-tight">Completa tu perfil</h2>
+              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">Completa tu perfil</h2>
               <p className="text-white/60 text-base">Necesitamos unos datos extra para finalizar tu registro.</p>
             </div>
 
@@ -426,13 +400,13 @@ export default function AuthWizard() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8 sm:py-10 overflow-y-auto no-visible-scrollbar">
 
-        {/* Form area: Integrated style, no bounding box backdrop */}
-        <div className="w-full max-w-[560px] p-4 sm:p-2 relative z-10 my-auto flex flex-col justify-center min-h-[600px] sm:min-h-[560px]">
+        {/* Form area: Glassmorphism container */}
+        <div className="w-full max-w-[560px] p-6 sm:p-10 relative z-10 my-auto flex flex-col justify-center min-h-[600px] sm:min-h-[560px] bg-black/40 backdrop-blur-md border border-white/10 rounded-[2rem] shadow-2xl">
 
 
           <div className="flex flex-col items-center justify-center mb-8 w-full">
-            <div className="px-8 py-5 rounded-[2rem] bg-white/95 shadow-[0_0_40px_rgba(255,255,255,0.15)]">
-              <img src={serSocialLogo} alt="Ser Social" className="h-24 sm:h-28 w-auto drop-shadow-md" />
+            <div className="h-20 sm:h-24 w-[200px] sm:w-[240px] rounded-3xl overflow-hidden shadow-2xl bg-black flex items-center justify-center relative">
+              <img src={serSocialLogo} alt="Ser Social" className="absolute inset-0 w-full h-full object-cover scale-[1.25] sm:scale-[1.3]" />
             </div>
           </div>
 
@@ -456,15 +430,15 @@ export default function AuthWizard() {
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 className="bg-red-500/20 border border-red-500/30 rounded-xl px-4 py-3"
               >
-                <p className="text-red-200 text-sm font-semibold text-center">{error}</p>
+                <p className="text-red-200 text-sm font-normal text-center">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
           {/* Animated Form Steps */}
-          <div 
+          <div
             className="relative w-full transition-all duration-300 ease-in-out"
-            style={{ 
-              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? '260px' : '200px'
+            style={{
+              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? 'auto' : '200px'
             }}
           >
             <AnimatePresence custom={direction} mode="wait">
@@ -484,16 +458,16 @@ export default function AuthWizard() {
           </div>
 
           <div className="w-full flex flex-col items-center mt-6 z-20">
-            <ProgressIndicator 
-              step={step} 
-              totalSteps={3} 
-              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : step === 3 ? 'Verificar Código' : 'Finalizar Registro'} 
-              isLoading={isLoading} 
-              onBack={prevStep} 
+            <ProgressIndicator
+              step={step}
+              totalSteps={3}
+              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : step === 3 ? 'Verificar Código' : 'Finalizar Registro'}
+              isLoading={isLoading}
+              onBack={prevStep}
               formId="auth-wizard-form"
             />
-            
-            <motion.div 
+
+            <motion.div
               animate={{ height: step === 1 || step === 2 ? 100 : 0, opacity: step === 1 || step === 2 ? 1 : 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
               className="w-full flex justify-center relative mt-2 overflow-hidden"
@@ -567,10 +541,10 @@ export default function AuthWizard() {
       {/* Footer */}
       <footer className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5">
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

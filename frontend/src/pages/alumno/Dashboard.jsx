@@ -11,11 +11,11 @@ import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
+import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 function SocialIcon({ children, href = "#" }) {
   return (
@@ -70,23 +70,23 @@ function ProjectCard({ project, index, rankByDemand }) {
           <CardAction>
             <div className="flex items-center gap-2">
               {rankByDemand && !project.lleno && (
-                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-bold uppercase tracking-wider">
+                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-normal uppercase tracking-wider">
                   #{rankByDemand}
                 </Badge>
               )}
-              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider border", demandTone)}>
+              <Badge className={cn("text-[10px] font-normal uppercase tracking-wider border", demandTone)}>
                 {demandLabel}
               </Badge>
             </div>
           </CardAction>
 
-          <CardTitle className="text-white font-bold text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
+          <CardTitle className="text-white font-normal text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
             {project.nombre_proyecto}
           </CardTitle>
           <CardDescription className="text-white/50 pt-1">
             <span className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
-              <span className="text-blue-200/75 text-[11px] font-semibold tracking-wide uppercase truncate">
+              <span className="text-blue-200/75 text-[11px] font-normal tracking-wide uppercase truncate">
                 {project.empresa}
               </span>
             </span>
@@ -102,8 +102,8 @@ function ProjectCard({ project, index, rankByDemand }) {
 
           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-white/45 uppercase tracking-wider font-semibold">Ocupacion</span>
-              <span className="text-[10px] text-white/70 font-mono font-bold">{pct}%</span>
+              <span className="text-[10px] text-white/45 uppercase tracking-wider font-normal">Ocupacion</span>
+              <span className="text-[10px] text-white/70 font-mono font-normal">{pct}%</span>
             </div>
             <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
               <motion.div
@@ -124,7 +124,7 @@ function ProjectCard({ project, index, rankByDemand }) {
             {project.lleno ? "Sin lugares disponibles" : `${remaining} lugar(es) disponible(s)`}
           </span>
           {!project.lleno && remaining <= 2 && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-300">
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-normal text-amber-300">
               <Flame className="w-3 h-3" /> Ultimos lugares
             </span>
           )}
@@ -206,7 +206,7 @@ function ProjectGrid({ proyectos }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-semibold mr-1">
+            <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
               <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
             </div>
 
@@ -305,7 +305,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
                 "font-mono tracking-widest text-sm px-6 py-3 border-0 shadow-lg rounded-xl",
                 timeLeft <= 5
                   ? "bg-red-500 text-white shadow-red-500/30"
-                  : "bg-white/[0.05] text-blue-300 font-bold border border-blue-500/20 backdrop-blur-md"
+                  : "bg-white/[0.05] text-blue-300 font-normal border border-blue-500/20 backdrop-blur-md"
               )}
             >
               <Clock className="w-4 h-4 mr-2" />
@@ -350,7 +350,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
               ) : (
                 <div className="flex flex-col items-center gap-4 text-white/30 relative z-10">
                   <QrCode className="w-16 h-16 stroke-[1]" />
-                  <p className="text-xs font-bold tracking-widest uppercase">Generando Llave...</p>
+                  <p className="text-xs font-normal tracking-widest uppercase">Generando Llave...</p>
                 </div>
               )}
             </div>
@@ -363,7 +363,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft }) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, duration: 0.5 }}
             >
-              <h3 className="text-3xl font-extrabold text-white mb-2 tracking-tight">{evento.nombre}</h3>
+              <h3 className="text-3xl font-normal text-white mb-2 tracking-tight">{evento.nombre}</h3>
             </motion.div>
           </div>
         </div>
@@ -387,8 +387,8 @@ function EnrolledView({ inscripcion, eventoNombre }) {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-2xl font-extrabold text-emerald-300">{eventoNombre}</h3>
-            <p className="text-emerald-500 font-black tracking-widest text-[10px] uppercase mt-1">
+            <h3 className="text-2xl font-normal text-emerald-300">{eventoNombre}</h3>
+            <p className="text-emerald-500 font-normal tracking-widest text-[10px] uppercase mt-1">
               Inscripción Completada Exitosamente
             </p>
           </div>
@@ -403,13 +403,13 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-black/20 p-5 rounded-2xl border border-emerald-500/10">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Empresa Anfitriona</p>
-            <p className="font-bold text-emerald-100 flex items-center gap-2 text-lg">
+            <p className="text-[10px] text-emerald-500 uppercase font-normal tracking-widest mb-2">Empresa Anfitriona</p>
+            <p className="font-normal text-emerald-100 flex items-center gap-2 text-lg">
               <Building2 className="w-5 h-5 text-emerald-400" /> {inscripcion.empresa}
             </p>
           </div>
           <div className="bg-black/20 p-5 rounded-2xl border border-emerald-500/10">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Proyecto Asignado</p>
+            <p className="text-[10px] text-emerald-500 uppercase font-normal tracking-widest mb-2">Proyecto Asignado</p>
             <p className="font-medium text-emerald-200/80 leading-snug text-base">{inscripcion.nombre_proyecto}</p>
           </div>
         </div>
@@ -467,7 +467,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
           type="button"
           onClick={() => setActiveTab("credencial")}
           className={cn(
-            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            "px-4 py-2 rounded-full text-sm font-normal transition-colors border",
             activeTab === "credencial"
               ? "bg-blue-600/30 border-blue-500/40 text-white"
               : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -479,7 +479,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
           type="button"
           onClick={() => setActiveTab("proyectos")}
           className={cn(
-            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            "px-4 py-2 rounded-full text-sm font-normal transition-colors border",
             activeTab === "proyectos"
               ? "bg-blue-600/30 border-blue-500/40 text-white"
               : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -540,7 +540,18 @@ export default function Dashboard() {
 
         const nextEventos = prev.eventos.map((evento) => {
           const latestEvento = latestByEventId.get(evento.id_evento);
-          if (!latestEvento || !latestEvento.inscrito) return evento;
+          if (!latestEvento) return evento;
+          
+          if (!latestEvento.inscrito && evento.inscrito) {
+            changed = true;
+            return {
+              ...evento,
+              inscrito: false,
+              inscripcion: null
+            };
+          }
+
+          if (!latestEvento.inscrito) return evento;
 
           const nextInscripcion = latestEvento.proyecto
             ? {
@@ -603,9 +614,6 @@ export default function Dashboard() {
   useEffect(() => {
     if (!data?.eventos?.length) return undefined;
 
-    const hasPendingEnrollment = data.eventos.some((evento) => !evento.inscrito);
-    if (!hasPendingEnrollment) return undefined;
-
     refreshEnrollmentStatus();
     const pollId = setInterval(refreshEnrollmentStatus, ENROLLMENT_POLL_MS);
 
@@ -629,9 +637,9 @@ export default function Dashboard() {
           className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 max-w-md text-center backdrop-blur-md"
         >
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Error de Sesión</h2>
+          <h2 className="text-xl font-normal text-white mb-2">Error de Sesión</h2>
           <p className="text-red-200/80 text-sm mb-6">{apiError}</p>
-          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-bold rounded-xl">
+          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-normal rounded-xl">
             Volver al Login
           </Button>
         </motion.div>
@@ -671,7 +679,7 @@ export default function Dashboard() {
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="leading-tight min-w-0">
-              <p className="text-white text-xs sm:text-sm font-semibold truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
+              <p className="text-white text-xs sm:text-sm font-normal truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
               <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[220px] sm:max-w-none">
                 {(data?.carrera || "N/A")} | Semestre {data?.semestre || "-"} | {data?.matricula || "N/A"}
               </p>
@@ -715,9 +723,9 @@ export default function Dashboard() {
           <div className="mb-8 rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
             <div>
               <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full border border-white/20 bg-white/10">
-                <span className="text-white/80 text-[11px] font-semibold uppercase tracking-[0.18em]">Panel de Alumno</span>
+                <span className="text-white/80 text-[11px] font-normal uppercase tracking-[0.18em]">Panel de Alumno</span>
               </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Feria de Servicio Social</h2>
+              <h2 className="text-3xl sm:text-4xl font-normal tracking-tight text-white">Feria de Servicio Social</h2>
               <p className="text-white/65 mt-2 text-sm max-w-2xl leading-relaxed">
                 Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
               </p>
@@ -735,7 +743,7 @@ export default function Dashboard() {
             {!data?.eventos || data.eventos.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black/35 backdrop-blur-md rounded-3xl border border-white/15 p-16 flex flex-col items-center justify-center text-center shadow-2xl">
                 <Calendar className="w-16 h-16 text-white/20 mb-6" />
-                <h3 className="text-xl font-bold text-white tracking-wide mb-2">Sin Asignación a Eventos</h3>
+                <h3 className="text-xl font-normal text-white tracking-wide mb-2">Sin Asignación a Eventos</h3>
                 <p className="text-white/65 max-w-sm text-sm">No estás habilitado para ningún evento de Servicio Social en curso. Consulta con tu coordinador de carrera.</p>
               </motion.div>
             ) : (
@@ -756,10 +764,10 @@ export default function Dashboard() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

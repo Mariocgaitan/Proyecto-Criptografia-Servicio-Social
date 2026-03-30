@@ -22,7 +22,7 @@ function KpiCard({ label, value, helper }) {
   return (
     <div className="rounded-xl border border-white/15 bg-white/5 p-4">
       <p className="text-[11px] uppercase tracking-wider text-white/60">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-2xl font-normal text-white">{value}</p>
       <p className="mt-1 text-xs text-white/50">{helper}</p>
     </div>
   );
@@ -32,7 +32,7 @@ function ChartCard({ title, children, className = "", headerRight = null }) {
   return (
     <div className={`rounded-2xl border border-white/15 bg-black/35 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] ${className}`}>
       <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+        <h3 className="text-sm font-normal text-white/90">{title}</h3>
         {headerRight}
       </div>
       <div className="h-72">{children}</div>
@@ -43,7 +43,7 @@ function ChartCard({ title, children, className = "", headerRight = null }) {
 function EmptyState({ title, description }) {
   return (
     <div className="rounded-2xl border border-white/15 bg-black/35 px-4 py-8 text-center text-white/70">
-      <p className="text-sm font-semibold text-white/85">{title}</p>
+      <p className="text-sm font-normal text-white/85">{title}</p>
       <p className="mt-1 text-xs text-white/55">{description}</p>
     </div>
   );
@@ -435,13 +435,13 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
           <div className="inline-flex rounded-lg border border-white/15 bg-white/5 p-1">
             <button
               onClick={() => setSubTab("general")}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${subTab === "general" ? "bg-blue-500/25 text-white" : "text-white/70 hover:text-white"}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-normal transition-colors ${subTab === "general" ? "bg-blue-500/25 text-white" : "text-white/70 hover:text-white"}`}
             >
               General
             </button>
             <button
               onClick={() => setSubTab("particular")}
-              className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${subTab === "particular" ? "bg-blue-500/25 text-white" : "text-white/70 hover:text-white"}`}
+              className={`rounded-md px-3 py-1.5 text-xs font-normal transition-colors ${subTab === "particular" ? "bg-blue-500/25 text-white" : "text-white/70 hover:text-white"}`}
             >
               Particular
             </button>
@@ -473,7 +473,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
 
             <button
               onClick={handleExportCsv}
-              className="inline-flex items-center gap-1 rounded-lg border border-blue-400/30 bg-blue-500/20 px-3 py-2 text-xs font-semibold text-blue-100 hover:bg-blue-500/30"
+              className="inline-flex items-center gap-1 rounded-lg border border-blue-400/30 bg-blue-500/20 px-3 py-2 text-xs font-normal text-blue-100 hover:bg-blue-500/30"
               disabled={exportingCsv}
             >
               <Download className="h-3.5 w-3.5" /> {exportingCsv ? "Exportando..." : "Exportar CSV"}
@@ -481,7 +481,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
 
             <button
               onClick={fetchActiveView}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
+              className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-normal text-white hover:bg-white/15"
               disabled={loading}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refrescar
@@ -639,8 +639,8 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                 ) : (
                   <div className="h-full overflow-auto rounded-lg border border-white/10">
                     <div className="grid grid-cols-2 border-b border-white/10 bg-white/5 text-[11px] uppercase tracking-wide text-white/65">
-                      <div className="px-3 py-2 font-semibold">Mayor demanda</div>
-                      <div className="border-l border-white/10 px-3 py-2 font-semibold">Menor demanda</div>
+                      <div className="px-3 py-2 font-normal">Mayor demanda</div>
+                      <div className="border-l border-white/10 px-3 py-2 font-normal">Menor demanda</div>
                     </div>
                     <div className="grid grid-cols-2">
                       <div className="space-y-2 p-2">
@@ -652,7 +652,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                           mayorDemanda.map((item) => (
                             <div key={`mayor-${item.id_proyecto}`} className="rounded-lg border border-red-400/25 bg-red-500/10 px-3 py-2">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-semibold text-white/90">{item.proyecto}</p>
+                                <p className="text-xs font-normal text-white/90">{item.proyecto}</p>
                                 <span className="rounded-full border border-red-300/40 bg-red-500/20 px-2 py-0.5 text-[10px] text-red-100">
                                   {fmtPct(item.ocupacion_pct)}
                                 </span>
@@ -679,7 +679,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                           menorDemanda.map((item) => (
                             <div key={`menor-${item.id_proyecto}`} className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 px-3 py-2">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-semibold text-white/90">{item.proyecto}</p>
+                                <p className="text-xs font-normal text-white/90">{item.proyecto}</p>
                                 <span className="rounded-full border border-emerald-300/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] text-emerald-100">
                                   {fmtPct(item.ocupacion_pct)}
                                 </span>
@@ -720,7 +720,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                   ) : (
                     <div className="grid h-full grid-cols-1 gap-3 lg:grid-cols-2">
                       <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/65">Registrados por semestre</p>
+                        <p className="mb-2 text-[11px] font-normal uppercase tracking-wide text-white/65">Registrados por semestre</p>
                         {!semestrePieRegistrados.length ? (
                           <div className="flex h-[235px] items-center justify-center text-xs text-white/60">Sin datos &gt; 0% para registrados</div>
                         ) : (
@@ -756,7 +756,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                       </div>
 
                       <div className="rounded-lg border border-white/10 bg-white/5 p-2">
-                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-white/65">Inscritos por semestre</p>
+                        <p className="mb-2 text-[11px] font-normal uppercase tracking-wide text-white/65">Inscritos por semestre</p>
                         {!semestrePieInscritos.length ? (
                           <div className="flex h-[235px] items-center justify-center text-xs text-white/60">Sin datos &gt; 0% para inscritos</div>
                         ) : (

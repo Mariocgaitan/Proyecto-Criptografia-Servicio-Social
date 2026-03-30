@@ -34,7 +34,7 @@ const ProgressIndicator = ({
                             type="button"
                             onClick={onBack}
                             disabled={isLoading}
-                            className="w-[88px] py-3 text-white/80 flex items-center justify-center bg-white/10 font-semibold rounded-full hover:bg-white/20 border border-white/20 transition-colors text-sm disabled:opacity-50 tracking-wide whitespace-nowrap">
+                            className="w-[88px] py-3 text-white/80 flex items-center justify-center bg-white/10 font-normal rounded-full hover:bg-white/20 border border-white/20 transition-colors text-sm disabled:opacity-50 tracking-wide whitespace-nowrap">
                             Back
                         </button>
                     </div>

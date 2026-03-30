@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
 import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
+import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 function SocialIcon({ children, href = "#" }) {
   return (
@@ -153,7 +153,7 @@ export default function Registro() {
             <div className="px-4 py-2 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-xl">
               <img src={serSocialLogo} alt="Ser Social" className="h-16 sm:h-20 w-auto" />
             </div>
-            <p className="mt-2 text-white/95 text-[10px] font-semibold tracking-[0.15em] uppercase text-center">
+            <p className="mt-2 text-white/95 text-[10px] font-normal tracking-[0.15em] uppercase text-center">
               Feria de Servicio Social
             </p>
           </motion.div>
@@ -163,7 +163,7 @@ export default function Registro() {
               <Link to="/login" className="px-4 py-2 text-sm font-medium text-white/45 border-b-2 border-transparent hover:text-white/70 transition-colors -mb-px">
                 Ingresar
               </Link>
-              <Link to="/registro" className="px-4 py-2 text-sm font-bold text-white border-b-2 border-white/70 transition-colors -mb-px">
+              <Link to="/registro" className="px-4 py-2 text-sm font-normal text-white border-b-2 border-white/70 transition-colors -mb-px">
                 Registro
               </Link>
             </div>
@@ -176,7 +176,7 @@ export default function Registro() {
                   exit={{ opacity: 0, height: 0 }}
                   className="bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-xl px-4 py-3 overflow-hidden"
                 >
-                  <p className="text-red-200 text-sm font-semibold text-center">{error}</p>
+                  <p className="text-red-200 text-sm font-normal text-center">{error}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -257,7 +257,7 @@ export default function Registro() {
               </div>
 
               <div className="pt-2 border-t border-white/15">
-                <p className="text-white/80 text-xs font-bold uppercase tracking-widest mb-3">
+                <p className="text-white/80 text-xs font-normal uppercase tracking-widest mb-3">
                   Eventos disponibles <span className="text-white/40 font-normal normal-case">(max. 2)</span>
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -276,7 +276,7 @@ export default function Registro() {
                           isDisabled ? "opacity-35 cursor-not-allowed grayscale" : "",
                         ].join(" ")}
                       >
-                        <h3 className="font-bold text-sm text-white leading-tight">{ev.nombre}</h3>
+                        <h3 className="font-normal text-sm text-white leading-tight">{ev.nombre}</h3>
                         <p className="text-[10px] mt-0.5 font-mono uppercase tracking-widest text-white/50">
                           Semestre {ev.semestre} · {ev.anio}
                         </p>
@@ -292,7 +292,7 @@ export default function Registro() {
               </div>
 
               <Button type="submit" disabled={isLoading}
-                className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-normal text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
               >
                 {isLoading
                   ? <Loader2 className="w-5 h-5 animate-spin" />
@@ -309,10 +309,10 @@ export default function Registro() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

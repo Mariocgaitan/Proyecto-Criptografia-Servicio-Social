@@ -19,8 +19,8 @@ import SystemDashboardPanel from "./SystemDashboardPanel";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
@@ -129,8 +129,8 @@ function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
       <div className="rounded-2xl border border-white/15 bg-black/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-colors duration-300 hover:bg-black/45">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] mb-2 text-white/55">{label}</p>
-            <p className="text-3xl font-extrabold tracking-tight text-white">{value}</p>
+            <p className="text-[10px] font-normal uppercase tracking-[0.2em] mb-2 text-white/55">{label}</p>
+            <p className="text-3xl font-normal tracking-tight text-white">{value}</p>
             <p className="text-xs mt-1.5 flex items-center gap-1 text-white/55">
               <TrendingUp className="w-3 h-3 text-emerald-500" />
               {subtitle}
@@ -151,8 +151,8 @@ function ChartPlaceholder({ title, icon: Icon, colSpan = 1, height = "h-56" }) {
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className={colSpan === 2 ? "md:col-span-2" : ""}>
       <div className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="font-semibold text-sm text-white">{title}</h3>
-          <button className="text-[11px] uppercase tracking-wider text-blue-300 hover:text-blue-200 font-semibold transition-colors">Ver todo</button>
+          <h3 className="font-normal text-sm text-white">{title}</h3>
+          <button className="text-[11px] uppercase tracking-wider text-blue-300 hover:text-blue-200 font-normal transition-colors">Ver todo</button>
         </div>
         <div className={`${height} flex flex-col items-center justify-center gap-3 px-5`}>
           <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-white/25 bg-black/25 flex items-center justify-center">
@@ -175,7 +175,7 @@ function OccupancyBar({ current, max }) {
       <div className="flex-1 h-2 rounded-full overflow-hidden bg-white/10">
         <div className={`h-full ${color} rounded-full transition-all duration-500`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
-      <span className="text-xs font-mono font-bold w-16 text-right text-white/70">{current}/{max}</span>
+      <span className="text-xs font-mono font-normal w-16 text-right text-white/70">{current}/{max}</span>
     </div>
   );
 }
@@ -800,7 +800,7 @@ export default function AdminDashboard() {
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
           <div>
-            <p className="text-white/70 text-xs sm:text-sm font-semibold tracking-wide uppercase">Portal Administracion</p>
+            <p className="text-white/70 text-xs sm:text-sm font-normal tracking-wide uppercase">Portal Administracion</p>
             <p className="text-white/45 text-[11px] sm:text-xs">Sistema de Servicio Social</p>
           </div>
         </div>
@@ -813,7 +813,7 @@ export default function AdminDashboard() {
             title="Command palette"
           >
             <Command className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs font-semibold">Ctrl+K</span>
+            <span className="hidden sm:inline text-xs font-normal">Ctrl+K</span>
           </button>
 
           <button
@@ -822,7 +822,7 @@ export default function AdminDashboard() {
             title="Cerrar Sesión"
           >
             <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline text-sm font-semibold">Cerrar Sesión</span>
+            <span className="hidden sm:inline text-sm font-normal">Cerrar Sesión</span>
           </button>
         </div>
       </header>
@@ -832,7 +832,7 @@ export default function AdminDashboard() {
         <div className="w-full">
           <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
             <div>
-              <h2 className="text-lg sm:text-xl font-extrabold tracking-tight text-white">
+              <h2 className="text-lg sm:text-xl font-normal tracking-tight text-white">
                 {sectionMeta[activeSection]?.title}
               </h2>
               <p className="text-xs sm:text-sm mt-0.5 text-white/60">
@@ -841,10 +841,10 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
-            <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
-            <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
-            <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+            <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
+            <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
+            <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
+            <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
           </div>
         </div>
 
@@ -872,14 +872,14 @@ export default function AdminDashboard() {
                     <button
                       type="button"
                       onClick={() => setExpandedEmpresas(companyGroupKeys)}
-                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       Expandir todas
                     </button>
                     <button
                       type="button"
                       onClick={() => setExpandedEmpresas([])}
-                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-semibold uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
                     >
                       Colapsar todas
                     </button>
@@ -887,26 +887,26 @@ export default function AdminDashboard() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <Button 
                       onClick={() => setIsAgregarAlumnoOpen(true)}
-                      className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all"
+                      className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
                     >
                       <Users className="w-4 h-4 mr-2" /> Agregar Alumno
                     </Button>
                     <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-all">
+                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all">
                         <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
                       <DialogHeader>
-                        <DialogTitle className="text-xl font-extrabold tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
+                        <DialogTitle className="text-xl font-normal tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
                         <DialogDescription className="text-white/60">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
                       </DialogHeader>
                       <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
                         {errorText && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm font-medium">{errorText}</div>}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Empresa Receptora</Label>
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Empresa Receptora</Label>
                             <Select required onValueChange={v => setFormProyecto({...formProyecto, id_empresa: v})}>
                               <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                               <SelectContent className="bg-slate-950 border-white/15 text-white">
@@ -915,7 +915,7 @@ export default function AdminDashboard() {
                             </Select>
                           </div>
                           <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Evento Activo</Label>
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Evento Activo</Label>
                             <Select required onValueChange={v => setFormProyecto({...formProyecto, id_evento: v})}>
                               <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
                               <SelectContent className="bg-slate-950 border-white/15 text-white">
@@ -925,20 +925,20 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Título Oficial del Proyecto</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Título Oficial del Proyecto</Label>
                           <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.nombre} onChange={e => setFormProyecto({...formProyecto, nombre: e.target.value})} />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Descripción (Opcional)</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción (Opcional)</Label>
                           <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({...formProyecto, desc: e.target.value})} />
                         </div>
                         <div className="bg-black/30 p-4 rounded-xl border border-white/10">
                           <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Límite de Alumnos</Label>
-                            <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-bold text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Límite de Alumnos</Label>
+                            <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-normal text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold shadow-none">Finalizar y Crear Proyecto</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal shadow-none">Finalizar y Crear Proyecto</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -947,7 +947,7 @@ export default function AdminDashboard() {
 
                 <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
                   <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-semibold mr-1">
+                    <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
                       <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
                     </div>
 
@@ -1011,12 +1011,12 @@ export default function AdminDashboard() {
                               <Building2 className="w-4 h-4" />
                             </div>
                             <div className="text-left">
-                              <p className="font-bold text-sm text-white">{empresaName}</p>
+                              <p className="font-normal text-sm text-white">{empresaName}</p>
                               <p className="text-xs text-white/55">{proys.length} proyecto{proys.length !== 1 ? 's' : ''}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-3">
-                            <span className="text-xs font-mono font-bold px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
+                            <span className="text-xs font-mono font-normal px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
                               {proys.reduce((s, p) => s + (p.cupo_actual||0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max||0), 0)} plazas
                             </span>
                             <motion.div animate={{ rotate: expandedEmpresas.includes(empresaName) ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -1032,24 +1032,24 @@ export default function AdminDashboard() {
                                   <div key={p.id_proyecto} className="px-6 py-3.5 border-b last:border-0 transition-colors border-white/10 hover:bg-white/[0.03]">
                                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                                       <div className="flex-1">
-                                        <p className="text-sm font-semibold text-white">{p.nombre_proyecto}</p>
+                                        <p className="text-sm font-normal text-white">{p.nombre_proyecto}</p>
                                       </div>
                                       <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                                         <div className="w-full md:w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div>
                                         {p.cupo_actual >= p.capacidad_max ? (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
                                         ) : (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
                                         )}
                                         <div className="flex gap-1.5">
-                                          <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-semibold text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg">+ Cupo</button>
+                                          <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-normal text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg">+ Cupo</button>
                                         </div>
                                       </div>
                                     </div>
 
                                     <div className="mt-3 rounded-xl border border-white/10 bg-black/25 overflow-hidden">
                                       <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
-                                        <p className="text-[11px] font-semibold uppercase tracking-wider text-white/60">Alumnos enrolados</p>
+                                        <p className="text-[11px] font-normal uppercase tracking-wider text-white/60">Alumnos enrolados</p>
                                         <p className="text-xs text-white/55">{Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos.length : 0}</p>
                                       </div>
 
@@ -1058,13 +1058,13 @@ export default function AdminDashboard() {
                                           <table className="w-full min-w-[900px]">
                                             <thead>
                                               <tr className="border-b border-white/10">
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Alumno</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Matricula</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Carrera</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Correo</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Fecha Registro</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Hora Registro</th>
-                                                <th className="text-right px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-white/50">Accion</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Alumno</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Matricula</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Carrera</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Correo</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Fecha Registro</th>
+                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Hora Registro</th>
+                                                <th className="text-right px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Accion</th>
                                               </tr>
                                             </thead>
                                             <tbody>
@@ -1085,7 +1085,7 @@ export default function AdminDashboard() {
                                                       type="button"
                                                       onClick={() => handleEliminarInscripcion(alumno)}
                                                       disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
                                                     >
                                                       <Trash2 className="w-3.5 h-3.5" />
                                                       {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
@@ -1145,38 +1145,38 @@ export default function AdminDashboard() {
                       setActiveSection("proyectos");
                       setIsCrearProyectoOpen(true);
                     }}
-                    className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors"
+                    className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
                   >
                     <Plus className="w-4 h-4 mr-2" /> Registrar Proyecto
                   </Button>
 
                   <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                     <DialogTrigger asChild>
-                      <Button className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors">
+                      <Button className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
                         <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
-                      <DialogHeader><DialogTitle className="text-xl font-extrabold tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
+                      <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
                       <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
                         {errorText && <div className="text-sm text-red-200 bg-red-500/10 p-2 rounded border border-red-500/30">{errorText}</div>}
                         <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">ID Asociado / Convenio</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">ID Asociado / Convenio</Label>
                           <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({...formEmpresa, id_asociado: e.target.value})} placeholder="Ej. SF-XXX24" />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Nombre Público (Comercial)</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Nombre Público (Comercial)</Label>
                           <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.nombre} onChange={e => setFormEmpresa({...formEmpresa, nombre: e.target.value})} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Denominación Legal (Razón Social)</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Denominación Legal (Razón Social)</Label>
                           <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.razon} onChange={e => setFormEmpresa({...formEmpresa, razon: e.target.value})} />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Descripción de Giro Corporativo</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción de Giro Corporativo</Label>
                           <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.desc} onChange={e => setFormEmpresa({...formEmpresa, desc: e.target.value})} />
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-bold mt-4">Matricular Entidad</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal mt-4">Matricular Entidad</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -1184,7 +1184,7 @@ export default function AdminDashboard() {
 
                 <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
                   <div className="px-5 py-3 border-b border-white/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/55">Empresas registradas</p>
+                    <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Empresas registradas</p>
                   </div>
                   {filteredEmpresas?.map((emp, i) => (
                     <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
@@ -1195,14 +1195,14 @@ export default function AdminDashboard() {
                               <Building2 className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-sm text-white truncate">{emp.nombre_empresa}</p>
+                              <p className="font-normal text-sm text-white truncate">{emp.nombre_empresa}</p>
                               <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                             <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">#{emp.id_asociado}</span>
                             {emp.razon_social ? (
-                              <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
+                              <span className="text-[10px] font-normal uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
                             ) : null}
                           </div>
                         </div>
@@ -1226,20 +1226,20 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-end">
                   <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-semibold px-5 py-5 rounded-xl shadow-none transition-colors">
+                      <Button className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
                         <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
-                      <DialogHeader><DialogTitle className="text-xl font-extrabold tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
+                      <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
                       <form onSubmit={handleCrearEvento} className="space-y-4 mt-2">
                         <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Distintivo del Periodo</Label>
+                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Distintivo del Periodo</Label>
                           <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEvento.nombre} onChange={e => setFormEvento({...formEvento, nombre: e.target.value})} placeholder="Ej. Feria Institucional SJR" />
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="space-y-1">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Ciclo</Label>
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Ciclo</Label>
                             <Select value={formEvento.periodo} onValueChange={v => setFormEvento({...formEvento, periodo: v})}>
                               <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue/></SelectTrigger>
                               <SelectContent className="bg-slate-950 border-white/15 text-white">
@@ -1248,11 +1248,11 @@ export default function AdminDashboard() {
                             </Select>
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Año</Label>
-                            <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-bold" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Año</Label>
+                            <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-normal" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
                           </div>
                         </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-bold mt-4">Emitir Apertura Global</Button>
+                        <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal mt-4">Emitir Apertura Global</Button>
                       </form>
                     </DialogContent>
                   </Dialog>
@@ -1260,7 +1260,7 @@ export default function AdminDashboard() {
 
                 <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
                   <div className="px-5 py-3 border-b border-white/10">
-                    <p className="text-[11px] font-semibold uppercase tracking-wider text-white/55">Periodos y eventos</p>
+                    <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Periodos y eventos</p>
                   </div>
                   {filteredEventos?.map((ev, i) => (
                     <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
@@ -1271,17 +1271,17 @@ export default function AdminDashboard() {
                               <Calendar className="w-4 h-4" />
                             </div>
                             <div>
-                              <h4 className="text-sm font-semibold text-white">{ev.nombre}</h4>
+                              <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
                               <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio} - {ev.semestre}</p>
                             </div>
                           </div>
                           <div className="flex items-center justify-start sm:justify-end">
                             {ev.activo ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
+                              <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
                                 <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> En Curso
                               </span>
                             ) : (
-                              <span className="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
+                              <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
                                 Archivado
                               </span>
                             )}
@@ -1303,33 +1303,33 @@ export default function AdminDashboard() {
       <Dialog open={!!cupoModalInfo} onOpenChange={open => !open && setCupoModalInfo(null)}>
         <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Ampliar Cupo</DialogTitle>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Ampliar Cupo</DialogTitle>
             <DialogDescription className="text-white/60">{cupoModalInfo?.nombre}</DialogDescription>
           </DialogHeader>
           {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label className="text-white/70 text-[11px] font-semibold uppercase tracking-wider">Máximo Actual</Label>
+              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Máximo Actual</Label>
               <Input disabled value={cupoModalInfo?.max || 0} className="bg-white/5 border-white/10 text-white/45" />
             </div>
             <div className="space-y-2">
-              <Label className="text-white text-[11px] font-semibold uppercase tracking-wider">Nueva Capacidad</Label>
-              <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-500/10 border-blue-400/30 text-blue-100 focus-visible:ring-blue-500 text-lg font-bold" />
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Nueva Capacidad</Label>
+              <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-500/10 border-blue-400/30 text-blue-100 focus-visible:ring-blue-500 text-lg font-normal" />
             </div>
           </div>
-          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-bold">Salvar Ajuste</Button>
+          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal">Salvar Ajuste</Button>
         </DialogContent>
       </Dialog>
 
       <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
         <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Confirmar baja de registro</DialogTitle>
             <DialogDescription className="text-white/60">Esta acción quitará al alumno del proyecto y liberará su cupo.</DialogDescription>
           </DialogHeader>
           {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
           <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
-            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+            <p className="font-normal text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
             <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
           </div>
           <div className="flex items-center justify-end gap-2 mt-2">
@@ -1358,7 +1358,7 @@ export default function AdminDashboard() {
       <Dialog open={isAgregarAlumnoOpen} onOpenChange={setIsAgregarAlumnoOpen}>
         <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-extrabold tracking-tight text-white">Agregar Alumno a Proyecto</DialogTitle>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Agregar Alumno a Proyecto</DialogTitle>
             <DialogDescription className="text-white/60">
               {selectedProyectoForAlumno ? selectedProyectoForAlumno.nombre_proyecto : "Selecciona un proyecto"}
             </DialogDescription>
@@ -1384,7 +1384,7 @@ export default function AdminDashboard() {
           ) : (
             <form onSubmit={handleAgregarAlumno} className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-white text-[11px] font-semibold uppercase tracking-wider">Alumno</Label>
+                <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Alumno</Label>
                 <select
                   value={selectedAlumnoMatricula}
                   onChange={e => setSelectedAlumnoMatricula(e.target.value)}
@@ -1413,7 +1413,7 @@ export default function AdminDashboard() {
                 <Button
                   type="submit"
                   disabled={!selectedAlumnoMatricula || isSubmitting}
-                  className="flex-1 border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-semibold"
+                  className="flex-1 border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal"
                 >
                   {isSubmitting ? "Agregando..." : "Agregar"}
                 </Button>
@@ -1425,7 +1425,7 @@ export default function AdminDashboard() {
 
       <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
-          <p className="text-white/50 uppercase tracking-wider font-semibold">Panel Administrativo</p>
+          <p className="text-white/50 uppercase tracking-wider font-normal">Panel Administrativo</p>
           <p className="text-white/40">Servicio Social Tec - Ecosistema Unificado</p>
         </div>
       </footer>
@@ -1473,7 +1473,7 @@ export default function AdminDashboard() {
                     />
                   ) : null}
                   <div className="relative z-10">
-                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-sm font-normal text-white">{item.label}</p>
                     <p className="text-[11px] text-white/50 uppercase tracking-wider">{item.hint}</p>
                   </div>
                 </button>

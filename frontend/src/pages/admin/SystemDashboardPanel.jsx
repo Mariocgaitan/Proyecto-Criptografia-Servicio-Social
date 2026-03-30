@@ -34,7 +34,7 @@ function KpiCard({ label, value, helper }) {
   return (
     <div className="rounded-xl border border-white/15 bg-white/5 p-4">
       <p className="text-[11px] uppercase tracking-wider text-white/60">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-white">{value}</p>
+      <p className="mt-1 text-2xl font-normal text-white">{value}</p>
       <p className="mt-1 text-xs text-white/50">{helper}</p>
     </div>
   );
@@ -43,7 +43,7 @@ function KpiCard({ label, value, helper }) {
 function ChartCard({ title, children, className = "" }) {
   return (
     <div className={`rounded-2xl border border-white/15 bg-black/35 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] ${className}`}>
-      <h3 className="mb-3 text-sm font-semibold text-white/90">{title}</h3>
+      <h3 className="mb-3 text-sm font-normal text-white/90">{title}</h3>
       <div className="h-72">{children}</div>
     </div>
   );
@@ -132,7 +132,7 @@ export default function SystemDashboardPanel() {
     <div className="space-y-5">
       <div className="rounded-2xl border border-white/15 bg-black/35 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-white">Dashboard del Sistema (refresco manual)</h3>
+          <h3 className="text-sm font-normal text-white">Dashboard del Sistema (refresco manual)</h3>
           <div className="flex items-center gap-2">
             <select
               value={windowMinutes}
@@ -146,7 +146,7 @@ export default function SystemDashboardPanel() {
             </select>
             <button
               onClick={fetchSystemMetrics}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white hover:bg-white/15"
+              className="inline-flex items-center gap-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-normal text-white hover:bg-white/15"
               disabled={loading}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
@@ -243,8 +243,8 @@ export default function SystemDashboardPanel() {
               </LineChart>
             </ResponsiveContainer>
             <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-white/70">
-              <div>Exitosos: <span className="font-semibold text-white">{logins?.totales?.logins_exitosos ?? 0}</span></div>
-              <div>Fallidos: <span className="font-semibold text-white">{logins?.totales?.logins_fallidos ?? 0}</span></div>
+              <div>Exitosos: <span className="font-normal text-white">{logins?.totales?.logins_exitosos ?? 0}</span></div>
+              <div>Fallidos: <span className="font-normal text-white">{logins?.totales?.logins_fallidos ?? 0}</span></div>
             </div>
           </ChartCard>
 
@@ -258,10 +258,10 @@ export default function SystemDashboardPanel() {
                 <table className="min-w-full text-left text-xs">
                   <thead className="bg-white/5 text-white/65">
                     <tr>
-                      <th className="px-3 py-2 font-semibold">Fecha</th>
-                      <th className="px-3 py-2 font-semibold">Tipo</th>
-                      <th className="px-3 py-2 font-semibold">Matrícula</th>
-                      <th className="px-3 py-2 font-semibold">IP</th>
+                      <th className="px-3 py-2 font-normal">Fecha</th>
+                      <th className="px-3 py-2 font-normal">Tipo</th>
+                      <th className="px-3 py-2 font-normal">Matrícula</th>
+                      <th className="px-3 py-2 font-normal">IP</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -269,7 +269,7 @@ export default function SystemDashboardPanel() {
                       <tr key={log.id_log} className="border-t border-white/10">
                         <td className="px-3 py-2 text-white/75">{log.timestamp ? new Date(log.timestamp).toLocaleString("es-MX") : "-"}</td>
                         <td className="px-3 py-2">
-                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${logBadgeClass(log.tipo_evento)}`}>
+                          <span className={`rounded-full border px-2 py-0.5 text-[10px] font-normal ${logBadgeClass(log.tipo_evento)}`}>
                             {log.tipo_evento || "N/A"}
                           </span>
                         </td>
