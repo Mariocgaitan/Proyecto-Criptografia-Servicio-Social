@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     SHOW_DOCS: bool = True  # False en producción para ocultar ReDoc
 
+    # Role switch para pruebas locales: permite simular un rol distinto para
+    # un correo especifico sin persistir cambios en la BD.
+    TEST_ROLE_SWITCH_ENABLED: bool = False
+    TEST_ROLE_SWITCH_EMAIL: str = ""
+    TEST_ROLE_SWITCH_ROLE: str = ""
+
     # CORS — orígenes permitidos explícitos (producción). En desarrollo se
     # acepta automáticamente cualquier IP de red privada + localhost.
     ALLOWED_ORIGINS: list[str] = [

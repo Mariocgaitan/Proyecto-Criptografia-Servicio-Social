@@ -100,5 +100,30 @@ uv run python test_db_ssh.py
 | `JWT_SECRET_KEY` | Clave secreta para tokens JWT | — |
 | `APP_ENV` | Entorno (`development` / `production`) | `development` |
 | `DEBUG` | Activa logs SQL y docs `/docs` | `true` |
+| `TEST_ROLE_SWITCH_ENABLED` | Activa cambio de rol en pruebas para un correo especifico | `false` |
+| `TEST_ROLE_SWITCH_EMAIL` | Correo al que se le aplicara el rol forzado | `""` |
+| `TEST_ROLE_SWITCH_ROLE` | Rol forzado (`admin`, `alumno`, `empresa`) | `""` |
+
+### Cambio rapido de rol para pruebas
+
+Si quieres alternar tu misma cuenta entre panel de admin y alumno sin tocar la BD, usa:
+
+```env
+TEST_ROLE_SWITCH_ENABLED=true
+TEST_ROLE_SWITCH_EMAIL=a01659147@tec.mx
+TEST_ROLE_SWITCH_ROLE=alumno
+```
+
+Con `TEST_ROLE_SWITCH_ROLE=alumno`, el backend asigna automaticamente los eventos activos
+si ese usuario no tiene filas en `usuario_eventos`, para que puedas probar el flujo completo
+de alumno sin registrarte en padrón ni usar contraseña del seed.
+
+Para volver a admin cambia solo:
+
+```env
+TEST_ROLE_SWITCH_ROLE=admin
+```
+
+Reinicia el backend despues de cambiar estas variables.
 
 

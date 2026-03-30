@@ -66,6 +66,28 @@ def hash_pre_auth_token(raw_token: str) -> str:
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
 
 
+def create_pre_auth_jwt(data: dict) -> str:
+    """
+    Genera un JWT temporal para registro diferido de Google Auth.
+    Expira en 15 minutos.
+    """
+    payload = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "pre_auth"})
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_pre_auth_jwt(token: str) -> dict:
+    """
+    Decodifica un JWT de registro diferido.
+    Lanza jwt.ExpiredSignatureError o jwt.InvalidTokenError si es inválido.
+    """
+    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    if payload.get("type") != "pre_auth":
+        raise jwt.InvalidTokenError("Token type no es pre_auth")
+    return payload
+
+
 # ── Google OAuth Validation ────────────────────────────────────────────────────
 
 def validate_google_token(id_token: str) -> dict:
