@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
+import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 
 // ─── Social icon button ─────────────────────────────────────────
@@ -182,7 +182,7 @@ export default function Login() {
             <div className="px-5 py-3 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-xl">
               <img src={serSocialLogo} alt="Ser Social" className="h-24 sm:h-28 w-auto" />
             </div>
-            <p className="mt-3 text-white/95 text-[11px] sm:text-xs font-semibold tracking-[0.15em] uppercase text-center">
+            <p className="mt-3 text-white/95 text-[11px] sm:text-xs font-normal tracking-[0.15em] uppercase text-center">
               Feria de Servicio Social
             </p>
           </motion.div>
@@ -198,7 +198,7 @@ export default function Login() {
                   exit={{ opacity: 0, height: 0 }}
                   className="bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-xl px-4 py-3 overflow-hidden"
                 >
-                  <p className="text-red-200 text-sm font-semibold text-center">{error}</p>
+                  <p className="text-red-200 text-sm font-normal text-center">{error}</p>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -253,7 +253,7 @@ export default function Login() {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-normal text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
                 >
                   {isLoading ? "Ingresando..." : "Ingresar"}
                 </Button>
@@ -262,7 +262,7 @@ export default function Login() {
 
             {/* Help links */}
             <motion.div {...fadeIn(0.8)} className="text-center pt-2">
-              <p className="text-white/60 text-xs font-semibold uppercase tracking-wider transition-colors">
+              <p className="text-white/60 text-xs font-normal uppercase tracking-wider transition-colors">
                 <Link to="/registro" className="text-blue-300 hover:text-blue-200">Regístrate</Link>
               </p>
             </motion.div>
@@ -276,10 +276,10 @@ export default function Login() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

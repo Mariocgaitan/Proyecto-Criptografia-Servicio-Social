@@ -43,7 +43,7 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
                   <InputOTPSlot
                     key={i}
                     index={i}
-                    className="border border-white/30 rounded-lg bg-black/40 text-white text-lg font-bold h-10 w-9 sm:h-12 sm:w-10 focus-visible:ring-blue-400 focus-visible:border-blue-400"
+                    className="border border-white/30 rounded-lg bg-black/40 text-white text-lg font-normal h-10 w-9 sm:h-12 sm:w-10 focus-visible:ring-blue-400 focus-visible:border-blue-400"
                   />
                 ))}
               </InputOTPGroup>
@@ -63,7 +63,7 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
                     <InputOTPSlot
                       key={i}
                       index={i}
-                      className="border border-white/30 rounded-xl bg-black/20 text-white text-xl sm:text-2xl font-bold h-14 w-12 sm:h-16 sm:w-14 focus-visible:ring-blue-400 focus-visible:border-blue-400 shadow-inner"
+                      className="border border-white/30 rounded-xl bg-black/20 text-white text-xl sm:text-2xl font-normal h-14 w-12 sm:h-16 sm:w-14 focus-visible:ring-blue-400 focus-visible:border-blue-400 shadow-inner"
                     />
                   ))}
                 </InputOTPGroup>
@@ -80,7 +80,7 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
       className="flex w-[100%] max-w-[460px] flex-col gap-4 p-4 sm:p-5 md:p-6 bg-black/40 border-white/10 backdrop-blur-md shadow-2xl text-white rounded-[2rem]">
       <CardHeader className="flex flex-col items-center gap-1 p-0">
         <div className="flex flex-col space-y-1 text-center">
-          <CardTitle className="text-2xl sm:text-[26px] font-black tracking-tight text-white mb-0">
+          <CardTitle className="text-2xl sm:text-[26px] font-normal tracking-tight text-white mb-0">
             Verificación en 2 pasos
           </CardTitle>
           {qrCodeData && (
@@ -107,7 +107,7 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
                 {hasMultipleSteps && (
                   <div className="flex flex-col items-center self-stretch pt-0.5">
                     <span
-                      className="z-10 text-[10px] font-bold flex shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-inset ring-white/20 text-white size-6 backdrop-blur-sm">
+                      className="z-10 text-[10px] font-normal flex shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-inset ring-white/20 text-white size-6 backdrop-blur-sm">
                       {index + 1}
                     </span>
                   </div>
@@ -115,7 +115,7 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
                 
                 <div className={cn("flex flex-col pt-0.5 w-full", hasMultipleSteps ? "items-start" : "items-center text-center")}>
                   {hasMultipleSteps && (
-                    <p className="text-sm leading-none font-semibold text-white">
+                    <p className="text-sm leading-none font-normal text-white">
                       {step.title}
                     </p>
                   )}
