@@ -731,10 +731,8 @@ export default function Dashboard() {
               </p>
             </div>
             <div className="flex items-center justify-center sm:justify-end">
-              <div className="px-4 py-3 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl">
-                <div className="px-3 py-2 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-lg">
-                  <img src={serSocialLogo} alt="Ser Social" className="h-12 sm:h-14 w-auto" />
-                </div>
+              <div className="w-32 h-20 sm:w-40 sm:h-28 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center p-0">
+                <img src={serSocialLogo} alt="Ser Social" className="w-[180%] h-full object-cover object-center rounded-xl shadow-lg" style={{maxWidth:'none',maxHeight:'100%'}} />
               </div>
             </div>
           </div>
