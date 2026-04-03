@@ -392,24 +392,29 @@ async def login_or_register_google(
     
     # 2. Si no existe, crear nuevo usuario (registro automático diferido)
     if not usuario:
-        # Generar TOTP nuevo sin guardarlo en base de datos aún
+        from app.models.temp_totp_secret import TempTotpSecret
+
         totp_secret = pyotp.random_base32()
-        
+
         await _log(db, "REGISTRO_GOOGLE_INICIADO", ip_origen=ip_origen, detalle=f"correo: {correo}")
         totp_qr = _generate_totp_qr(correo, totp_secret)
-        
-        # Generar temp_token como JWT
-        from app.core.security import create_pre_auth_jwt
-        temp_token = create_pre_auth_jwt({
-            "action": "google_register",
-            "correo": correo,
-            "nombre": nombre,
-            "totp_secret": totp_secret,
-        })
-        
-        # Importante: No se inserta el usuario en base de datos sino hasta verify_totp
+
+        # Guardar secreto TOTP en tabla temporal (no en JWT)
+        raw_temp = generate_pre_auth_token()
+        temp_hash = hash_pre_auth_token(raw_temp)
+        expira_en = datetime.now(timezone.utc) + timedelta(minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES)
+
+        db.add(TempTotpSecret(
+            token_hash=temp_hash,
+            correo=correo,
+            nombre=nombre,
+            totp_secret=totp_secret,
+            expira_en=expira_en,
+            usado=False,
+        ))
+
         await db.commit()
-        return temp_token, totp_qr
+        return raw_temp, totp_qr
     else:
         # Usuario existente - si no tiene TOTP, generarlo
         if not usuario.totp_secret or usuario.totp_secret == "":
@@ -449,47 +454,48 @@ async def verify_totp_and_get_token(
     
     Raises: LoginError si el temp_token es inválido o el TOTP es incorrecto.
     """
-    from app.core.security import hash_pre_auth_token, create_access_token, decode_pre_auth_jwt
+    from app.core.security import hash_pre_auth_token, create_access_token
     from app.models.pre_auth_token import PreAuthToken
-    import jwt
-    
+    from app.models.temp_totp_secret import TempTotpSecret
+
     usuario = None
-    
-    # Intenta decodificar como JWT (Flujo de registro nuevo de Google)
-    is_jwt = False
-    try:
-        payload = decode_pre_auth_jwt(temp_token)
-        is_jwt = True
-    except jwt.InvalidTokenError:
-        pass
-        
-    if is_jwt:
-        if payload.get("action") != "google_register":
-            raise LoginError("Token temporal inválido para registro", 401)
-            
-        correo = payload["correo"]
-        totp_secret = payload["totp_secret"]
-        nombre = payload["nombre"]
-        
-        # Validar TOTP directamente con el secreto en el token
+    temp_hash = hash_pre_auth_token(temp_token)
+    now = datetime.now(timezone.utc)
+
+    # 1. Buscar en TempTotpSecret (flujo registro Google nuevo)
+    result = await db.execute(
+        select(TempTotpSecret).where(
+            TempTotpSecret.token_hash == temp_hash,
+            TempTotpSecret.usado == False,  # noqa: E712
+            TempTotpSecret.expira_en > now,
+        )
+    )
+    temp_totp_record = result.scalar_one_or_none()
+
+    if temp_totp_record:
+        correo = temp_totp_record.correo
+        totp_secret = temp_totp_record.totp_secret
+        nombre = temp_totp_record.nombre
+
+        # Validar TOTP
         totp_obj = pyotp.TOTP(totp_secret)
         if not totp_obj.verify(totp_code):
             await _log(db, "TOTP_FALLIDO", ip_origen=ip_origen, detalle=f"correo: {correo}")
             await db.commit()
             raise LoginError("Código TOTP inválido", 401)
-            
+
         # Verificar que el usuario no fue registrado entre tanto
         result = await db.execute(select(Usuario).where(Usuario.correo == correo))
         if result.scalar_one_or_none():
             raise LoginError("El correo ya fue registrado", 400)
-            
-        # Validar si el correo fuerza un rol de pruebas (admin/empresa)
+
+        # Crear usuario nuevo
         effective_role = resolve_effective_role(correo, "alumno")
-        
+
         import uuid
         prefix = "ADM" if effective_role == "admin" else "EMP" if effective_role == "empresa" else "GGL"
         temp_matricula = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
-        
+
         usuario = Usuario(
             id_matricula=temp_matricula,
             nombre=nombre,
@@ -505,11 +511,11 @@ async def verify_totp_and_get_token(
         await db.flush()
         await _log(db, "REGISTRO_GOOGLE_NUEVO", id_matricula=temp_matricula, ip_origen=ip_origen)
 
+        # Marcar token temporal como usado
+        temp_totp_record.usado = True
+
     else:
-        temp_hash = hash_pre_auth_token(temp_token)
-        now = datetime.now(timezone.utc)
-        
-        # 1. Validar temp_token en BD
+        # 2. Buscar en PreAuthToken (flujo usuario existente)
         result = await db.execute(
             select(PreAuthToken).where(
                 PreAuthToken.token_hash == temp_hash,
@@ -520,23 +526,33 @@ async def verify_totp_and_get_token(
         pre_auth_record = result.scalar_one_or_none()
         if not pre_auth_record:
             raise LoginError("Temp token inválido, expirado o ya usado", 401)
-        
-        # 2. Obtener usuario
+
+        # Obtener usuario
         result = await db.execute(
             select(Usuario).where(Usuario.id_matricula == pre_auth_record.id_matricula)
         )
         usuario = result.scalar_one_or_none()
         if not usuario:
             raise LoginError("Usuario no encontrado", 404)
-        
-        # 3. Validar TOTP
+
+        # Validar TOTP
         totp_obj = pyotp.TOTP(usuario.totp_secret)
         if not totp_obj.verify(totp_code):
             await _log(db, "TOTP_FALLIDO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
             await db.commit()
             raise LoginError("Código TOTP inválido", 401)
-        
-        # 4. Marcar temp_token como usado
+
+        # Replay protection: rechazar si el mismo código TOTP se usa dentro de la misma ventana de 30s
+        current_window = now.timestamp() // 30
+        if usuario.last_totp_used_at is not None:
+            last_window = usuario.last_totp_used_at.timestamp() // 30
+            if current_window == last_window:
+                await _log(db, "TOTP_REPLAY", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+                await db.commit()
+                raise LoginError("Código TOTP ya utilizado, espera al siguiente código", 429)
+        usuario.last_totp_used_at = now
+
+        # Marcar temp_token como usado
         pre_auth_record.usado = True
     
     # 5. Generar tokens finales

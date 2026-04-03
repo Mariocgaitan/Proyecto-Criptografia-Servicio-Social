@@ -26,6 +26,9 @@ class Usuario(Base):
     failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
+    # TOTP replay protection
+    last_totp_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
     # Datos adicionales para el QR (para alumnos)
     correo_alterno: Mapped[str | None] = mapped_column(String(200), nullable=True)
     celular: Mapped[str | None] = mapped_column(String(20), nullable=True)

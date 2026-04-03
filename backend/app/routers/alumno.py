@@ -9,12 +9,23 @@ Rutas API JSON (protegidas por JWT en header Authorization):
   GET  /api/v1/alumno/estado-inscripcion  → Estado de inscripción en todos los eventos
 """
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
 from app.db.session import get_db
+
+class PerfilAlumnoUpdate(BaseModel):
+    correo_alterno: str | None = Field(None, description="Correo personal")
+    celular: str | None = Field(None, description="Número de celular")
+    descripcion_personal: str | None = Field(None, description="Pequeña biografía o descripción")
+
+    class Config:
+        arbitrary_types_allowed = True
+
 from app.services.alumno_service import (
     AlumnoError,
+    actualizar_perfil_alumno,
     generar_qr_payload,
     obtener_datos_dashboard,
     obtener_estado_inscripcion,
@@ -75,3 +86,19 @@ async def estado_inscripcion(
     Consulta el estado de inscripción del alumno en todos sus eventos registrados.
     """
     return await obtener_estado_inscripcion(db, current_user.id_matricula)
+
+@router.patch("/api/v1/alumno/perfil", tags=["Alumno"], summary="Actualizar perfil del alumno")
+async def update_perfil(
+    payload: PerfilAlumnoUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: "Usuario" = Depends(get_current_user),
+):
+    """
+    Actualiza campos adicionales del perfil del alumno.
+    """
+    try:
+        return await actualizar_perfil_alumno(
+            db, current_user.id_matricula, payload.dict(exclude_unset=True)
+        )
+    except AlumnoError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)

@@ -69,6 +69,11 @@ class Settings(BaseSettings):
         "http://127.0.0.1:4173",
     ]
 
+    # HTTPS local (mkcert)
+    USE_HTTPS: bool = False
+    SSL_CERTFILE: str = ""
+    SSL_KEYFILE: str = ""
+
     # Login lockout
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 15
@@ -92,7 +97,7 @@ class Settings(BaseSettings):
 
     @property
     def cookie_secure(self) -> bool:
-        return self.is_production
+        return self.is_production or self.USE_HTTPS
 
 
 settings = Settings()

@@ -55,6 +55,9 @@ MATRIZ_DATOS_GRAFICAS_ADMIN.md
 *.sql.session
 SID Local.session.sql
 
+# Certificados SSL locales (mkcert)
+certs/
+
 # Archivos temporales / locales
 *.tmp
 *.bak

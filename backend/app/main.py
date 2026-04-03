@@ -65,8 +65,8 @@ app.add_middleware(
     allow_origins=settings.ALLOWED_ORIGINS,
     allow_origin_regex=_LOCAL_ORIGIN_REGEX if settings.APP_ENV == "development" else None,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 # ── Security Headers Middleware ────────────────────────────────────────────────
@@ -78,15 +78,27 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     """
     response = await call_next(request)
 
-    response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com; "
-        "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
-        "font-src 'self' https://fonts.gstatic.com; "
-        "img-src 'self' data: https://*.googleusercontent.com; "
-        "connect-src 'self' http://localhost:8000 https://accounts.google.com; "
-        "frame-src 'self' https://accounts.google.com;"
-    )
+    if settings.DEBUG:
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https://*.googleusercontent.com; "
+            "connect-src 'self' http://localhost:8000 https://accounts.google.com; "
+            "frame-src 'self' https://accounts.google.com;"
+        )
+    else:
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' https://accounts.google.com; "
+            "style-src 'self' https://fonts.googleapis.com https://accounts.google.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "img-src 'self' data: https://*.googleusercontent.com; "
+            "connect-src 'self' https://accounts.google.com; "
+            "frame-src 'self' https://accounts.google.com;"
+        )
+    response.headers["Content-Security-Policy"] = csp
     # Permitir que Google monte su iframe invisible
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -107,7 +119,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
             "geolocation=(), camera=(), microphone=(), payment=()"
         )
 
-    if request.url.path in ("/dashboard", "/login", "/registro"):
+    if request.url.path.startswith("/api/") or request.url.path in ("/dashboard", "/login", "/registro"):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
 

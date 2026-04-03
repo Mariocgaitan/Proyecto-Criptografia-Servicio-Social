@@ -68,7 +68,8 @@ def _set_access_cookie(response: JSONResponse, access_token: str) -> None:
 
 
 @router.post("/api/v1/auth/registro", status_code=201, tags=["Autenticación"], summary="Registrar alumno")
-async def api_registro(datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
+@limiter.limit("5/minute")
+async def api_registro(request: Request, datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
     try:
         return await registrar_alumno(db, datos)
     except RegistroError as e:
@@ -89,7 +90,8 @@ async def api_carreras_disponibles():
 
 
 @router.post("/api/v1/auth/login", response_model=TokenResponse, tags=["Autenticación"], summary="Iniciar sesión")
-async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+@limiter.limit("10/minute")
+async def api_login(request: Request, datos: LoginRequest, db: AsyncSession = Depends(get_db)):
     ip = request.client.host if request.client else None
     try:
         access_token, raw_refresh = await login_alumno(db, datos.correo, datos.password, ip)
@@ -103,7 +105,9 @@ async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = De
 
 
 @router.post("/api/v1/auth/refresh", response_model=TokenResponse, tags=["Autenticación"], summary="Renovar access token")
+@limiter.limit("30/minute")
 async def api_refresh(
+    request: Request,
     db: AsyncSession = Depends(get_db),
     refresh_token: str | None = Cookie(default=None),
 ):
@@ -153,6 +157,7 @@ async def api_me(
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 
 @router.post("/api/v1/auth/google", response_model=PreAuthResponse, tags=["Autenticación"], summary="Iniciar sesión con Google")
+@limiter.limit("10/minute")
 async def api_google_auth(
     datos: GoogleAuthRequest,
     request: Request,
@@ -177,6 +182,7 @@ async def api_google_auth(
 
 
 @router.post("/api/v1/auth/verify-totp", response_model=RoleRedirectResponse, tags=["Autenticación"], summary="Verificar TOTP y obtener token final")
+@limiter.limit("5/minute")
 async def api_verify_totp(
     datos: VerifyTOTPRequest,
     request: Request,

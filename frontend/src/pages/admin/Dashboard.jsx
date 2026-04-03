@@ -194,7 +194,7 @@ export default function AdminDashboard() {
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const commandInputRef = useRef(null);
   const commandItemRefs = useRef([]);
-  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+
   const [searchQuery, setSearchQuery] = useState("");
   const [availability, setAvailability] = useState("todas");
   const [empresaFilter, setEmpresaFilter] = useState(ALL_COMPANIES_FILTER);
@@ -258,12 +258,7 @@ export default function AdminDashboard() {
     };
   }, []);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
-    }, 20000);
-    return () => clearInterval(intervalId);
-  }, []);
+
 
   // === HANDLERS ===
   const handleCrearProyecto = async (e) => {
@@ -780,18 +775,11 @@ export default function AdminDashboard() {
   return (
     <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'Geist Variable', sans-serif" }}>
       <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <AnimatePresence mode="sync" initial={false}>
-          <motion.img
-            key={currentBgIndex}
-            src={campusImages[currentBgIndex]}
-            alt="Campus"
-            className="w-full h-full object-cover fixed inset-0 blur-[4px] scale-105"
-            initial={{ x: "100%" }}
-            animate={{ x: "0%" }}
-            exit={{ x: "-100%" }}
-            transition={{ duration: 3, ease: "easeInOut" }}
-          />
-        </AnimatePresence>
+        <img
+          src={campusImg1}
+          alt="Campus"
+          className="w-full h-full object-cover fixed inset-0 blur-[4px] scale-105"
+        />
         <div className="fixed inset-0 bg-black/70" />
         <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
