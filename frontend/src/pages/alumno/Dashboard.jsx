@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Clock, Users, Search, SlidersHorizontal, Flame } from "lucide-react";
+import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Users, Search, SlidersHorizontal, Flame, Info } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
 import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
@@ -292,6 +291,8 @@ function ProjectGrid({ proyectos }) {
 function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onProfileUpdate, initialProfileData, isEditing, onToggleEdit }) {
   const qrSize = 280;
   const qrLogoSize = 34;
+  const TOTAL_QR_SECONDS = 30;
+  const progressPercent = Math.max(0, Math.min(100, (timeLeft / TOTAL_QR_SECONDS) * 100));
 
   return (
     <div className="w-full font-sans">
@@ -306,69 +307,38 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
         />
       ) : (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           className="relative"
         >
-          <div className="flex justify-center mb-6 sm:mb-8">
-            <motion.div
-              animate={timeLeft <= 5 ? { scale: [1, 1.05, 1] } : {}}
-              transition={{ duration: 0.5, repeat: timeLeft <= 5 ? Infinity : 0 }}
-            >
-              <Badge
-                variant="outline"
-                className={cn(
-                  "font-mono tracking-widest text-sm px-6 py-3 border-0 shadow-lg rounded-xl",
-                  timeLeft <= 5
-                    ? "bg-red-500 text-white shadow-red-500/30"
-                    : "bg-white/[0.05] text-blue-300 font-normal border border-blue-500/20 backdrop-blur-md"
-                )}
-              >
-                <Clock className="w-4 h-4 mr-2" />
-                EXPIRA EN: {timeLeft.toString().padStart(2, "0")}s
-              </Badge>
-            </motion.div>
-          </div>
-
           <div className="flex flex-col items-center gap-8 text-center">
-            {/* QR Section — 3D-ish Card */}
-            <motion.div
-              className="shrink-0 mx-auto"
-            >
-              <div className="relative w-72 h-72 sm:w-80 sm:h-80 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.4)] border border-white/10 p-6 flex flex-col items-center justify-center overflow-hidden group">
-                {/* Animated accent */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/10 group-hover:from-blue-500/20 group-hover:to-indigo-500/20 transition-all duration-500" />
-                <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/15 rounded-full blur-[50px] group-hover:bg-blue-400/25 transition-all" />
-
-                {qrPayload ? (
-                  <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                    className="bg-white p-4 rounded-2xl relative z-10 shadow-2xl"
-                  >
-                    <QRCodeSVG
-                      value={qrPayload}
-                      size={qrSize}
-                      level="H"
-                      marginSize={4}
-                      imageSettings={{
-                        src: "/ser_social.svg",
-                        width: qrLogoSize,
-                        height: qrLogoSize,
-                        excavate: true,
-                      }}
-                    />
-                  </motion.div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4 text-white/30 relative z-10">
-                    <QrCode className="w-16 h-16 stroke-[1]" />
-                    <p className="text-xs font-normal tracking-widest uppercase">Generando Llave...</p>
-                  </div>
-                )}
+            {qrPayload ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.25, ease: "easeOut" }}
+                className="bg-white p-4 rounded-2xl shadow-2xl"
+              >
+                <QRCodeSVG
+                  value={qrPayload}
+                  size={qrSize}
+                  level="H"
+                  marginSize={4}
+                  imageSettings={{
+                    src: "/ser_social.svg",
+                    width: qrLogoSize,
+                    height: qrLogoSize,
+                    excavate: true,
+                  }}
+                />
+              </motion.div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-white/30">
+                <QrCode className="w-16 h-16 stroke-[1]" />
+                <p className="text-xs font-normal tracking-widest uppercase">Generando Llave...</p>
               </div>
-            </motion.div>
+            )}
 
             {/* Event Info */}
             <div className="w-full max-w-2xl flex flex-col justify-center py-2">
@@ -397,6 +367,23 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                 <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-light">
                   Al editar se generará una nueva llave
                 </p>
+
+                <div className="w-full max-w-md mt-2">
+                  <div className="text-center text-[11px] sm:text-xs tracking-[0.18em] uppercase text-white/70 mb-2">
+                    {timeLeft.toString().padStart(2, "0")}s
+                  </div>
+                  <div className="h-2 w-full rounded-full border border-white/15 bg-white/8 overflow-hidden">
+                    <motion.div
+                      initial={false}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ duration: 1.02, ease: "linear" }}
+                      className={cn(
+                        "h-full rounded-full",
+                        timeLeft <= 5 ? "bg-tec-denim/80" : "bg-tec-primary"
+                      )}
+                    />
+                  </div>
+                </div>
               </motion.div>
             </div>
           </div>
@@ -480,6 +467,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
           setPerfilIncompleto(false);
           setQrPayload(data.qr_data);
           setTimeLeft(data.expira_en_segundos);
+          if (data.datos_actuales) setInitialProfileData(data.datos_actuales);
         }
       }
     } catch (err) {
@@ -533,33 +521,41 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
       </div>
 
       <div className="w-full mt-8">
-        {activeTab === "credencial" ? (
-          <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 sm:p-8">
-            <QRCredentialView
-              evento={evento}
-              qrPayload={qrPayload}
-              timeLeft={timeLeft}
-              perfilIncompleto={perfilIncompleto}
-              initialProfileData={initialProfileData}
-              isEditing={isEditing}
-              onToggleEdit={setIsEditing}
-              onProfileUpdate={() => fetchQR()}
-            />
-          </div>
-        ) : (
-          <div className="w-full rounded-3xl bg-black/25 border border-white/15 backdrop-blur-md p-4 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
-              <div className="flex items-center gap-2">
-              </div>
-              {evento.proyectos && (
-                <Badge variant="outline" className="bg-white/5 text-cyan-200 border-cyan-400/20 text-xs font-mono">
-                  <Users className="w-3 h-3 mr-1" /> {evento.proyectos.length} proyectos
-                </Badge>
-              )}
-            </div>
-            <ProjectGrid proyectos={evento.proyectos} />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {activeTab === "credencial" ? (
+            <motion.div
+              key="credencial"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full p-6 sm:p-8"
+            >
+              <QRCredentialView
+                evento={evento}
+                qrPayload={qrPayload}
+                timeLeft={timeLeft}
+                perfilIncompleto={perfilIncompleto}
+                initialProfileData={initialProfileData}
+                isEditing={isEditing}
+                onToggleEdit={setIsEditing}
+                onProfileUpdate={() => fetchQR()}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="proyectos"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full rounded-3xl bg-black/25 border border-white/15 backdrop-blur-md p-4 sm:p-6"
+            >
+              <div className="mb-5" />
+              <ProjectGrid proyectos={evento.proyectos} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -713,10 +709,7 @@ export default function Dashboard() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
-          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-2.5 py-2 backdrop-blur-sm min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-white" />
-            </div>
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm min-w-0">
             <div className="leading-tight min-w-0">
               <p className="text-white text-xs sm:text-sm font-normal truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
               <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[220px] sm:max-w-none">
@@ -759,19 +752,21 @@ export default function Dashboard() {
           transition={{ duration: 0.6 }}
           className="max-w-6xl mx-auto"
         >
-          <div className="mb-8 rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-            <div>
-              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full border border-white/20 bg-white/10">
-                <span className="text-white/80 text-[11px] font-normal uppercase tracking-[0.18em]">Panel de Alumno</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-normal tracking-tight text-white">Feria de Servicio Social</h2>
-              <p className="text-white/65 mt-2 text-sm max-w-2xl leading-relaxed">
-                Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
-              </p>
-            </div>
-            <div className="flex items-center justify-center sm:justify-end">
-              <div className="w-32 h-20 sm:w-40 sm:h-28 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl flex items-center justify-center p-0">
-                <img src={serSocialLogo} alt="Ser Social" className="w-[180%] h-full object-cover object-center rounded-xl shadow-lg" style={{maxWidth:'none',maxHeight:'100%'}} />
+          <div className="mb-6 flex justify-end">
+            <div className="relative group">
+              <button
+                type="button"
+                aria-label="Información de la feria"
+                className="w-9 h-9 rounded-full bg-black/40 border border-white/20 text-white/80 hover:text-white hover:bg-black/55 hover:border-white/35 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+
+              <div className="pointer-events-none absolute right-0 top-11 z-30 w-[300px] sm:w-[380px] rounded-xl bg-black/80 border border-white/20 backdrop-blur-md p-3 shadow-2xl opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0">
+                <p className="text-white text-sm font-medium">Feria Servicio Social</p>
+                <p className="text-white/80 mt-1 text-xs sm:text-sm leading-relaxed">
+                  Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
+                </p>
               </div>
             </div>
           </div>
