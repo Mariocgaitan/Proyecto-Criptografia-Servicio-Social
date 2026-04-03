@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pathlib import Path
 
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
 
     # JWT
     JWT_SECRET_KEY: str = "dev_secret_key_change_in_production"
+    QR_ENCRYPTION_KEY: str = "-mRHRHt7kzSzVORYj9aAy_iyaXM6b8tP6gQkRLubKNE="
 
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
@@ -66,6 +68,31 @@ class Settings(BaseSettings):
         "http://localhost:4173",
         "http://127.0.0.1:4173",
     ]
+
+    # Login lockout
+    MAX_FAILED_LOGIN_ATTEMPTS: int = 5
+    LOCKOUT_DURATION_MINUTES: int = 15
+
+    @model_validator(mode="after")
+    def validate_production_secrets(self) -> "Settings":
+        if self.APP_ENV == "production":
+            if self.JWT_SECRET_KEY == "dev_secret_key_change_in_production":
+                raise ValueError("JWT_SECRET_KEY must be changed in production")
+            if self.QR_ENCRYPTION_KEY == "-mRHRHt7kzSzVORYj9aAy_iyaXM6b8tP6gQkRLubKNE=":
+                raise ValueError("QR_ENCRYPTION_KEY must be changed in production")
+            if self.TEST_ROLE_SWITCH_ENABLED:
+                raise ValueError("TEST_ROLE_SWITCH_ENABLED must be False in production")
+            if self.DEBUG:
+                raise ValueError("DEBUG must be False in production")
+        return self
+
+    @property
+    def is_production(self) -> bool:
+        return self.APP_ENV == "production"
+
+    @property
+    def cookie_secure(self) -> bool:
+        return self.is_production
 
 
 settings = Settings()
