@@ -204,10 +204,57 @@ async def login_alumno(
     result = await db.execute(select(Usuario).where(Usuario.correo == correo_normalizado))
     usuario = result.scalar_one_or_none()
 
-    if not usuario or not verify_password(password, usuario.password_hash):
+    if not usuario:
         await _log(db, "LOGIN_FALLIDO", ip_origen=ip_origen, detalle=f"correo: {correo_normalizado}")
         await db.commit()
         raise LoginError()
+
+    # 2. Verificar lockout activo
+    now = datetime.now(timezone.utc)
+    if usuario.locked_until is not None and usuario.locked_until > now:
+        minutos_restantes = int((usuario.locked_until - now).total_seconds() / 60) + 1
+        await _log(
+            db,
+            "LOGIN_BLOQUEADO",
+            id_matricula=usuario.id_matricula,
+            ip_origen=ip_origen,
+            detalle=f"cuenta bloqueada hasta {usuario.locked_until.isoformat()}",
+        )
+        await db.commit()
+        raise LoginError(
+            f"Cuenta bloqueada. Intenta de nuevo en {minutos_restantes} minuto(s).",
+            status_code=429,
+        )
+
+    # 3. Verificar contraseña
+    if not verify_password(password, usuario.password_hash):
+        usuario.failed_login_attempts += 1
+        if usuario.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
+            usuario.locked_until = now + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+            await _log(
+                db,
+                "CUENTA_BLOQUEADA",
+                id_matricula=usuario.id_matricula,
+                ip_origen=ip_origen,
+                detalle=(
+                    f"bloqueada tras {usuario.failed_login_attempts} intentos fallidos; "
+                    f"hasta {usuario.locked_until.isoformat()}"
+                ),
+            )
+        else:
+            await _log(
+                db,
+                "LOGIN_FALLIDO",
+                id_matricula=usuario.id_matricula,
+                ip_origen=ip_origen,
+                detalle=f"intento {usuario.failed_login_attempts} de {settings.MAX_FAILED_LOGIN_ATTEMPTS}",
+            )
+        await db.commit()
+        raise LoginError()
+
+    # 4. Contraseña correcta — resetear contadores de lockout
+    usuario.failed_login_attempts = 0
+    usuario.locked_until = None
 
     # 2. Emitir Access Token (JWT)
     effective_role = resolve_effective_role(usuario.correo, usuario.rol)
