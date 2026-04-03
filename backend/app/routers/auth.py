@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
+from app.core.config import settings
 from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
@@ -31,8 +32,39 @@ router = APIRouter()
 
 # Duración cookie refresh token en segundos (8 horas)
 REFRESH_COOKIE_MAX_AGE = 8 * 60 * 60
+ACCESS_COOKIE_MAX_AGE = 15 * 60
 
 
+def _set_auth_cookies(response: JSONResponse, access_token: str, raw_refresh: str) -> None:
+    """Set both access and refresh token cookies on the response."""
+    response.set_cookie(
+        key="refresh_token",
+        value=raw_refresh,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        max_age=REFRESH_COOKIE_MAX_AGE,
+    )
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        max_age=ACCESS_COOKIE_MAX_AGE,
+    )
+
+
+def _set_access_cookie(response: JSONResponse, access_token: str) -> None:
+    """Set only the access token cookie on the response (used by refresh endpoint)."""
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="strict",
+        max_age=ACCESS_COOKIE_MAX_AGE,
+    )
 
 
 @router.post("/api/v1/auth/registro", status_code=201, tags=["Autenticación"], summary="Registrar alumno")
@@ -66,22 +98,7 @@ async def api_login(datos: LoginRequest, request: Request, db: AsyncSession = De
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
     response = JSONResponse(content={"access_token": access_token, "token_type": "bearer"})
-    response.set_cookie(
-        key="refresh_token",
-        value=raw_refresh,
-        httponly=True,
-        secure=False,
-        samesite="strict",
-        max_age=REFRESH_COOKIE_MAX_AGE,
-    )
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=False,
-        secure=False,
-        samesite="strict",
-        max_age=15 * 60,
-    )
+    _set_auth_cookies(response, access_token, raw_refresh)
     return response
 
 
@@ -96,14 +113,7 @@ async def api_refresh(
     try:
         new_token = await refresh_session(db, refresh_token)
         response = JSONResponse(content={"access_token": new_token, "token_type": "bearer"})
-        response.set_cookie(
-            key="access_token",
-            value=new_token,
-            httponly=False,
-            secure=False,
-            samesite="strict",
-            max_age=15 * 60,
-        )
+        _set_access_cookie(response, new_token)
         return response
     except LoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -154,7 +164,7 @@ async def api_google_auth(
     """
     from fastapi import HTTPException
     ip = request.client.host if request.client else None
-    
+
     try:
         temp_token, totp_qr = await login_or_register_google(db, datos.id_token, ip)
         return PreAuthResponse(
@@ -178,36 +188,21 @@ async def api_verify_totp(
     """
     from fastapi import HTTPException
     ip = request.client.host if request.client else None
-    
+
     try:
         access_token, raw_refresh, rol, redirect_url = await verify_totp_and_get_token(
             db, datos.temp_token, datos.totp_code, ip
         )
-        
+
         response = JSONResponse(content={
             "access_token": access_token,
             "token_type": "bearer",
             "rol": rol,
             "redirect_url": redirect_url,
         })
-        
+
         # Guardar refresh token en cookie
-        response.set_cookie(
-            key="refresh_token",
-            value=raw_refresh,
-            httponly=True,
-            secure=False,
-            samesite="strict",
-            max_age=REFRESH_COOKIE_MAX_AGE,
-        )
-        response.set_cookie(
-            key="access_token",
-            value=access_token,
-            httponly=False,
-            secure=False,
-            samesite="strict",
-            max_age=15 * 60,
-        )
+        _set_auth_cookies(response, access_token, raw_refresh)
         return response
     except LoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
