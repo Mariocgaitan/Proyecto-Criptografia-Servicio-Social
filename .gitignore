@@ -69,7 +69,7 @@ package-lock.json
 
 # Claude Code
 .claude/
-
+scripts/
 # Notas y planes personales
 notas.md
 PLAN_AUTENTICACION.md
