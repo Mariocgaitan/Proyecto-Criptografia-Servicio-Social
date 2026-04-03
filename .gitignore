@@ -63,6 +63,16 @@ certs/
 *.bak
 *.local
 
+# Node (shadcn en raíz)
+node_modules/
+package-lock.json
+
+# Claude Code
+.claude/
+
+# Notas y planes personales
+notas.md
+PLAN_AUTENTICACION.md
+
 commits_20.txt
 commits_40.txt
-PLAN_AUTENTICACION.md
