@@ -1,7 +1,10 @@
 import os
+import uuid
 from datetime import UTC, datetime
 from contextlib import asynccontextmanager
 
+import sentry_sdk
+import structlog
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
@@ -11,31 +14,59 @@ from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
 from app.core.limiter import limiter
+from app.core.logging import setup_logging
+from app.core.redis import connect_redis, disconnect_redis
 from app.db.ssh_manager import ssh_tunnel_manager
 from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
 from app.models.request_metric import RequestMetric
-from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports
+from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports, health
+
+# ── Logging & Sentry ──────────────────────────────────────────────────────────
+setup_logging()
+logger = structlog.get_logger("sid.main")
+
+if settings.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=settings.SENTRY_DSN,
+        environment=settings.APP_ENV,
+        traces_sample_rate=0.2 if settings.is_production else 1.0,
+        send_default_pii=False,
+    )
 
 # ── Rate Limiting (importado desde app.core.limiter) ─────────────────────────
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Eventos de inicio y cierre de la aplicación."""
-    print(f"🚀 SID Backend iniciando en modo: {settings.APP_ENV}")
-    
-    # Iniciar túnel SSH si está habilitado
+    """Application startup and shutdown."""
+    logger.info("app_starting", env=settings.APP_ENV)
+
+    # SSH tunnel
     if settings.USE_SSH_TUNNEL:
         ssh_tunnel_manager.start()
-        
+
+    # Startup validation: DB
+    from sqlalchemy import text
+    try:
+        async with AsyncSessionLocal() as session:
+            await session.execute(text("SELECT 1"))
+        logger.info("db_connected")
+    except Exception as exc:
+        logger.error("db_connection_failed", error=str(exc))
+        raise RuntimeError("Cannot start without database connection") from exc
+
+    # Startup validation: Redis (non-fatal)
+    await connect_redis()
+
     yield
-    
-    # Cerrar túnel SSH si está activo
+
+    await disconnect_redis()
+
     if settings.USE_SSH_TUNNEL:
         ssh_tunnel_manager.stop()
-        
-    print("🛑 SID Backend cerrando...")
+
+    logger.info("app_stopped")
 
 
 app = FastAPI(
@@ -126,6 +157,18 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
 
 
 @app.middleware("http")
+async def request_id_middleware(request: Request, call_next) -> Response:
+    """Inject a unique request ID into every request/response."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(request_id=request_id)
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
+
+
+@app.middleware("http")
 async def request_metrics_middleware(request: Request, call_next) -> Response:
     started_at = datetime.now(UTC)
     status_code = 500
@@ -171,6 +214,7 @@ app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 
 
 # Routers
+app.include_router(health.router)
 app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
 app.include_router(admin.router, tags=["Admin"])
