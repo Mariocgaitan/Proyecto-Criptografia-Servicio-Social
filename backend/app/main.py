@@ -6,7 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import _rate_limit_exceeded_handler
+from fastapi.responses import JSONResponse as _JSONResponse
 from slowapi.errors import RateLimitExceeded
 
 from app.core.config import settings
@@ -157,7 +157,16 @@ async def request_metrics_middleware(request: Request, call_next) -> Response:
 
 # ── Rate Limiter ───────────────────────────────────────────────────────────────
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+async def _custom_rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    window = exc.limit.limit.get_expiry() if exc.limit else 60
+    minutes = max(1, window // 60)
+    return _JSONResponse(
+        status_code=429,
+        content={"detail": f"Demasiados intentos. Inténtelo de nuevo en {minutes} minuto(s)."},
+        headers={"Retry-After": str(window)},
+    )
+
+app.add_exception_handler(RateLimitExceeded, _custom_rate_limit_handler)
 
 
 
