@@ -78,6 +78,9 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    REMOTE_REDIS_HOST: str = "127.0.0.1"
+    REMOTE_REDIS_PORT: int = 6379
+    LOCAL_REDIS_BIND_PORT: int = 6380
 
     # Sentry
     SENTRY_DSN: str = ""
