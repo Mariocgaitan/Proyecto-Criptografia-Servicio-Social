@@ -439,9 +439,12 @@ async def truncate_all() -> None:
         "padron_alumnos",
         "eventos",
     ]
+    allowed = set(tablas)
     async with AsyncSessionLocal() as db:
         for tabla in tablas:
-            await db.execute(text(f"TRUNCATE TABLE {tabla} RESTART IDENTITY CASCADE"))
+            if tabla not in allowed:
+                raise ValueError(f"Tabla no permitida: {tabla}")
+            await db.execute(text("TRUNCATE TABLE " + tabla + " RESTART IDENTITY CASCADE"))
         await db.commit()
     print("🗑️  Todas las tablas limpiadas correctamente.\n")
 

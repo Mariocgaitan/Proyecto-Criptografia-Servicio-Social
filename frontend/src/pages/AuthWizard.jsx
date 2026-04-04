@@ -210,7 +210,12 @@ export default function AuthWizard() {
         empresa: "/empresa/escaner",
         alumno: "/dashboard",
       };
-      navigate(data.redirect_url || targetByRole[usuario?.rol] || "/dashboard", { replace: true });
+      const fallback = targetByRole[usuario?.rol] || "/dashboard";
+      const redirect = data.redirect_url;
+      const safeUrl = (typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//"))
+        ? redirect
+        : fallback;
+      navigate(safeUrl, { replace: true });
     } catch (err) {
       console.error(err);
       setError(err.message || "Error al verificar código TOTP.");
