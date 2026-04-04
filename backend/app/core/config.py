@@ -76,6 +76,12 @@ class Settings(BaseSettings):
     MAX_FAILED_LOGIN_ATTEMPTS: int
     LOCKOUT_DURATION_MINUTES: int
 
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+
+    # Sentry
+    SENTRY_DSN: str = ""
+
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value: str | list[str]) -> list[str]:
