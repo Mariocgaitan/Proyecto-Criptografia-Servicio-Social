@@ -15,7 +15,7 @@ RUN npm run build
 # ==========================================
 # ETAPA 2: Build del Backend (FastAPI)
 # ==========================================
-FROM python:3.11-slim
+FROM python:3.12-slim
 
 WORKDIR /app
 
