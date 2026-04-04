@@ -46,3 +46,7 @@ dev = [
     "fakeredis>=2.21.0",
     "aiosqlite>=0.20.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
