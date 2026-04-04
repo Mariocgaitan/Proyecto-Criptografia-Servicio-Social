@@ -211,7 +211,12 @@ async def generar_qr_payload(
         "qr_data": encrypted_payload,
         "expira_en_segundos": segundos_restantes,
         "ya_inscrito": False,
-        "perfil_incompleto": False
+        "perfil_incompleto": False,
+        "datos_actuales": {
+            "correo_alterno": usuario.correo_alterno,
+            "celular": usuario.celular,
+            "descripcion_personal": usuario.descripcion_personal
+        }
     }
 
 
