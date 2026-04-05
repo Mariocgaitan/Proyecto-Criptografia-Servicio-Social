@@ -6,6 +6,7 @@ import AuthWizard from "./pages/AuthWizard";
 import AlumnoDashboard from "./pages/alumno/Dashboard";
 import AdminDashboard from "./pages/admin/Dashboard";
 import EmpresaEscaner from "./pages/empresa/Escaner";
+import NotFound from "./pages/NotFound";
 
 function App() {
   const { user, loading } = useAuth();
@@ -44,7 +45,7 @@ function App() {
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
