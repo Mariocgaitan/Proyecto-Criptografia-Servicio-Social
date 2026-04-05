@@ -381,8 +381,8 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                     <User className="w-4 h-4" />
                     Editar Información
                   </Button>
-                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white/80 uppercase tracking-[0.2em] font-light whitespace-nowrap shadow-lg">
-                    Al editar se generará una nueva llave
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[300px] -translate-x-1/2 rounded-xl bg-black/80 border border-white/20 backdrop-blur-md p-3 shadow-2xl opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0">
+                    <p className="text-white text-sm font-medium">Al editar se generará una nueva llave</p>
                   </div>
                 </div>
 
