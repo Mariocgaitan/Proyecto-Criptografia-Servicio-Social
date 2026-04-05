@@ -194,6 +194,10 @@ export default function AdminDashboard() {
   const [activeCommandIndex, setActiveCommandIndex] = useState(0);
   const commandInputRef = useRef(null);
   const commandItemRefs = useRef([]);
+  const proyectoOptionRefs = useRef([]);
+  const alumnoOptionRefs = useRef([]);
+  const alumnoInputRef = useRef(null);
+  const hasInitializedProjectExpansionRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [availability, setAvailability] = useState("todas");
@@ -210,6 +214,10 @@ export default function AdminDashboard() {
   const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
   const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
+  const [proyectoSearchTerm, setProyectoSearchTerm] = useState("");
+  const [alumnoSearchTerm, setAlumnoSearchTerm] = useState("");
+  const [proyectoActiveIndex, setProyectoActiveIndex] = useState(0);
+  const [alumnoActiveIndex, setAlumnoActiveIndex] = useState(0);
 
   // Forms
   const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
@@ -222,7 +230,47 @@ export default function AdminDashboard() {
   const [errorText, setErrorText] = useState("");
   const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
   const [deleteModalInfo, setDeleteModalInfo] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [preserveFiltersOnNextSearch, setPreserveFiltersOnNextSearch] = useState(false);
+
+  const proyectosConCupo = useMemo(
+    () => proyectos.filter((p) => p.cupo_actual < p.capacidad_max),
+    [proyectos]
+  );
+
+  const filteredProyectosForAlumno = useMemo(() => {
+    const query = normalizeSearchText(proyectoSearchTerm);
+    if (!query) return proyectosConCupo;
+    return proyectosConCupo.filter((p) => textMatchesQuery(`${p.nombre_proyecto} ${p.empresa}`, query));
+  }, [proyectosConCupo, proyectoSearchTerm]);
+
+  const filteredAlumnosDisponibles = useMemo(() => {
+    const query = normalizeSearchText(alumnoSearchTerm);
+    if (!query) return alumnosDisponibles;
+    return alumnosDisponibles.filter((a) => textMatchesQuery(`${a.nombre} ${a.id_matricula} ${a.carrera}`, query));
+  }, [alumnosDisponibles, alumnoSearchTerm]);
+
+  useEffect(() => {
+    setProyectoActiveIndex(0);
+  }, [proyectoSearchTerm, filteredProyectosForAlumno.length]);
+
+  useEffect(() => {
+    setAlumnoActiveIndex(0);
+  }, [alumnoSearchTerm, filteredAlumnosDisponibles.length]);
+
+  useEffect(() => {
+    const activeOption = proyectoOptionRefs.current[proyectoActiveIndex];
+    if (activeOption) {
+      activeOption.scrollIntoView({ block: "nearest" });
+    }
+  }, [proyectoActiveIndex, filteredProyectosForAlumno.length]);
+
+  useEffect(() => {
+    const activeOption = alumnoOptionRefs.current[alumnoActiveIndex];
+    if (activeOption) {
+      activeOption.scrollIntoView({ block: "nearest" });
+    }
+  }, [alumnoActiveIndex, filteredAlumnosDisponibles.length]);
 
   const fetchData = async () => {
     try {
@@ -282,8 +330,20 @@ export default function AdminDashboard() {
 
   const handleAbreModalAgregarAlumno = async (proyecto) => {
     setSelectedProyectoForAlumno(proyecto);
+    setProyectoSearchTerm(`${proyecto.nombre_proyecto} ${proyecto.empresa}`);
     setSelectedAlumnoMatricula("");
+    setAlumnoSearchTerm("");
+    setAlumnoActiveIndex(0);
     setErrorText("");
+
+    requestAnimationFrame(() => {
+      if (alumnoInputRef.current) {
+        alumnoInputRef.current.focus();
+        alumnoInputRef.current.select();
+        alumnoInputRef.current.scrollIntoView({ block: "center" });
+      }
+    });
+
     try {
       const res = await fetch(apiUrl(`/api/v1/admin/alumnos-disponibles?id_evento=${proyecto.id_evento}`), {
         credentials: "include",
@@ -317,6 +377,9 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.detail || "Error al agregar alumno");
       setIsAgregarAlumnoOpen(false);
       setSelectedAlumnoMatricula("");
+      setSelectedProyectoForAlumno(null);
+      setProyectoSearchTerm("");
+      setAlumnoSearchTerm("");
       await fetchData();
     } catch (err) {
       setErrorText(err.message || "No se pudo agregar el alumno");
@@ -370,6 +433,7 @@ export default function AdminDashboard() {
     if (!alumno?.id_inscripcion) return;
 
     setDeleteModalInfo(alumno);
+    setDeleteConfirmText("");
   };
 
   const confirmarEliminarInscripcion = async () => {
@@ -489,11 +553,20 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (activeSection !== "proyectos") return;
+
     setExpandedEmpresas((prev) => {
-      if (!prev.length) return companyGroupKeys;
-      return prev.filter((name) => companyGroupKeys.includes(name));
+      const sanitized = prev.filter((name) => companyGroupKeys.includes(name));
+
+      // Solo auto-expande en la primera entrada a la sección.
+      // Despues, respeta el estado manual del usuario (incluyendo colapsar todo).
+      if (!hasInitializedProjectExpansionRef.current) {
+        hasInitializedProjectExpansionRef.current = true;
+        return sanitized.length ? sanitized : companyGroupKeys;
+      }
+
+      return sanitized;
     });
-  }, [activeSection, filteredProyectos]);
+  }, [activeSection, companyGroupKeys]);
 
   const handleSectionChange = (section) => {
     setActiveSection(section);
@@ -1309,105 +1382,222 @@ export default function AdminDashboard() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
-        <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteModalInfo(null);
+          setDeleteConfirmText("");
+          setErrorText("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-normal tracking-tight text-white">Confirmar baja de registro</DialogTitle>
-            <DialogDescription className="text-white/60">Esta acción quitará al alumno del proyecto y liberará su cupo.</DialogDescription>
+            <DialogTitle className="text-xl font-normal tracking-tight text-white">Eliminar estudiante</DialogTitle>
+            <DialogDescription className="text-white/70">
+              Esta acción es irreversible. El estudiante será dado de baja del proyecto.
+            </DialogDescription>
           </DialogHeader>
-          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
-          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
-            <p className="font-normal text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
-            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+
+          <div className="space-y-4">
+            {/* Error message */}
+            {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+            {/* Info del alumno */}
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Estudiante a eliminar</p>
+                  <p className="text-lg font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+                  <p className="text-sm text-white/60">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo de confirmación */}
+            <div>
+              <label className="text-xs uppercase tracking-widest text-white/50 block mb-2">
+                Escribe "Eliminar" para confirmar
+              </label>
+              <input
+                type="text"
+                placeholder="Escribe aquí..."
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white placeholder-white/30 focus:border-red-500/30 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              />
+            </div>
           </div>
-          <div className="flex items-center justify-end gap-2 mt-2">
+
+          <div className="mt-6 flex items-center justify-end gap-2">
             <Button
               type="button"
-              variant="outline"
-              className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
-              onClick={() => setDeleteModalInfo(null)}
+              variant="ghost"
+              className="border border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
+              onClick={() => {
+                setDeleteModalInfo(null);
+                setDeleteConfirmText("");
+                setErrorText("");
+              }}
               disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
               Cancelar
             </Button>
             <Button
               type="button"
-              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={confirmarEliminarInscripcion}
-              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar" || deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
-              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Eliminar estudiante"}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
 
       {/* Modal Agregar Alumno */}
-      <Dialog open={isAgregarAlumnoOpen} onOpenChange={setIsAgregarAlumnoOpen}>
-        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+      <Dialog
+        open={isAgregarAlumnoOpen}
+        onOpenChange={(open) => {
+          setIsAgregarAlumnoOpen(open);
+          if (!open) {
+            setSelectedProyectoForAlumno(null);
+            setSelectedAlumnoMatricula("");
+            setProyectoSearchTerm("");
+            setAlumnoSearchTerm("");
+            setErrorText("");
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md bg-slate-950/92 border border-blue-400/20 text-white backdrop-blur-md shadow-[0_24px_80px_rgba(30,64,175,0.25)]">
           <DialogHeader>
             <DialogTitle className="text-lg font-normal tracking-tight text-white">Agregar Alumno a Proyecto</DialogTitle>
-            <DialogDescription className="text-white/60">
-              {selectedProyectoForAlumno ? selectedProyectoForAlumno.nombre_proyecto : "Selecciona un proyecto"}
+            <DialogDescription className="text-blue-100/75">
+              Busca y selecciona un proyecto y un alumno para registrar la inscripción.
             </DialogDescription>
           </DialogHeader>
-          {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
-          
-          {!selectedProyectoForAlumno ? (
-            <div className="space-y-3">
-              <p className="text-sm text-white/70">Selecciona un proyecto:</p>
-              <div className="max-h-64 overflow-y-auto space-y-2">
-                {proyectos.filter(p => p.cupo_actual < p.capacidad_max).map(p => (
-                  <button
-                    key={p.id_proyecto}
-                    onClick={() => handleAbreModalAgregarAlumno(p)}
-                    className="w-full text-left px-3 py-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/10 transition-colors"
-                  >
-                    <p className="text-sm font-medium text-white">{p.nombre_proyecto}</p>
-                    <p className="text-xs text-white/60">{p.empresa} • {p.cupo_actual}/{p.capacidad_max}</p>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <form onSubmit={handleAgregarAlumno} className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Alumno</Label>
-                <select
-                  value={selectedAlumnoMatricula}
-                  onChange={e => setSelectedAlumnoMatricula(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-white/15 bg-slate-950 text-white placeholder-white/40 focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-transparent"
-                >
-                  <option value="">-- Selecciona un alumno --</option>
-                  {alumnosDisponibles.map(a => (
-                    <option key={a.id_matricula} value={a.id_matricula}>
-                      {a.nombre} ({a.id_matricula}) - {a.carrera}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
-                  onClick={() => {
+
+          {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+          <form onSubmit={handleAgregarAlumno} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Proyecto</Label>
+              <div className="relative">
+                <Input
+                  value={proyectoSearchTerm}
+                  onChange={(e) => {
+                    setProyectoSearchTerm(e.target.value);
                     setSelectedProyectoForAlumno(null);
                     setSelectedAlumnoMatricula("");
+                    setAlumnosDisponibles([]);
+                    setAlumnoActiveIndex(0);
                   }}
-                >
-                  Atrás
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={!selectedAlumnoMatricula || isSubmitting}
-                  className="flex-1 border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal"
-                >
-                  {isSubmitting ? "Agregando..." : "Agregar"}
-                </Button>
+                  onKeyDown={(e) => {
+                    if (!filteredProyectosForAlumno.length) return;
+
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setProyectoActiveIndex((prev) => Math.min(prev + 1, filteredProyectosForAlumno.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setProyectoActiveIndex((prev) => Math.max(prev - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const selected = filteredProyectosForAlumno[proyectoActiveIndex];
+                      if (selected) void handleAbreModalAgregarAlumno(selected);
+                    }
+                  }}
+                  placeholder="Buscar proyecto o empresa..."
+                  className="h-11 bg-white/5 border-white/15 text-white placeholder:text-white/45"
+                />
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/15 bg-black/95 p-2 space-y-1">
+                  {filteredProyectosForAlumno.length ? filteredProyectosForAlumno.map((p, idx) => (
+                    <button
+                      key={p.id_proyecto}
+                      ref={(node) => {
+                        proyectoOptionRefs.current[idx] = node;
+                      }}
+                      type="button"
+                      onClick={() => handleAbreModalAgregarAlumno(p)}
+                      onMouseEnter={() => setProyectoActiveIndex(idx)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${idx === proyectoActiveIndex ? "border-white/20 bg-white/10" : "border-transparent hover:border-white/15 hover:bg-white/10"}`}
+                    >
+                      <p className="text-sm text-white">{p.nombre_proyecto}</p>
+                      <p className="text-xs text-white/65">{p.empresa} • {p.cupo_actual}/{p.capacidad_max}</p>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-2 text-xs text-white/55">No hay proyectos con cupo que coincidan.</p>
+                  )}
+                </div>
               </div>
-            </form>
-          )}
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Alumno</Label>
+              <div className="relative">
+                <Input
+                  ref={alumnoInputRef}
+                  value={alumnoSearchTerm}
+                  onChange={(e) => {
+                    setAlumnoSearchTerm(e.target.value);
+                    setSelectedAlumnoMatricula("");
+                  }}
+                  onKeyDown={(e) => {
+                    if (!selectedProyectoForAlumno || !filteredAlumnosDisponibles.length) return;
+
+                    if (e.key === "ArrowDown") {
+                      e.preventDefault();
+                      setAlumnoActiveIndex((prev) => Math.min(prev + 1, filteredAlumnosDisponibles.length - 1));
+                    } else if (e.key === "ArrowUp") {
+                      e.preventDefault();
+                      setAlumnoActiveIndex((prev) => Math.max(prev - 1, 0));
+                    } else if (e.key === "Enter") {
+                      e.preventDefault();
+                      const selected = filteredAlumnosDisponibles[alumnoActiveIndex];
+                      if (selected) {
+                        setSelectedAlumnoMatricula(selected.id_matricula);
+                        setAlumnoSearchTerm(`${selected.nombre} ${selected.id_matricula}`);
+                      }
+                    }
+                  }}
+                  placeholder={selectedProyectoForAlumno ? "Buscar por nombre, matrícula o carrera..." : "Primero selecciona un proyecto"}
+                  disabled={!selectedProyectoForAlumno}
+                  className="h-11 bg-white/5 border-white/15 text-white placeholder:text-white/45 disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-white/15 bg-black/95 p-2 space-y-1">
+                  {!selectedProyectoForAlumno ? (
+                    <p className="px-3 py-2 text-xs text-white/55">Primero selecciona un proyecto para mostrar alumnos.</p>
+                  ) : filteredAlumnosDisponibles.length ? filteredAlumnosDisponibles.map((a, idx) => (
+                    <button
+                      key={a.id_matricula}
+                      ref={(node) => {
+                        alumnoOptionRefs.current[idx] = node;
+                      }}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAlumnoMatricula(a.id_matricula);
+                        setAlumnoSearchTerm(`${a.nombre} ${a.id_matricula}`);
+                      }}
+                      onMouseEnter={() => setAlumnoActiveIndex(idx)}
+                      className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${idx === alumnoActiveIndex || selectedAlumnoMatricula === a.id_matricula ? "border-emerald-400/35 bg-emerald-500/15" : "border-transparent hover:border-white/15 hover:bg-white/10"}`}
+                    >
+                      <p className="text-sm text-white">{a.nombre}</p>
+                      <p className="text-xs text-white/65">{a.id_matricula} • {a.carrera}</p>
+                    </button>
+                  )) : (
+                    <p className="px-3 py-2 text-xs text-white/55">No hay alumnos disponibles que coincidan.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Button
+              type="submit"
+              disabled={!selectedAlumnoMatricula || !selectedProyectoForAlumno || isSubmitting}
+              className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal"
+            >
+              {isSubmitting ? "Agregando..." : "Agregar alumno"}
+            </Button>
+          </form>
         </DialogContent>
       </Dialog>
 

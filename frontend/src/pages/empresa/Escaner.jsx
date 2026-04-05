@@ -199,6 +199,7 @@ export default function EmpresaEscaner() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
   const [deleteModalInfo, setDeleteModalInfo] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [activeTab, setActiveTab] = useState("sensor");
   const [lastSync, setLastSync] = useState(null);
   const [expandedAlumnoId, setExpandedAlumnoId] = useState(null);
@@ -515,6 +516,7 @@ export default function EmpresaEscaner() {
     if (!alumno?.id_inscripcion) return;
 
     setDeleteModalInfo(alumno);
+    setDeleteConfirmText("");
   }, []);
 
   const confirmarEliminarInscripcion = useCallback(async () => {
@@ -970,37 +972,68 @@ export default function EmpresaEscaner() {
         </p>
       </Motion.footer>
 
-      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteModalInfo(null);
+          setDeleteConfirmText("");
+        }
+      }}>
         <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-normal tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogTitle className="text-xl font-normal tracking-tight text-white">Eliminar estudiante</DialogTitle>
             <DialogDescription className="text-white/70">
-              Esta acción quitará al alumno del proyecto y liberará su cupo.
+              Esta acción es irreversible. El estudiante será dado de baja del proyecto.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
-            <p className="font-normal text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
-            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+          <div className="space-y-4">
+            {/* Info del alumno */}
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Estudiante a eliminar</p>
+                  <p className="text-lg font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+                  <p className="text-sm text-white/60">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo de confirmación */}
+            <div>
+              <label className="text-xs uppercase tracking-widest text-white/50 block mb-2">
+                Escribe "Eliminar" para confirmar
+              </label>
+              <input
+                type="text"
+                placeholder="Escribe aquí..."
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white placeholder-white/30 focus:border-red-500/30 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              />
+            </div>
           </div>
 
-          <div className="mt-2 flex items-center justify-end gap-2">
+          <div className="mt-6 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="ghost"
               className="border border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
-              onClick={() => setDeleteModalInfo(null)}
+              onClick={() => {
+                setDeleteModalInfo(null);
+                setDeleteConfirmText("");
+              }}
               disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
               Cancelar
             </Button>
             <Button
               type="button"
-              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={confirmarEliminarInscripcion}
-              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar" || deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
-              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Eliminar estudiante"}
             </Button>
           </div>
         </DialogContent>
