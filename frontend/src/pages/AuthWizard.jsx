@@ -54,6 +54,7 @@ export default function AuthWizard() {
   const [error, setError] = useState(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleNonce, setGoogleNonce] = useState(null);
 
   const [authData, setAuthData] = useState({
     email: "",
@@ -62,6 +63,28 @@ export default function AuthWizard() {
     tempToken: "",
     totpQrCode: null
   });
+
+  // Obtener nonce cuando el componente monta (para Google OAuth)
+  useEffect(() => {
+    const fetchNonce = async () => {
+      try {
+        const response = await fetch(apiUrl("/api/v1/auth/google/nonce"), {
+          method: "GET",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include"
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setGoogleNonce(data.nonce);
+        }
+      } catch (err) {
+        console.error("Error al obtener nonce de Google:", err);
+      }
+    };
+    
+    fetchNonce();
+  }, []);
 
   const normalizeLoginIdentifier = (value) => {
     const trimmed = value.trim();
@@ -74,13 +97,24 @@ export default function AuthWizard() {
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     setError(null);
+    
+    // Validar que tenemos un nonce válido
+    if (!googleNonce) {
+      setError("No se pudo obtener el nonce de seguridad. Por favor, recarga la página e intenta de nuevo.");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       // Usar la ruta relativa para aprovechar el proxy configurado en vite.config.js
       // Esto previene los bloqueos CORS del navegador y problemas con COOP
       const response = await fetch(apiUrl("/api/v1/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
+        body: JSON.stringify({ 
+          id_token: credentialResponse.credential,
+          nonce: googleNonce
+        }),
         credentials: "include"
       });
 

@@ -8,6 +8,7 @@ from app.schemas.auth import (
     LoginRequest,
     TokenResponse,
     GoogleAuthRequest,
+    GoogleNonceResponse,
     PreAuthResponse,
     VerifyTOTPRequest,
     RoleRedirectResponse,
@@ -19,6 +20,7 @@ from app.services.auth_service import (
     refresh_session,
     login_or_register_google,
     verify_totp_and_get_token,
+    generate_and_store_nonce,
 )
 from app.core.limiter import limiter
 
@@ -129,6 +131,27 @@ async def api_me(
 
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 
+@router.get("/api/v1/auth/google/nonce", response_model=GoogleNonceResponse, tags=["Autenticación"], summary="Obtener nonce para Google OAuth")
+@limiter.limit("30/minute")
+async def api_get_google_nonce(
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Genera y retorna un nonce para Google OAuth.
+    El nonce debe incluirse en el parámetro 'nonce' de la solicitud a Google.
+    Este nonce es validado en el id_token para prevenir ataques de replay.
+    
+    TTL: 5 minutos
+    """
+    try:
+        nonce = await generate_and_store_nonce(db)
+        return GoogleNonceResponse(nonce=nonce)
+    except Exception as e:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=f"Error al generar nonce: {str(e)}")
+
+
 @router.post("/api/v1/auth/google", response_model=PreAuthResponse, tags=["Autenticación"], summary="Iniciar sesión con Google")
 @limiter.limit("10/minute")
 async def api_google_auth(
@@ -139,12 +162,16 @@ async def api_google_auth(
     """
     Autentica con Google. Si es válido, retorna temp_token que requiere TOTP.
     Si es primera vez, incluye QR code para vincular Authenticator.
+    
+    REQUERIDO: Un nonce válido para prevenir replay attacks. Obtenerlo en GET /api/v1/auth/google/nonce.
     """
     from fastapi import HTTPException
     ip = request.client.host if request.client else None
 
     try:
-        temp_token, totp_qr = await login_or_register_google(db, datos.id_token, ip)
+        temp_token, totp_qr = await login_or_register_google(
+            db, datos.id_token, nonce=datos.nonce, ip_origen=ip
+        )
         return PreAuthResponse(
             status="requires_2fa",
             temp_token=temp_token,

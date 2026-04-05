@@ -289,13 +289,29 @@ function ProjectGrid({ proyectos }) {
 
 // ─── QR Credential Tab Content ───────────────────────────────────
 function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onProfileUpdate, initialProfileData, isEditing, onToggleEdit }) {
-  const qrSize = 280;
-  const qrLogoSize = 34;
+  const [qrSize, setQrSize] = useState(400);
+  const [qrLogoSize, setQrLogoSize] = useState(50);
   const TOTAL_QR_SECONDS = 30;
   const progressPercent = Math.max(0, Math.min(100, (timeLeft / TOTAL_QR_SECONDS) * 100));
 
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setQrSize(240);
+        setQrLogoSize(30);
+      } else {
+        setQrSize(400);
+        setQrLogoSize(50);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
-    <div className="w-full font-sans">
+    <div className="w-full h-full font-sans flex flex-col">
       {perfilIncompleto || isEditing ? (
         <StudentProfileForm 
           initialData={initialProfileData} 
@@ -310,15 +326,15 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.25, ease: "easeOut" }}
-          className="relative"
+          className="flex-1 w-full flex justify-center items-center"
         >
-          <div className="flex flex-col items-center gap-8 text-center">
+          <div className="flex flex-col items-center justify-center gap-8 text-center">
             {qrPayload ? (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.25, ease: "easeOut" }}
-                className="bg-white p-4 rounded-2xl shadow-2xl"
+                className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center"
               >
                 <QRCodeSVG
                   value={qrPayload}
@@ -356,17 +372,19 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                 transition={{ delay: 0.4 }}
                 className="mt-6 flex flex-col items-center gap-3"
               >
-                <Button
-                  variant="outline"
-                  onClick={() => onToggleEdit(true)}
-                  className="h-11 px-8 rounded-xl bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all gap-2 font-normal text-sm"
-                >
-                  <User className="w-4 h-4" />
-                  Editar Información
-                </Button>
-                <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-light">
-                  Al editar se generará una nueva llave
-                </p>
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    onClick={() => onToggleEdit(true)}
+                    className="h-11 px-8 rounded-xl bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all gap-2 font-normal text-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    Editar Información
+                  </Button>
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block bg-slate-900/95 backdrop-blur-md border border-white/10 rounded-lg px-3 py-2 text-[10px] text-white/80 uppercase tracking-[0.2em] font-light whitespace-nowrap shadow-lg">
+                    Al editar se generará una nueva llave
+                  </div>
+                </div>
 
                 <div className="w-full max-w-md mt-2">
                   <div className="text-center text-[11px] sm:text-xs tracking-[0.18em] uppercase text-white/70 mb-2">

@@ -13,9 +13,15 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class GoogleNonceResponse(BaseModel):
+    """Respuesta con un nonce para Google OAuth."""
+    nonce: str = Field(..., description="Nonce UUID para incluir en la request a Google")
+
+
 class GoogleAuthRequest(BaseModel):
     """Schema para login/registro con Google."""
     id_token: str = Field(..., description="ID Token emitido por Google OAuth")
+    nonce: str = Field(..., description="Nonce que fue enviado a Google (requerido para prevenir replay attacks)")
 
 
 class PreAuthResponse(BaseModel):
@@ -38,4 +44,5 @@ class RoleRedirectResponse(BaseModel):
     token_type: str = "bearer"
     rol: str = Field(..., description="Rol: alumno, empresa o admin")
     redirect_url: str = Field(..., description="URL a la que debe redirigirse el frontend")
+
 

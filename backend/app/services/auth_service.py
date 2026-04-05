@@ -15,8 +15,11 @@ from app.core.security import (
     hash_password,
     hash_refresh_token,
     verify_password,
+    generate_nonce,
+    hash_nonce,
 )
 from app.models.evento import Evento
+from app.models.google_nonce import GoogleNonce
 from app.models.log_auditoria import LogAuditoria
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
@@ -38,6 +41,60 @@ def _normalizar_identificador_login(identificador: str) -> str:
     if re.fullmatch(r"[aA]0\d{7}", valor):
         return f"{valor.lower()}@tec.mx"
     return valor.lower()
+
+
+# ── Google OAuth Nonce Management ────────────────────────────────────────────
+
+async def generate_and_store_nonce(db: AsyncSession) -> str:
+    """
+    Genera un nonce (UUID4) y lo almacena hasheado en la DB con TTL de 5 minutos.
+    El nonce debe ser incluido en el request a Google y será validado en el id_token.
+    
+    Retorna: El nonce en plaintext (para enviar al frontend)
+    """
+    nonce = generate_nonce()
+    nonce_h = hash_nonce(nonce)
+    expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
+    
+    db.add(GoogleNonce(
+        nonce=nonce,
+        nonce_hash=nonce_h,
+        expira_en=expires_at,
+        usado=False,
+    ))
+    await db.commit()
+    
+    return nonce
+
+
+async def validate_and_consume_nonce(db: AsyncSession, nonce: str | None) -> bool:
+    """
+    Valida que el nonce existe, no ha expirado, no ha sido usado.
+    Si es válido, lo marca como usado.
+    
+    Retorna: True si el nonce es válido, False si no.
+    """
+    if not nonce:
+        return False
+    
+    nonce_h = hash_nonce(nonce)
+    now = datetime.now(timezone.utc)
+    
+    result = await db.execute(
+        select(GoogleNonce).where(
+            GoogleNonce.nonce_hash == nonce_h,
+            GoogleNonce.usado == False,  # noqa: E712
+            GoogleNonce.expira_en > now,
+        )
+    )
+    nonce_record = result.scalar_one_or_none()
+    
+    if nonce_record:
+        nonce_record.usado = True
+        await db.commit()
+        return True
+    
+    return False
 
 
 # ── Auditoría ─────────────────────────────────────────────────────────────────
@@ -232,6 +289,7 @@ async def logout_alumno(db: AsyncSession, raw_token: str, id_matricula: str | No
 async def login_or_register_google(
     db: AsyncSession,
     id_token: str,
+    nonce: str,
     ip_origen: str | None = None,
 ) -> tuple[str, str | None]:
     """
@@ -240,11 +298,40 @@ async def login_or_register_google(
     - temp_token: Token temporal que requiere TOTP para completar auth
     - totp_qr_code_url: QR code si es primera vez configurando TOTP, None si ya existe
     
-    Raises: LoginError si el id_token es inválido.
+    Args:
+        db: Sesión de base de datos
+        id_token: ID Token emitido por Google
+        nonce: Nonce que se envió a Google (REQUERIDO para prevenir replay attacks)
+        ip_origen: IP del cliente para auditoría
+    
+    Raises: LoginError si el id_token es inválido o el nonce no coincide.
     """
     from app.core.security import validate_google_token, generate_pre_auth_token, hash_pre_auth_token
     from app.models.pre_auth_token import PreAuthToken
     
+    # 1. Validar nonce (OBLIGATORIO)
+    if not nonce or not nonce.strip():
+        await _log(
+            db,
+            "GOOGLE_LOGIN_FALLIDO",
+            ip_origen=ip_origen,
+            detalle="Nonce no proporcionado"
+        )
+        await db.commit()
+        raise LoginError("Nonce requerido para Google OAuth", 400)
+    
+    nonce_is_valid = await validate_and_consume_nonce(db, nonce)
+    if not nonce_is_valid:
+        await _log(
+            db,
+            "GOOGLE_LOGIN_FALLIDO",
+            ip_origen=ip_origen,
+            detalle="Nonce inválido, expirado o ya utilizado"
+        )
+        await db.commit()
+        raise LoginError("Nonce inválido o expirado", 401)
+    
+    # 2. Validar token de Google
     try:
         google_info = validate_google_token(id_token)
     except ValueError as e:
@@ -269,7 +356,7 @@ async def login_or_register_google(
         await db.commit()
         raise LoginError("Solo se permite iniciar sesión con correos @tec.mx", 403)
     
-    # 1. Buscar usuario existente
+    # 3. Buscar usuario existente
     result = await db.execute(select(Usuario).where(Usuario.correo == correo))
     usuario = result.scalar_one_or_none()
     
