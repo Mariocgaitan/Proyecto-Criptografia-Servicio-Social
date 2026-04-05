@@ -52,7 +52,7 @@ export const AuthProvider = ({ children }) => {
         credentials: "include",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Login failed");
+      if (!res.ok) throw new Error(data.detail || "Inicio de sesión fallido");
       const userData = await fetchUser();
       return { success: true, user: userData };
     } catch (error) {

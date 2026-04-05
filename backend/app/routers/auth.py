@@ -12,16 +12,11 @@ from app.schemas.auth import (
     VerifyTOTPRequest,
     RoleRedirectResponse,
 )
-from app.schemas.usuario import RegistroRequest
 from app.services.auth_service import (
     LoginError,
-    RegistroError,
-    obtener_carreras_disponibles,
     login_alumno,
     logout_alumno,
-    obtener_eventos_disponibles,
     refresh_session,
-    registrar_alumno,
     login_or_register_google,
     verify_totp_and_get_token,
 )
@@ -65,28 +60,6 @@ def _set_access_cookie(response: JSONResponse, access_token: str) -> None:
         samesite="strict",
         max_age=ACCESS_COOKIE_MAX_AGE,
     )
-
-
-@router.post("/api/v1/auth/registro", status_code=201, tags=["Autenticación"], summary="Registrar alumno")
-@limiter.limit("5/minute")
-async def api_registro(request: Request, datos: RegistroRequest, db: AsyncSession = Depends(get_db)):
-    try:
-        return await registrar_alumno(db, datos)
-    except RegistroError as e:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-
-
-@router.get("/api/v1/auth/eventos", tags=["Autenticación"], summary="Obtener eventos disponibles para registro")
-async def api_eventos_disponibles(db: AsyncSession = Depends(get_db)):
-    """Retorna la lista de eventos que pueden seleccionarse en el formulario de registro."""
-    return await obtener_eventos_disponibles(db)
-
-
-@router.get("/api/v1/auth/carreras", tags=["Autenticación"], summary="Obtener carreras disponibles para registro")
-async def api_carreras_disponibles():
-    """Retorna el catálogo oficial de carreras para el formulario de registro."""
-    return obtener_carreras_disponibles()
 
 
 @router.post("/api/v1/auth/login", response_model=TokenResponse, tags=["Autenticación"], summary="Iniciar sesión")

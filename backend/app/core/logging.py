@@ -53,3 +53,4 @@ def setup_logging() -> None:
     logging.getLogger("sqlalchemy.engine").setLevel(
         logging.WARNING if settings.is_production else logging.INFO
     )
+    logging.getLogger("paramiko.transport").setLevel(logging.WARNING)

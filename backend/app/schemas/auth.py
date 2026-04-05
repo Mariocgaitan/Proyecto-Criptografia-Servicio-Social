@@ -31,6 +31,7 @@ class VerifyTOTPRequest(BaseModel):
     totp_code: str = Field(..., min_length=6, max_length=6, description="Código de 6 dígitos del Authenticator")
 
 
+
 class RoleRedirectResponse(BaseModel):
     """Respuesta después de validar TOTP con el rol del usuario."""
     access_token: str

@@ -21,10 +21,10 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<AuthWizard />} />
-      <Route path="/registro" element={<AuthWizard />} />
       <Route path="/" element={<Navigate to="/login" replace />} />
-      
+
       {/* Legacy Login Redirects */}
+      <Route path="/registro" element={<Navigate to="/login" replace />} />
       <Route path="/admin/login" element={<Navigate to="/login" replace />} />
       <Route path="/empresa/login" element={<Navigate to="/login" replace />} />
 
@@ -42,7 +42,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={["empresa"]} />}>
         <Route path="/empresa/escaner" element={<EmpresaEscaner />} />
       </Route>
-      
+
       {/* Fallback */}
       <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
