@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
@@ -391,39 +392,46 @@ async def get_alertas_proyectos(
     }
 
 
-async def get_alumnos_por_empresa(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
+async def get_alumnos_por_empresa(
+    db: AsyncSession,
+    evento_id: int | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
     filters = [Inscripcion.id_evento == evento_id] if evento_id is not None else []
 
-    rows = (
-        await db.execute(
-            select(
-                Empresa.id_empresa,
-                Empresa.nombre_empresa,
-                func.count(Inscripcion.id_inscripcion).label("cantidad"),
-            )
-            .join(Proyecto, Proyecto.id_empresa == Empresa.id_empresa)
-            .join(Inscripcion, Inscripcion.id_proyecto == Proyecto.id_proyecto)
-            .where(*filters)
-            .group_by(Empresa.id_empresa, Empresa.nombre_empresa)
-            .order_by(desc("cantidad"), Empresa.nombre_empresa.asc())
+    base_query = (
+        select(
+            Empresa.id_empresa,
+            Empresa.nombre_empresa,
+            func.count(Inscripcion.id_inscripcion).label("cantidad"),
         )
-    ).all()
+        .join(Proyecto, Proyecto.id_empresa == Empresa.id_empresa)
+        .join(Inscripcion, Inscripcion.id_proyecto == Proyecto.id_proyecto)
+        .where(*filters)
+        .group_by(Empresa.id_empresa, Empresa.nombre_empresa)
+        .order_by(desc("cantidad"), Empresa.nombre_empresa.asc())
+    )
 
-    return [
+    result = await paginate(db, base_query, page, page_size)
+    result["data"] = [
         {
             "id_empresa": row.id_empresa,
             "empresa": row.nombre_empresa,
             "cantidad_inscritos": int(row.cantidad or 0),
         }
-        for row in rows
+        for row in result["data"]
     ]
+    return result
 
 
 async def get_alumnos_por_carrera(
     db: AsyncSession,
     evento_id: int | None = None,
     carrera: str | None = None,
-) -> list[dict]:
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
     reg_filters = []
     ins_filters = []
     if evento_id is not None:
@@ -508,7 +516,21 @@ async def get_alumnos_por_carrera(
             }
         )
 
-    return sorted(carrera_map.values(), key=lambda item: item["cantidad"], reverse=True)
+    carreras = sorted(carrera_map.values(), key=lambda item: item["cantidad"], reverse=True)
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    total = len(carreras)
+    pages = max(1, -(-total // page_size))
+    offset = (page - 1) * page_size
+
+    return {
+        "data": carreras[offset : offset + page_size],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
 
 
 def _resolve_timeline_window(ventana: str | None, horas: int | None = None) -> tuple[str, int, int]:
@@ -889,26 +911,23 @@ async def get_embudo_conversion(
 
 async def get_logs_recientes(
     db: AsyncSession,
-    limite: int = 10,
-) -> list[dict]:
-    limite = max(1, min(limite, 50))
-
-    rows = (
-        await db.execute(
-            select(
-                LogAuditoria.id_log,
-                LogAuditoria.timestamp,
-                LogAuditoria.tipo_evento,
-                LogAuditoria.id_matricula,
-                LogAuditoria.ip_origen,
-                LogAuditoria.detalle,
-            )
-            .order_by(LogAuditoria.timestamp.desc())
-            .limit(limite)
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    base_query = (
+        select(
+            LogAuditoria.id_log,
+            LogAuditoria.timestamp,
+            LogAuditoria.tipo_evento,
+            LogAuditoria.id_matricula,
+            LogAuditoria.ip_origen,
+            LogAuditoria.detalle,
         )
-    ).all()
+        .order_by(LogAuditoria.timestamp.desc())
+    )
 
-    return [
+    result = await paginate(db, base_query, page, page_size)
+    result["data"] = [
         {
             "id_log": str(row.id_log),
             "timestamp": row.timestamp.isoformat() if row.timestamp else None,
@@ -917,8 +936,9 @@ async def get_logs_recientes(
             "ip_origen": row.ip_origen,
             "detalle": row.detalle,
         }
-        for row in rows
+        for row in result["data"]
     ]
+    return result
 
 
 async def _resumen_evento(db: AsyncSession, evento_id: int) -> dict:
