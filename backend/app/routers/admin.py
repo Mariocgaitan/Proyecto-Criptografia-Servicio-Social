@@ -8,7 +8,7 @@ Endpoints:
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
 """
-from fastapi import APIRouter, BackgroundTasks, Depends, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -44,9 +44,11 @@ class InscripcionCreate(BaseModel):
 async def api_listar_proyectos(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
 ):
     """Lista los proyectos del evento activo con stats de cupo."""
-    return await admin_service.listar_proyectos(db)
+    return await admin_service.listar_proyectos(db, page=page, page_size=page_size)
 
 
 @router.post("/api/v1/admin/proyectos", status_code=status.HTTP_201_CREATED, tags=["Admin"])
