@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { useAuth } from "./hooks/useAuth";
+import PageLoader from "./components/PageLoader";
 
 import AuthWizard from "./pages/AuthWizard";
 import AlumnoDashboard from "./pages/alumno/Dashboard";
@@ -12,11 +13,7 @@ function App() {
   const { user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 text-white grid place-items-center">
-        <div className="text-sm text-white/80">Cargando sesion...</div>
-      </div>
-    );
+    return <PageLoader />;
   }
 
   return (

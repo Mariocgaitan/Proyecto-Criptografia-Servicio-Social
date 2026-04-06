@@ -1,3 +1,4 @@
+import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
@@ -182,20 +183,32 @@ async def request_metrics_middleware(request: Request, call_next) -> Response:
             ended_at = datetime.now(UTC)
             duration_ms = max((ended_at - started_at).total_seconds() * 1000, 0.0)
 
-            async with AsyncSessionLocal() as session:
-                try:
-                    session.add(
-                        RequestMetric(
-                            request_timestamp=started_at,
-                            endpoint=request.url.path[:255],
-                            method=request.method,
-                            status_code=int(status_code),
-                            duration_ms=round(duration_ms, 3),
-                        )
-                    )
-                    await session.commit()
-                except Exception:
-                    await session.rollback()
+            # Fire-and-forget: don't block the response waiting for DB write
+            asyncio.create_task(_save_metric(
+                started_at, request.url.path[:255], request.method,
+                int(status_code), round(duration_ms, 3),
+            ))
+
+
+async def _save_metric(
+    timestamp: datetime, endpoint: str, method: str,
+    status_code: int, duration_ms: float,
+) -> None:
+    """Persist a request metric in background — never blocks the response."""
+    try:
+        async with AsyncSessionLocal() as session:
+            session.add(
+                RequestMetric(
+                    request_timestamp=timestamp,
+                    endpoint=endpoint,
+                    method=method,
+                    status_code=status_code,
+                    duration_ms=duration_ms,
+                )
+            )
+            await session.commit()
+    except Exception:
+        pass
 
 
 # ── Rate Limiter ───────────────────────────────────────────────────────────────

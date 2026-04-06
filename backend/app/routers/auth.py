@@ -21,7 +21,6 @@ from app.services.auth_service import (
     login_or_register_google,
     verify_totp_and_get_token,
     generate_and_store_nonce,
-    cleanup_expired_nonces,
 )
 from app.core.limiter import limiter
 
@@ -146,8 +145,7 @@ async def api_get_google_nonce(
     TTL: 5 minutos
     """
     try:
-        await cleanup_expired_nonces(db)  # no commit yet
-        nonce = await generate_and_store_nonce(db)  # commits both cleanup + insert
+        nonce = await generate_and_store_nonce(db)
         return GoogleNonceResponse(nonce=nonce)
     except Exception as e:
         from fastapi import HTTPException

@@ -330,12 +330,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
         >
           <div className="flex flex-col items-center justify-center gap-8 text-center">
             {qrPayload ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
-                className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center"
-              >
+              <div className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center">
                 <QRCodeSVG
                   value={qrPayload}
                   size={qrSize}
@@ -348,7 +343,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                     excavate: true,
                   }}
                 />
-              </motion.div>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-4 text-white/30">
                 <QrCode className="w-16 h-16 stroke-[1]" />
