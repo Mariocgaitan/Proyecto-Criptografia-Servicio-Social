@@ -18,8 +18,6 @@ class GoogleNonce(Base):
     __tablename__ = "google_nonces"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    nonce: Mapped[str] = mapped_column(String(36), nullable=False, unique=True, index=True)
-    # Hash del nonce para verificación (SHA-256)
     nonce_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
     expira_en: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     usado: Mapped[bool] = mapped_column(default=False, nullable=False)
