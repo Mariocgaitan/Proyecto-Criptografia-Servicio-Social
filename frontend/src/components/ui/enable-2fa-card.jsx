@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/input-otp";
 import { cn } from "@/lib/utils";
 
-export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
+export const Component = ({ qrCodeData, totpSecret, otpCode, onOtpChange }) => {
   const stepsData = qrCodeData
     ? [
         {
@@ -24,12 +24,20 @@ export const Component = ({ qrCodeData, otpCode, onOtpChange }) => {
           title: "Escanear código QR",
           description: "Escanea este código QR con tu aplicación para generar un código.",
           content: (
-            <div className="inline-block p-2 border border-white/20 rounded-2xl bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)]">
-              <img
-                src={qrCodeData}
-                alt="Código QR"
-                className="w-28 h-28"
-              />
+            <div className="flex flex-col items-center gap-3">
+              <div className="inline-block p-2 border border-white/20 rounded-2xl bg-white shadow-[0_0_15px_rgba(255,255,255,0.2)]">
+                <img
+                  src={qrCodeData}
+                  alt="Código QR"
+                  className="w-28 h-28"
+                />
+              </div>
+              {totpSecret && (
+                <div className="text-center w-full">
+                  <p className="text-xs text-white/50 mb-1 leading-tight">O ingresa esta clave manual:</p>
+                  <code className="bg-white/10 px-2 py-1 rounded text-xs tracking-wider select-all font-mono text-white/90 break-all">{totpSecret}</code>
+                </div>
+              )}
             </div>
           ),
         },

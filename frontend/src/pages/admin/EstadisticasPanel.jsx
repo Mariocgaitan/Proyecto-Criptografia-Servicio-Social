@@ -310,12 +310,12 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
   const particularSummary = particularData?.resumen || {};
 
   const generalTimeline = useMemo(
-    () => (timelineGeneralData || []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
+    () => (Array.isArray(timelineGeneralData) ? timelineGeneralData : []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
     [timelineGeneralData, timelineRange]
   );
 
   const particularTimeline = useMemo(
-    () => (timelineParticularData || []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
+    () => (Array.isArray(timelineParticularData) ? timelineParticularData : []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
     [timelineParticularData, timelineRange]
   );
 
@@ -341,7 +341,8 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
   );
 
   const carreraSemestreChart = useMemo(() => {
-    const rows = generalData?.series?.alumnos_por_carrera || [];
+    const rawRows = generalData?.series?.alumnos_por_carrera;
+    const rows = Array.isArray(rawRows) ? rawRows : [];
     const totalRegistrados = rows.reduce((acc, row) => acc + Number(row.cantidad || 0), 0);
     const totalInscritos = rows.reduce((acc, row) => acc + Number(row.cantidad_inscritos || 0), 0);
     const data = rows.map((row) => {

@@ -274,12 +274,20 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     try {
-      const [ps, es, evs] = await Promise.all([
-        fetch(apiUrl("/api/v1/admin/proyectos"), { credentials: "include" }).then(res => res.json()),
-        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()),
-        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json())
+      const [pRes, eRes, evRes] = await Promise.all([
+        fetch(apiUrl("/api/v1/admin/proyectos"), { credentials: "include" }),
+        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }),
+        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" })
       ]);
-      setProyectos(ps); setEmpresas(es); setEventos(evs);
+      const ps = await pRes.json();
+      const es = await eRes.json();
+      const evs = await evRes.json();
+      
+      const proyectosArray = Array.isArray(ps) ? ps : (Array.isArray(ps?.data) ? ps.data : []);
+      
+      setProyectos(proyectosArray); 
+      setEmpresas(Array.isArray(es) ? es : []); 
+      setEventos(Array.isArray(evs) ? evs : []);
     } catch (err) { console.error(err); }
   };
 
@@ -543,13 +551,16 @@ export default function AdminDashboard() {
     : eventos;
 
   // Group projects by empresa
-  const proyectosPorEmpresa = {};
-  filteredProyectos.forEach(p => {
-    const key = p.empresa || "Sin Empresa";
-    if (!proyectosPorEmpresa[key]) proyectosPorEmpresa[key] = [];
-    proyectosPorEmpresa[key].push(p);
-  });
-  const companyGroupKeys = Object.keys(proyectosPorEmpresa);
+  const proyectosPorEmpresa = useMemo(() => {
+    const dict = {};
+    filteredProyectos.forEach(p => {
+      const key = p.empresa || "Sin Empresa";
+      if (!dict[key]) dict[key] = [];
+      dict[key].push(p);
+    });
+    return dict;
+  }, [filteredProyectos]);
+  const companyGroupKeys = useMemo(() => Object.keys(proyectosPorEmpresa), [proyectosPorEmpresa]);
 
   useEffect(() => {
     if (activeSection !== "proyectos") return;
@@ -954,9 +965,9 @@ export default function AdminDashboard() {
                     </Button>
                     <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all">
+                      <div role="button" className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl transition-all flex items-center justify-center cursor-pointer">
                         <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
-                      </Button>
+                      </div>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
                       <DialogHeader>
@@ -1213,9 +1224,9 @@ export default function AdminDashboard() {
 
                   <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                     <DialogTrigger asChild>
-                      <Button className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
+                      <div role="button" className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
                         <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
-                      </Button>
+                      </div>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
                       <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
@@ -1287,9 +1298,9 @@ export default function AdminDashboard() {
                 <div className="flex items-center justify-end">
                   <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
                     <DialogTrigger asChild>
-                      <Button className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
+                      <div role="button" className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
                         <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
-                      </Button>
+                      </div>
                     </DialogTrigger>
                     <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
                       <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
