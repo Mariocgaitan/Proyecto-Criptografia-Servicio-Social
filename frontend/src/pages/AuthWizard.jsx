@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, prefetchNonce, clearNoncePrefetch } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 import { Component as Enable2FACard } from "@/components/ui/enable-2fa-card";
 
@@ -66,12 +66,17 @@ export default function AuthWizard() {
 
   const fetchNonce = async () => {
     try {
+      // Use prefetched nonce if available, otherwise fetch fresh
+      const nonce = await prefetchNonce();
+      if (nonce) {
+        setGoogleNonce(nonce);
+        clearNoncePrefetch();
+        return;
+      }
+      // Fallback: fetch directly
       const response = await fetch(apiUrl("/api/v1/auth/google/nonce"), {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
         credentials: "include"
       });
-
       if (response.ok) {
         const data = await response.json();
         setGoogleNonce(data.nonce);
@@ -145,6 +150,7 @@ export default function AuthWizard() {
     } catch (err) {
       console.error(err);
       setError(err.message || "La autenticación con Google ha fallado.");
+      clearNoncePrefetch();
       fetchNonce();
     } finally {
       setIsLoading(false);
