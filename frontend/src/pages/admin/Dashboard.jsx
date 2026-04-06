@@ -275,7 +275,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     try {
       const [ps, es, evs] = await Promise.all([
-        fetch(apiUrl("/api/v1/admin/proyectos"), { credentials: "include" }).then(res => res.json()),
+        fetch(apiUrl("/api/v1/admin/proyectos?page_size=100"), { credentials: "include" }).then(res => res.json()).then(d => Array.isArray(d) ? d : (d?.data ?? [])),
         fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()),
         fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json())
       ]);
