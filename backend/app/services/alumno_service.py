@@ -17,6 +17,7 @@ from app.models.inscripcion import Inscripcion
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
+from app.core.cache import cached
 
 
 # ── Errores de negocio ────────────────────────────────────────────────────────
@@ -28,7 +29,28 @@ class AlumnoError(Exception):
         super().__init__(message)
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# ── Dashboards & helpers ──────────────────────────────────────────────────────
+
+@cached(key="alum_cat_ev", ttl=30)
+async def _get_catalogo_evento_cached(db: AsyncSession, evento_id: int) -> list[dict]:
+    proyectos_result = await db.execute(
+        select(Proyecto, Empresa)
+        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        .where(Proyecto.id_evento == evento_id)
+        .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
+    )
+    return [
+        {
+            "id_proyecto": p.id_proyecto,
+            "nombre_proyecto": p.nombre_proyecto,
+            "empresa": e.nombre_empresa,
+            "descripcion": p.descripcion,
+            "cupo_actual": p.cupo_actual,
+            "capacidad_max": p.capacidad_max,
+            "lleno": p.cupo_actual >= p.capacidad_max,
+        }
+        for p, e in proyectos_result.all()
+    ]
 
 async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
     """
@@ -91,24 +113,7 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
                 }
 
         # Proyectos disponibles para este evento (catálogo)
-        proyectos_result = await db.execute(
-            select(Proyecto, Empresa)
-            .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
-            .where(Proyecto.id_evento == evento.id_evento)
-            .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
-        )
-        evento_info["proyectos"] = [
-            {
-                "id_proyecto": p.id_proyecto,
-                "nombre_proyecto": p.nombre_proyecto,
-                "empresa": e.nombre_empresa,
-                "descripcion": p.descripcion,
-                "cupo_actual": p.cupo_actual,
-                "capacidad_max": p.capacidad_max,
-                "lleno": p.cupo_actual >= p.capacidad_max,
-            }
-            for p, e in proyectos_result.all()
-        ]
+        evento_info["proyectos"] = await _get_catalogo_evento_cached(db, evento.id_evento)
 
         eventos_data.append(evento_info)
 
@@ -141,17 +146,22 @@ async def generar_qr_payload(
         }
     Raises AlumnoError (403) si el alumno no tiene ese evento registrado.
     """
-    # 1. Verificar que el alumno esté registrado para ese evento
-    ue_result = await db.execute(
-        select(UsuarioEvento).where(
-            UsuarioEvento.id_matricula == id_matricula,
+    # 1. Verificar registro del alumno EN el evento y recuperar el usuario de un jalón
+    usr_ue_res = await db.execute(
+        select(Usuario, UsuarioEvento)
+        .join(UsuarioEvento, UsuarioEvento.id_matricula == Usuario.id_matricula)
+        .where(
+            Usuario.id_matricula == id_matricula,
             UsuarioEvento.id_evento == id_evento,
         )
     )
-    if not ue_result.scalar_one_or_none():
-        raise AlumnoError("No estás registrado para este evento", 403)
+    row = usr_ue_res.first()
+    if not row:
+        raise AlumnoError("No estás registrado para este evento o tu usuario no se encontró", 403)
+    
+    usuario, _ = row
 
-    # 2. Verificar si ya está inscrito (devuelve ya_inscrito, sin error)
+    # 2. Verificar si ya está inscrito
     ins_result = await db.execute(
         select(Inscripcion).where(
             Inscripcion.id_matricula == id_matricula,
@@ -161,24 +171,15 @@ async def generar_qr_payload(
     if ins_result.scalar_one_or_none():
         return {"qr_data": None, "expira_en_segundos": 0, "ya_inscrito": True}
 
-    # 3. Obtener totp_secret del usuario
-    usr_result = await db.execute(
-        select(Usuario).where(Usuario.id_matricula == id_matricula)
-    )
-    usuario = usr_result.scalar_one_or_none()
-    if not usuario:
-        raise AlumnoError("Usuario no encontrado", 404)
-
     # 4. Generar código TOTP y calcular segundos restantes del ciclo actual
     totp = pyotp.TOTP(usuario.totp_secret)
     codigo = totp.now()
     segundos_restantes = 30 - (int(time.time()) % 30)
 
-    # 5. Verificar si tiene el perfil completo para el QR
+    # 5. Verificar si tiene el perfil completo (carrera y semestre son los datos clave)
     perfil_incompleto = not all([
-        usuario.correo_alterno,
-        usuario.celular,
-        usuario.descripcion_personal
+        usuario.carrera,
+        usuario.semestre,
     ])
 
     if perfil_incompleto:
@@ -188,20 +189,16 @@ async def generar_qr_payload(
             "ya_inscrito": False,
             "perfil_incompleto": True,
             "datos_actuales": {
-                "correo_alterno": usuario.correo_alterno,
-                "celular": usuario.celular,
-                "descripcion_personal": usuario.descripcion_personal
+                "carrera": usuario.carrera,
+                "semestre": usuario.semestre,
             }
         }
 
-    # 6. Construir payload del QR como string JSON (lo serializa qrcode.js)
+    # 6. Construir payload del QR como string JSON
     payload = json.dumps({
         "matricula": id_matricula,
         "totp": codigo,
         "id_evento": id_evento,
-        "correo": usuario.correo_alterno,
-        "tel": usuario.celular,
-        "desc": usuario.descripcion_personal
     }, separators=(",", ":"))
 
     # Cifrar payload antes de enviarlo (Seguridad avanzada)

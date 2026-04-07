@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cached
 from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
@@ -37,6 +38,7 @@ async def _resolve_evento_id(db: AsyncSession, evento_id: int | None) -> int | N
     return await db.scalar(select(Evento.id_evento).order_by(desc(Evento.id_evento)).limit(1))
 
 
+@cached(key="kpis_admin", ttl=30)
 async def get_kpis(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -109,6 +111,7 @@ async def get_kpis(
     }
 
 
+@cached(key="gen_contract", ttl=30)
 async def get_general_contract(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -157,6 +160,7 @@ async def get_general_contract(
     }
 
 
+@cached(key="part_contract", ttl=30)
 async def get_particular_contract(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -219,6 +223,7 @@ async def get_particular_contract(
     }
 
 
+@cached(key="ocup_eventos", ttl=45)
 async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     filters = [Evento.id_evento == evento_id] if evento_id else []
     rows = (
@@ -258,6 +263,7 @@ async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) 
     return output
 
 
+@cached(key="proys_cupo", ttl=45)
 async def get_proyectos_cupo(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -309,6 +315,7 @@ async def get_proyectos_cupo(
     ]
 
 
+@cached(key="alerts_proys", ttl=60)
 async def get_alertas_proyectos(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -392,6 +399,7 @@ async def get_alertas_proyectos(
     }
 
 
+@cached(key="alum_emp", ttl=60)
 async def get_alumnos_por_empresa(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -425,6 +433,7 @@ async def get_alumnos_por_empresa(
     return result
 
 
+@cached(key="alum_carr", ttl=60)
 async def get_alumnos_por_carrera(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -575,6 +584,7 @@ def _bucket_floor(ts: datetime, step_minutes: int) -> datetime:
     return ts_utc.replace(hour=hour, minute=minute)
 
 
+@cached(key="ins_time", ttl=60)
 async def get_inscripciones_timeline(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -693,6 +703,7 @@ async def get_inscripciones_timeline(
 
     return response
 
+@cached(key="rein_sc", ttl=60)
 async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     # Total eventos en los que el alumno se ha registrado.
     ev_rows = (
@@ -743,6 +754,7 @@ async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = No
     ]
 
 
+@cached(key="ratio_ins", ttl=60)
 async def get_ratio_inscritos(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -816,6 +828,7 @@ async def get_ratio_inscritos(
     return result
 
 
+@cached(key="emb_conv", ttl=60)
 async def get_embudo_conversion(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -1052,6 +1065,7 @@ async def _resumen_eventos_bulk(db: AsyncSession, evento_ids: list[int]) -> dict
     return resumen
 
 
+@cached(key="comp_ev", ttl=60)
 async def get_comparativa_eventos(
     db: AsyncSession,
     evento_actual_id: int | None = None,

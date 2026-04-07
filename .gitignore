@@ -76,3 +76,14 @@ PLAN_AUTENTICACION.md
 
 commits_20.txt
 commits_40.txt
+commits_60.txt
+commits_utf8.txt
+
+# Archivos de diagnóstico / debug temporal
+backend/check.py
+backend/traceback*.txt
+backend/alembic_error.txt
+backend/log_output.txt
+backend/out2.txt
+traceback*.txt
+alembic_error.txt

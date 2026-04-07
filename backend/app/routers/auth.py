@@ -28,9 +28,9 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
-# Duración cookie refresh token en segundos (8 horas)
-REFRESH_COOKIE_MAX_AGE = 8 * 60 * 60
-ACCESS_COOKIE_MAX_AGE = 15 * 60
+# Duración cookies según configuración
+REFRESH_COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_HOURS * 60 * 60
+ACCESS_COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 
 def _set_auth_cookies(response: JSONResponse, access_token: str, raw_refresh: str) -> None:

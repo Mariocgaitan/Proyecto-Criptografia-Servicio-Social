@@ -122,7 +122,10 @@ def cached(key: str, ttl: int = 300):
 
             # Miss — call function
             result = await func(*args, **kwargs)
-            await cache_set(full_key, result, ttl=ttl)
+            # Never cache empty/falsy results to avoid poisoning the cache
+            # with transient empty DB responses
+            if result:
+                await cache_set(full_key, result, ttl=ttl)
             return result
         return wrapper
     return decorator

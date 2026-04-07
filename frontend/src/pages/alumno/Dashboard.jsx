@@ -323,17 +323,13 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
         />
       ) : (
         <motion.div
-          initial={{ opacity: 0 }}
+          initial={false}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.25, ease: "easeOut" }}
           className="flex-1 w-full flex justify-center items-center"
         >
           <div className="flex flex-col items-center justify-center gap-8 text-center">
             {qrPayload ? (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.25, ease: "easeOut" }}
+              <div
                 className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center"
               >
                 <QRCodeSVG
@@ -348,7 +344,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                     excavate: true,
                   }}
                 />
-              </motion.div>
+              </div>
             ) : (
               <div className="flex flex-col items-center gap-4 text-white/30">
                 <QrCode className="w-16 h-16 stroke-[1]" />
@@ -358,18 +354,11 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
 
             {/* Event Info */}
             <div className="w-full max-w-2xl flex flex-col justify-center py-2">
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2, duration: 0.5 }}
-              >
+              <div>
                 <h3 className="text-3xl font-normal text-white mb-2 tracking-tight">{evento.nombre}</h3>
-              </motion.div>
+              </div>
 
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
+              <div
                 className="mt-6 flex flex-col items-center gap-3"
               >
                 <div className="relative group">
@@ -402,7 +391,7 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
                     />
                   </div>
                 </div>
-              </motion.div>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -459,11 +448,14 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 
 // ─── Event Card (orchestrator) ───────────────────────────────────
 const EventCard = ({ evento, onEnrollmentDetected }) => {
-  const [qrPayload, setQrPayload] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  // Un único objeto de estado para evitar re-renders múltiples al actualizar el QR
+  const [qrState, setQrState] = useState({
+    qrPayload: null,
+    timeLeft: 0,
+    perfilIncompleto: false,
+    initialProfileData: null,
+  });
   const [activeTab, setActiveTab] = useState("credencial");
-  const [perfilIncompleto, setPerfilIncompleto] = useState(false);
-  const [initialProfileData, setInitialProfileData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
   const fetchQR = useCallback(async () => {
@@ -473,22 +465,21 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.ya_inscrito) {
-          setQrPayload(null);
-          setTimeLeft(0);
+          // Un solo setState → un solo re-render
+          setQrState({ qrPayload: null, timeLeft: 0, perfilIncompleto: false, initialProfileData: null });
           onEnrollmentDetected?.();
         } else if (data.perfil_incompleto) {
-          setPerfilIncompleto(true);
-          setInitialProfileData(data.datos_actuales);
-          setQrPayload(null);
-          setTimeLeft(data.expira_en_segundos);
+          setQrState(prev => ({ ...prev, perfilIncompleto: true, initialProfileData: data.datos_actuales, qrPayload: null, timeLeft: data.expira_en_segundos }));
         } else {
-          setPerfilIncompleto(false);
-          setQrPayload(data.qr_data);
-          setTimeLeft(data.expira_en_segundos);
-          if (data.datos_actuales) setInitialProfileData(data.datos_actuales);
+          setQrState(prev => ({
+            qrPayload: data.qr_data,
+            timeLeft: data.expira_en_segundos,
+            perfilIncompleto: false,
+            initialProfileData: data.datos_actuales ?? prev.initialProfileData,
+          }));
         }
       }
-    } catch (err) {
+    } catch {
       setTimeout(fetchQR, 5000);
     }
   }, [evento.id_evento, evento.inscrito, onEnrollmentDetected]);
@@ -496,13 +487,16 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
   useEffect(() => {
     fetchQR();
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) { fetchQR(); return 0; }
-        return prev - 1;
+      setQrState(prev => {
+        if (prev.timeLeft <= 1) { fetchQR(); return { ...prev, timeLeft: 0 }; }
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
       });
     }, 1000);
     return () => clearInterval(interval);
   }, [fetchQR]);
+
+  // Desestructurar para pasar props al hijo
+  const { qrPayload, timeLeft, perfilIncompleto, initialProfileData } = qrState;
 
   // If already enrolled, show the enrolled view
   if (evento.inscrito && evento.inscripcion) {
