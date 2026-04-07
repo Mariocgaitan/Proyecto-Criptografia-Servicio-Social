@@ -325,7 +325,7 @@ export default function AdminDashboard() {
       setIsCrearProyectoOpen(false);
       setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
       fetchData();
-    } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+    } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
   const handleAbreModalAgregarAlumno = async (proyecto) => {
@@ -399,7 +399,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.detail);
       setIsCrearEmpresaOpen(false); fetchData();
       setFormEmpresa({ id_asociado: "", nombre: "", razon: "", desc: "", calle: "" });
-    } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+    } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
   const handleCrearEvento = async (e) => {
@@ -413,7 +413,7 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(data.detail);
       setIsCrearEventoOpen(false); fetchData();
       setFormEvento({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
-    } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+    } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
   const handleGuardarCupo = async () => {
@@ -426,7 +426,7 @@ export default function AdminDashboard() {
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
       setCupoModalInfo(null); fetchData();
-    } catch(err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+    } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
   const handleEliminarInscripcion = async (alumno) => {
@@ -536,20 +536,23 @@ export default function AdminDashboard() {
   const filteredEmpresas = empresas;
   const filteredEventos = q
     ? eventos.filter(
-        (e) =>
-          textMatchesQuery(e.nombre, q)
-          || textMatchesQuery(e.periodo, q)
-      )
+      (e) =>
+        textMatchesQuery(e.nombre, q)
+        || textMatchesQuery(e.periodo, q)
+    )
     : eventos;
 
   // Group projects by empresa
-  const proyectosPorEmpresa = {};
-  filteredProyectos.forEach(p => {
-    const key = p.empresa || "Sin Empresa";
-    if (!proyectosPorEmpresa[key]) proyectosPorEmpresa[key] = [];
-    proyectosPorEmpresa[key].push(p);
-  });
-  const companyGroupKeys = Object.keys(proyectosPorEmpresa);
+  const proyectosPorEmpresa = useMemo(() => {
+    const dict = {};
+    filteredProyectos.forEach(p => {
+      const key = p.empresa || "Sin Empresa";
+      if (!dict[key]) dict[key] = [];
+      dict[key].push(p);
+    });
+    return dict;
+  }, [filteredProyectos]);
+  const companyGroupKeys = useMemo(() => Object.keys(proyectosPorEmpresa), [proyectosPorEmpresa]);
 
   useEffect(() => {
     if (activeSection !== "proyectos") return;
@@ -890,177 +893,177 @@ export default function AdminDashboard() {
 
       <div className="relative z-10 flex flex-1 min-h-0">
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="w-full">
-          <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-            <div>
-              <h2 className="text-lg sm:text-xl font-normal tracking-tight text-white">
-                {sectionMeta[activeSection]?.title}
-              </h2>
-              <p className="text-xs sm:text-sm mt-0.5 text-white/60">
-                {sectionMeta[activeSection]?.description}
-              </p>
+          <div className="w-full">
+            <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+              <div>
+                <h2 className="text-lg sm:text-xl font-normal tracking-tight text-white">
+                  {sectionMeta[activeSection]?.title}
+                </h2>
+                <p className="text-xs sm:text-sm mt-0.5 text-white/60">
+                  {sectionMeta[activeSection]?.description}
+                </p>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
+                <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
+                <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
+                <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+              </div>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
-            <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
-            <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
-            <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
-          </div>
-        </div>
+            <AnimatePresence mode="wait">
+              {/* ─── OVERVIEW ────────────────────── */}
+              {activeSection === "overview" && (
+                <motion.div
+                  key="overview"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-8"
+                >
+                  <SystemDashboardPanel />
+                </motion.div>
+              )}
 
-          <AnimatePresence mode="wait">
-            {/* ─── OVERVIEW ────────────────────── */}
-            {activeSection === "overview" && (
-              <motion.div
-                key="overview"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-8"
-              >
-                <SystemDashboardPanel />
-              </motion.div>
-            )}
-
-            {/* ─── PROYECTOS ───────────────────── */}
-            {activeSection === "proyectos" && (
-              <motion.div key="proyectos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedEmpresas(companyGroupKeys)}
-                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                      Expandir todas
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedEmpresas([])}
-                      className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
-                    >
-                      Colapsar todas
-                    </button>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Button 
-                      onClick={() => setIsAgregarAlumnoOpen(true)}
-                      className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
-                    >
-                      <Users className="w-4 h-4 mr-2" /> Agregar Alumno
-                    </Button>
-                    <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all">
-                        <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
+              {/* ─── PROYECTOS ───────────────────── */}
+              {activeSection === "proyectos" && (
+                <motion.div key="proyectos" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }} className="space-y-6">
+                  {/* Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedEmpresas(companyGroupKeys)}
+                        className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        Expandir todas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedEmpresas([])}
+                        className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
+                      >
+                        Colapsar todas
+                      </button>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        onClick={() => setIsAgregarAlumnoOpen(true)}
+                        className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
+                      >
+                        <Users className="w-4 h-4 mr-2" /> Agregar Alumno
                       </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-normal tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
-                        <DialogDescription className="text-white/60">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
-                      </DialogHeader>
-                      <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
-                        {errorText && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm font-medium">{errorText}</div>}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Empresa Receptora</Label>
-                            <Select required onValueChange={v => setFormProyecto({...formProyecto, id_empresa: v})}>
-                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                              <SelectContent className="bg-slate-950 border-white/15 text-white">
-                                {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()}>{e.nombre_empresa}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
+                      <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
+                        <DialogTrigger asChild>
+                          <div role="button" className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl transition-all flex items-center justify-center cursor-pointer">
+                            <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
                           </div>
-                          <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Evento Activo</Label>
-                            <Select required onValueChange={v => setFormProyecto({...formProyecto, id_evento: v})}>
-                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                              <SelectContent className="bg-slate-950 border-white/15 text-white">
-                                {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()}>{ev.nombre}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Título Oficial del Proyecto</Label>
-                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.nombre} onChange={e => setFormProyecto({...formProyecto, nombre: e.target.value})} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción (Opcional)</Label>
-                          <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({...formProyecto, desc: e.target.value})} />
-                        </div>
-                        <div className="bg-black/30 p-4 rounded-xl border border-white/10">
-                          <div className="space-y-2">
-                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Límite de Alumnos</Label>
-                            <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-normal text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({...formProyecto, cap_max: e.target.value})} />
-                          </div>
-                        </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal shadow-none">Finalizar y Crear Proyecto</Button>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-xl font-normal tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
+                            <DialogDescription className="text-white/60">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
+                          </DialogHeader>
+                          <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
+                            {errorText && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm font-medium">{errorText}</div>}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Empresa Receptora</Label>
+                                <Select required onValueChange={v => setFormProyecto({ ...formProyecto, id_empresa: v })}>
+                                  <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                                  <SelectContent className="bg-slate-950 border-white/15 text-white">
+                                    {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()}>{e.nombre_empresa}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-2">
+                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Evento Activo</Label>
+                                <Select required onValueChange={v => setFormProyecto({ ...formProyecto, id_evento: v })}>
+                                  <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
+                                  <SelectContent className="bg-slate-950 border-white/15 text-white">
+                                    {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()}>{ev.nombre}</SelectItem>)}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Título Oficial del Proyecto</Label>
+                              <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.nombre} onChange={e => setFormProyecto({ ...formProyecto, nombre: e.target.value })} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción (Opcional)</Label>
+                              <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({ ...formProyecto, desc: e.target.value })} />
+                            </div>
+                            <div className="bg-black/30 p-4 rounded-xl border border-white/10">
+                              <div className="space-y-2">
+                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Límite de Alumnos</Label>
+                                <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-normal text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({ ...formProyecto, cap_max: e.target.value })} />
+                              </div>
+                            </div>
+                            <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal shadow-none">Finalizar y Crear Proyecto</Button>
+                          </form>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
                   </div>
-                </div>
 
-                <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
-                      <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
+                  <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
+                        <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
+                      </div>
+
+                      {[
+                        { key: "todas", label: "Todas" },
+                        { key: "disponibles", label: "Disponibles" },
+                        { key: "ultimos", label: "Ultimos lugares" },
+                        { key: "llenos", label: "Llenos" },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setAvailability(item.key)}
+                          className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${availability === item.key ? "bg-blue-500/25 border-blue-400/40 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                     </div>
 
-                    {[
-                      { key: "todas", label: "Todas" },
-                      { key: "disponibles", label: "Disponibles" },
-                      { key: "ultimos", label: "Ultimos lugares" },
-                      { key: "llenos", label: "Llenos" },
-                    ].map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setAvailability(item.key)}
-                        className={`px-3 py-1.5 rounded-full text-xs border transition-colors ${availability === item.key ? "bg-blue-500/25 border-blue-400/40 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
+                    <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                      <div className="w-full md:w-auto md:min-w-[260px]">
+                        <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
+                        <select
+                          id="empresa-filter-select"
+                          value={empresaFilter}
+                          onChange={(e) => setEmpresaFilter(e.target.value)}
+                          className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+                        >
+                          <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
+                          {empresasEnProyectos.map((empresa) => (
+                            <option key={empresa} value={empresa} className="bg-slate-900 text-white">
+                              {empresa}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
-                    <div className="w-full md:w-auto md:min-w-[260px]">
-                      <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
                       <select
-                        id="empresa-filter-select"
-                        value={empresaFilter}
-                        onChange={(e) => setEmpresaFilter(e.target.value)}
-                        className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
+                        value={sortMode}
+                        onChange={(e) => setSortMode(e.target.value)}
+                        className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
                       >
-                        <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
-                        {empresasEnProyectos.map((empresa) => (
-                          <option key={empresa} value={empresa} className="bg-slate-900 text-white">
-                            {empresa}
-                          </option>
-                        ))}
+                        <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
+                        <option value="disponibilidad" className="bg-slate-900 text-white">Ordenar: Ultimos lugares</option>
+                        <option value="alfabetico" className="bg-slate-900 text-white">Ordenar: A-Z</option>
                       </select>
                     </div>
-
-                    <select
-                      value={sortMode}
-                      onChange={(e) => setSortMode(e.target.value)}
-                      className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
-                    >
-                      <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
-                      <option value="disponibilidad" className="bg-slate-900 text-white">Ordenar: Ultimos lugares</option>
-                      <option value="alfabetico" className="bg-slate-900 text-white">Ordenar: A-Z</option>
-                    </select>
                   </div>
-                </div>
 
-                {/* BY EMPRESA VIEW */}
-                <div className="space-y-4">
+                  {/* BY EMPRESA VIEW */}
+                  <div className="space-y-4">
                     {Object.entries(proyectosPorEmpresa).map(([empresaName, proys]) => (
                       <div key={empresaName} className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden transition-all">
                         <button
@@ -1078,7 +1081,7 @@ export default function AdminDashboard() {
                           </div>
                           <div className="flex items-center gap-3">
                             <span className="text-xs font-mono font-normal px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
-                              {proys.reduce((s, p) => s + (p.cupo_actual||0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max||0), 0)} plazas
+                              {proys.reduce((s, p) => s + (p.cupo_actual || 0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max || 0), 0)} plazas
                             </span>
                             <motion.div animate={{ rotate: expandedEmpresas.includes(empresaName) ? 180 : 0 }} transition={{ duration: 0.2 }}>
                               <ChevronDown className="w-4 h-4 text-white/55" />
@@ -1134,25 +1137,25 @@ export default function AdminDashboard() {
                                                 const fechaStr = fecha ? fecha.toLocaleDateString("es-MX") : "--";
                                                 const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--";
                                                 return (
-                                                <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
-                                                  <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
-                                                  <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
-                                                  <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
-                                                  <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
-                                                  <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
-                                                  <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
-                                                  <td className="px-3 py-2 text-right">
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => handleEliminarInscripcion(alumno)}
-                                                      disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                                      className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
-                                                    >
-                                                      <Trash2 className="w-3.5 h-3.5" />
-                                                      {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
-                                                    </button>
-                                                  </td>
-                                                </tr>
+                                                  <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
+                                                    <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
+                                                    <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
+                                                    <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
+                                                    <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
+                                                    <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
+                                                    <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
+                                                    <td className="px-3 py-2 text-right">
+                                                      <button
+                                                        type="button"
+                                                        onClick={() => handleEliminarInscripcion(alumno)}
+                                                        disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                                      >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                        {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                                      </button>
+                                                    </td>
+                                                  </tr>
                                                 );
                                               })}
                                             </tbody>
@@ -1173,190 +1176,190 @@ export default function AdminDashboard() {
                     {!Object.keys(proyectosPorEmpresa).length && (
                       <div className="text-center py-16 text-sm rounded-2xl border border-white/15 bg-black/35 text-white/45">{q ? 'Sin resultados.' : 'No hay proyectos registrados.'}</div>
                     )}
-                </div>
-              </motion.div>
-            )}
-
-            {activeSection === "estadisticas" && (
-              <motion.div
-                key="estadisticas"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-6"
-              >
-                <EstadisticasPanel eventos={eventos} empresas={empresas} />
-              </motion.div>
-            )}
-
-            {/* ─── EMPRESAS ────────────────────── */}
-            {activeSection === "gestion" && (
-              <motion.div
-                key="empresas"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-6"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <Button
-                    onClick={() => {
-                      setActiveSection("proyectos");
-                      setIsCrearProyectoOpen(true);
-                    }}
-                    className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
-                  >
-                    <Plus className="w-4 h-4 mr-2" /> Registrar Proyecto
-                  </Button>
-
-                  <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
-                        <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
-                      <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
-                      <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
-                        {errorText && <div className="text-sm text-red-200 bg-red-500/10 p-2 rounded border border-red-500/30">{errorText}</div>}
-                        <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">ID Asociado / Convenio</Label>
-                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({...formEmpresa, id_asociado: e.target.value})} placeholder="Ej. SF-XXX24" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Nombre Público (Comercial)</Label>
-                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.nombre} onChange={e => setFormEmpresa({...formEmpresa, nombre: e.target.value})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Denominación Legal (Razón Social)</Label>
-                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.razon} onChange={e => setFormEmpresa({...formEmpresa, razon: e.target.value})} />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción de Giro Corporativo</Label>
-                          <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.desc} onChange={e => setFormEmpresa({...formEmpresa, desc: e.target.value})} />
-                        </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal mt-4">Matricular Entidad</Button>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-
-                <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
-                  <div className="px-5 py-3 border-b border-white/10">
-                    <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Empresas registradas</p>
                   </div>
-                  {filteredEmpresas?.map((emp, i) => (
-                    <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
-                      <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
-                              <Building2 className="w-4 h-4" />
-                            </div>
-                            <div className="min-w-0">
-                              <p className="font-normal text-sm text-white truncate">{emp.nombre_empresa}</p>
-                              <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
-                            </div>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">#{emp.id_asociado}</span>
-                            {emp.razon_social ? (
-                              <span className="text-[10px] font-normal uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
-                            ) : null}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
+                </motion.div>
+              )}
 
-            {/* ─── EVENTOS ─────────────────────── */}
-            {activeSection === "gestion" && (
-              <motion.div
-                key="eventos"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.25 }}
-                className="space-y-6"
-              >
-                <div className="flex items-center justify-end">
-                  <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
-                        <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
-                      <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
-                      <form onSubmit={handleCrearEvento} className="space-y-4 mt-2">
-                        <div className="space-y-1">
-                          <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Distintivo del Periodo</Label>
-                          <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEvento.nombre} onChange={e => setFormEvento({...formEvento, nombre: e.target.value})} placeholder="Ej. Feria Institucional SJR" />
+              {activeSection === "estadisticas" && (
+                <motion.div
+                  key="estadisticas"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-6"
+                >
+                  <EstadisticasPanel eventos={eventos} empresas={empresas} />
+                </motion.div>
+              )}
+
+              {/* ─── EMPRESAS ────────────────────── */}
+              {activeSection === "gestion" && (
+                <motion.div
+                  key="empresas"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-6"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <Button
+                      onClick={() => {
+                        setActiveSection("proyectos");
+                        setIsCrearProyectoOpen(true);
+                      }}
+                      className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Registrar Proyecto
+                    </Button>
+
+                    <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
+                      <DialogTrigger asChild>
+                        <div role="button" className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                          <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+                        <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
+                        <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
+                          {errorText && <div className="text-sm text-red-200 bg-red-500/10 p-2 rounded border border-red-500/30">{errorText}</div>}
                           <div className="space-y-1">
-                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Ciclo</Label>
-                            <Select value={formEvento.periodo} onValueChange={v => setFormEvento({...formEvento, periodo: v})}>
-                              <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue/></SelectTrigger>
-                              <SelectContent className="bg-slate-950 border-white/15 text-white">
-                                {["FEBRERO-JUNIO", "AGOSTO-DICIEMBRE", "VERANO", "INVIERNO"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">ID Asociado / Convenio</Label>
+                            <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({ ...formEmpresa, id_asociado: e.target.value })} placeholder="Ej. SF-XXX24" />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Año</Label>
-                            <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-normal" value={formEvento.anio} onChange={e => setFormEvento({...formEvento, anio: e.target.value})} />
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Nombre Público (Comercial)</Label>
+                            <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.nombre} onChange={e => setFormEmpresa({ ...formEmpresa, nombre: e.target.value })} />
                           </div>
-                        </div>
-                        <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal mt-4">Emitir Apertura Global</Button>
-                      </form>
-                    </DialogContent>
-                  </Dialog>
-                </div>
-
-                <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
-                  <div className="px-5 py-3 border-b border-white/10">
-                    <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Periodos y eventos</p>
+                          <div className="space-y-1">
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Denominación Legal (Razón Social)</Label>
+                            <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.razon} onChange={e => setFormEmpresa({ ...formEmpresa, razon: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción de Giro Corporativo</Label>
+                            <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.desc} onChange={e => setFormEmpresa({ ...formEmpresa, desc: e.target.value })} />
+                          </div>
+                          <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal mt-4">Matricular Entidad</Button>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
                   </div>
-                  {filteredEventos?.map((ev, i) => (
-                    <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
-                      <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${ev.activo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25' : 'bg-white/10 text-white/55 border border-white/10'}`}>
-                              <Calendar className="w-4 h-4" />
+
+                  <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-white/10">
+                      <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Empresas registradas</p>
+                    </div>
+                    {filteredEmpresas?.map((emp, i) => (
+                      <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
+                        <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
+                                <Building2 className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-normal text-sm text-white truncate">{emp.nombre_empresa}</p>
+                                <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
+                              </div>
                             </div>
-                            <div>
-                              <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
-                              <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio} - {ev.semestre}</p>
+                            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">#{emp.id_asociado}</span>
+                              {emp.razon_social ? (
+                                <span className="text-[10px] font-normal uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
+                              ) : null}
                             </div>
-                          </div>
-                          <div className="flex items-center justify-start sm:justify-end">
-                            {ev.activo ? (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
-                                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> En Curso
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
-                                Archivado
-                              </span>
-                            )}
                           </div>
                         </div>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </main>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* ─── EVENTOS ─────────────────────── */}
+              {activeSection === "gestion" && (
+                <motion.div
+                  key="eventos"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-6"
+                >
+                  <div className="flex items-center justify-end">
+                    <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
+                      <DialogTrigger asChild>
+                        <div role="button" className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                          <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
+                        </div>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+                        <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Inaugurar Semestre</DialogTitle></DialogHeader>
+                        <form onSubmit={handleCrearEvento} className="space-y-4 mt-2">
+                          <div className="space-y-1">
+                            <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Distintivo del Periodo</Label>
+                            <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEvento.nombre} onChange={e => setFormEvento({ ...formEvento, nombre: e.target.value })} placeholder="Ej. Feria Institucional SJR" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Ciclo</Label>
+                              <Select value={formEvento.periodo} onValueChange={v => setFormEvento({ ...formEvento, periodo: v })}>
+                                <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-slate-950 border-white/15 text-white">
+                                  {["FEBRERO-JUNIO", "AGOSTO-DICIEMBRE", "VERANO", "INVIERNO"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Año</Label>
+                              <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-normal" value={formEvento.anio} onChange={e => setFormEvento({ ...formEvento, anio: e.target.value })} />
+                            </div>
+                          </div>
+                          <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal mt-4">Emitir Apertura Global</Button>
+                        </form>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+
+                  <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                    <div className="px-5 py-3 border-b border-white/10">
+                      <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Periodos y eventos</p>
+                    </div>
+                    {filteredEventos?.map((ev, i) => (
+                      <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
+                        <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${ev.activo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25' : 'bg-white/10 text-white/55 border border-white/10'}`}>
+                                <Calendar className="w-4 h-4" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
+                                <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio} - {ev.semestre}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-start sm:justify-end">
+                              {ev.activo ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
+                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> En Curso
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
+                                  Archivado
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </main>
       </div>
 
       {/* ═══════════ GLOBAL MODALS ═══════════ */}

@@ -16,9 +16,13 @@ from app.core.dependencies import get_current_user
 from app.db.session import get_db
 
 class PerfilAlumnoUpdate(BaseModel):
+    # Datos de contacto
     correo_alterno: str | None = Field(None, description="Correo personal")
     celular: str | None = Field(None, description="Número de celular")
     descripcion_personal: str | None = Field(None, description="Pequeña biografía o descripción")
+    # Datos académicos (opcionales al editar)
+    carrera: str | None = Field(None, description="Siglas de carrera, ej: ITC")
+    semestre: int | None = Field(None, ge=1, le=12, description="Semestre actual")
 
     class Config:
         arbitrary_types_allowed = True

@@ -12,6 +12,7 @@ from app.schemas.auth import (
     PreAuthResponse,
     VerifyTOTPRequest,
     RoleRedirectResponse,
+    CompleteProfileRequest,
 )
 from app.services.auth_service import (
     LoginError,
@@ -27,9 +28,9 @@ from app.core.limiter import limiter
 
 router = APIRouter()
 
-# Duración cookie refresh token en segundos (8 horas)
-REFRESH_COOKIE_MAX_AGE = 8 * 60 * 60
-ACCESS_COOKIE_MAX_AGE = 15 * 60
+# Duración cookies según configuración
+REFRESH_COOKIE_MAX_AGE = settings.REFRESH_TOKEN_EXPIRE_HOURS * 60 * 60
+ACCESS_COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
 
 
 def _set_auth_cookies(response: JSONResponse, access_token: str, raw_refresh: str) -> None:
@@ -129,6 +130,41 @@ async def api_me(
     }
 
 
+
+@router.post("/api/v1/auth/complete-profile", tags=["Autenticación"], summary="Completar perfil de nuevo usuario")
+async def api_complete_profile(
+    datos: CompleteProfileRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db)
+):
+    from fastapi import HTTPException
+    from sqlalchemy import select
+    from app.core.dependencies import get_current_user
+    from app.models.evento import Evento
+    from app.models.usuario_evento import UsuarioEvento
+
+    user = await get_current_user(request, db)
+    
+    user.carrera = datos.carrera
+    user.semestre = datos.semestre
+    
+    result = await db.execute(
+        select(Evento).where(Evento.periodo == datos.periodo).order_by(Evento.id_evento.desc())
+    )
+    evento = result.scalars().first()
+    
+    if evento:
+        check = await db.execute(select(UsuarioEvento).where(
+            UsuarioEvento.id_matricula == user.id_matricula,
+            UsuarioEvento.id_evento == evento.id_evento
+        ))
+        if not check.scalar_one_or_none():
+            db.add(UsuarioEvento(id_matricula=user.id_matricula, id_evento=evento.id_evento))
+            
+    await db.commit()
+    return {"message": "Perfil actualizado exitosamente"}
+
+
 # ── Google OAuth ──────────────────────────────────────────────────────────────
 
 @router.get("/api/v1/auth/google/nonce", response_model=GoogleNonceResponse, tags=["Autenticación"], summary="Obtener nonce para Google OAuth")
@@ -169,13 +205,14 @@ async def api_google_auth(
     ip = request.client.host if request.client else None
 
     try:
-        temp_token, totp_qr = await login_or_register_google(
+        temp_token, totp_qr, totp_secret = await login_or_register_google(
             db, datos.id_token, nonce=datos.nonce, ip_origen=ip
         )
         return PreAuthResponse(
             status="requires_2fa",
             temp_token=temp_token,
             totp_qr_code=totp_qr,
+            totp_secret=totp_secret,
         )
     except LoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -196,7 +233,7 @@ async def api_verify_totp(
     ip = request.client.host if request.client else None
 
     try:
-        access_token, raw_refresh, rol, redirect_url = await verify_totp_and_get_token(
+        access_token, raw_refresh, rol, redirect_url, needs_profile = await verify_totp_and_get_token(
             db, datos.temp_token, datos.totp_code, ip
         )
 
@@ -205,6 +242,7 @@ async def api_verify_totp(
             "token_type": "bearer",
             "rol": rol,
             "redirect_url": redirect_url,
+            "needs_profile": needs_profile,
         })
 
         # Guardar refresh token en cookie

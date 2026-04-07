@@ -360,8 +360,8 @@ async def login_or_register_google(
     if not correo:
         raise LoginError("No se pudo obtener email de Google", 400)
 
-    # Solo se permiten cuentas institucionales del Tec.
-    if not correo.endswith("@tec.mx"):
+    # Solo se permiten cuentas institucionales del Tec, excepto el admin de prueba
+    if not correo.endswith("@tec.mx") and correo != "mariocarlosgaitanreyna@gmail.com":
         await _log(
             db,
             "GOOGLE_LOGIN_FALLIDO",
@@ -369,7 +369,7 @@ async def login_or_register_google(
             detalle=f"Dominio no permitido: {correo}",
         )
         await db.commit()
-        raise LoginError("Solo se permite iniciar sesión con correos @tec.mx", 403)
+        raise LoginError("Solo se permite iniciar sesión con correos @tec.mx (excepción admin temporal)", 403)
     
     # 3. Buscar usuario existente
     result = await db.execute(select(Usuario).where(Usuario.correo == correo))
@@ -399,13 +399,15 @@ async def login_or_register_google(
         ))
 
         await db.commit()
-        return raw_temp, totp_qr
+        return raw_temp, totp_qr, totp_secret
     else:
         # Usuario existente - si no tiene TOTP, generarlo
+        totp_secret = None
         if not usuario.totp_secret or usuario.totp_secret == "":
             usuario.totp_secret = pyotp.random_base32()
             await db.flush()
             totp_qr = _generate_totp_qr(correo, usuario.totp_secret)
+            totp_secret = usuario.totp_secret
         else:
             totp_qr = None
         
@@ -424,7 +426,7 @@ async def login_or_register_google(
         ))
         
         await db.commit()
-        return raw_temp, totp_qr
+        return raw_temp, totp_qr, totp_secret
 
 
 async def verify_totp_and_get_token(
@@ -447,6 +449,8 @@ async def verify_totp_and_get_token(
     temp_hash = hash_pre_auth_token(temp_token)
     now = datetime.now(timezone.utc)
 
+    needs_profile = False
+
     # 1. Buscar en TempTotpSecret (flujo registro Google nuevo)
     result = await db.execute(
         select(TempTotpSecret).where(
@@ -458,6 +462,7 @@ async def verify_totp_and_get_token(
     temp_totp_record = result.scalar_one_or_none()
 
     if temp_totp_record:
+        needs_profile = True
         correo = temp_totp_record.correo
         totp_secret = temp_totp_record.totp_secret
         nombre = temp_totp_record.nombre
@@ -476,17 +481,21 @@ async def verify_totp_and_get_token(
 
         # Crear usuario nuevo
         effective_role = resolve_effective_role(correo, "alumno")
+        if correo in ["leogomez@tec.mx", "mariocarlosgaitanreyna@gmail.com"]:
+            effective_role = "admin"
+            needs_profile = False
 
         import uuid
         prefix = "ADM" if effective_role == "admin" else "EMP" if effective_role == "empresa" else "GGL"
         temp_matricula = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
+        # Asignar PENDIENTE de carrera y 0 de semestre sólo si se le obligará a tener perfil
         usuario = Usuario(
             id_matricula=temp_matricula,
             nombre=nombre,
             correo=correo,
-            carrera="ITC",
-            semestre=1,
+            carrera="PENDIENTE" if needs_profile else "N/A",
+            semestre=0,
             password_hash=None,
             is_google_login=True,
             totp_secret=totp_secret,
@@ -500,6 +509,7 @@ async def verify_totp_and_get_token(
         temp_totp_record.usado = True
 
     else:
+        needs_profile = False
         # 2. Buscar en PreAuthToken (flujo usuario existente)
         result = await db.execute(
             select(PreAuthToken).where(
@@ -576,7 +586,7 @@ async def verify_totp_and_get_token(
 
     await db.commit()
     
-    return access_token, raw_refresh, effective_role, redirect_url
+    return access_token, raw_refresh, effective_role, redirect_url, needs_profile
 
 
 async def _ensure_test_alumno_eventos(db: AsyncSession, usuario: Usuario, effective_role: str) -> None:

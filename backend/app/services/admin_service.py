@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.cache import cache_delete
+from app.core.cache import cached, cache_delete
 from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
@@ -20,6 +20,7 @@ from app.models.usuario_evento import UsuarioEvento
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
 
+@cached(key="admin_proyectos", ttl=15)
 async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20) -> dict:
     """Devuelve proyectos con datos de empresa y evento, paginados."""
     base_query = (

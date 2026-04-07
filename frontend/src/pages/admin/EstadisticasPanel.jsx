@@ -254,13 +254,13 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
     try {
       const filtersToSend = exportScope === "filtered"
         ? {
-            evento_id: subTab === "particular" ? filters.eventoId : "",
-            empresa_id: subTab === "particular" ? filters.empresaId : "",
-            proyecto_id: subTab === "particular" ? filters.proyectoId : "",
-            carrera: subTab === "particular" ? filters.carrera : "",
-            fecha_inicio: filters.fechaInicio,
-            fecha_fin: filters.fechaFin,
-          }
+          evento_id: subTab === "particular" ? filters.eventoId : "",
+          empresa_id: subTab === "particular" ? filters.empresaId : "",
+          proyecto_id: subTab === "particular" ? filters.proyectoId : "",
+          carrera: subTab === "particular" ? filters.carrera : "",
+          fecha_inicio: filters.fechaInicio,
+          fecha_fin: filters.fechaFin,
+        }
         : {};
 
       await downloadCsvExport({
@@ -310,12 +310,12 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
   const particularSummary = particularData?.resumen || {};
 
   const generalTimeline = useMemo(
-    () => (timelineGeneralData || []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
+    () => (Array.isArray(timelineGeneralData) ? timelineGeneralData : []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
     [timelineGeneralData, timelineRange]
   );
 
   const particularTimeline = useMemo(
-    () => (timelineParticularData || []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
+    () => (Array.isArray(timelineParticularData) ? timelineParticularData : []).map((item) => ({ ...item, label: formatTimelineLabel(item.timestamp, timelineRange) })),
     [timelineParticularData, timelineRange]
   );
 
