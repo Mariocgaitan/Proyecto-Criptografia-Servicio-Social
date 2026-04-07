@@ -3,6 +3,21 @@ import { apiUrl } from "@/lib/api";
 
 const AuthContext = createContext();
 
+// Pre-fetch nonce in parallel with /auth/me so it's ready when AuthWizard mounts
+let _noncePrefetch = null;
+export const prefetchNonce = () => {
+  if (!_noncePrefetch) {
+    _noncePrefetch = fetch(apiUrl("/api/v1/auth/google/nonce"), {
+      credentials: "include",
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.nonce ?? null)
+      .catch(() => null);
+  }
+  return _noncePrefetch;
+};
+export const clearNoncePrefetch = () => { _noncePrefetch = null; };
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +55,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    prefetchNonce(); // Start nonce fetch in parallel with /auth/me
     fetchUser();
   }, []);
 
@@ -52,7 +68,7 @@ export const AuthProvider = ({ children }) => {
         credentials: "include",
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Login failed");
+      if (!res.ok) throw new Error(data.detail || "Inicio de sesión fallido");
       const userData = await fetchUser();
       return { success: true, user: userData };
     } catch (error) {
@@ -60,16 +76,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const logout = async () => {
-    try {
-      await fetch(apiUrl("/api/v1/auth/logout"), {
-        method: "POST",
-        credentials: "include" 
-      });
-    } catch (error) {
-      console.error(error);
-    }
+  const logout = () => {
     setUser(null);
+    fetch(apiUrl("/api/v1/auth/logout"), {
+      method: "POST",
+      credentials: "include"
+    }).catch(() => {});
   };
 
   return (

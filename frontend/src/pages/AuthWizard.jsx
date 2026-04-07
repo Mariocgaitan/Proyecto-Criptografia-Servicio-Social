@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck, User, Hash, GraduationCap, BookOpen, ChevronDown } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, prefetchNonce, clearNoncePrefetch } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 import { Component as Enable2FACard } from "@/components/ui/enable-2fa-card";
 
@@ -48,25 +48,58 @@ export default function AuthWizard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, fetchUser } = useAuth();
-  const isLogin = location.pathname === "/login";
   const [step, setStep] = useState(1);
   const [direction, setDirection] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleNonce, setGoogleNonce] = useState(null);
 
   const [authData, setAuthData] = useState({
     email: "",
     password: "",
     totpCode: "",
-    nombre: "",
-    matricula: "",
-    carrera: "",
-    semestre: "",
     tempToken: "",
     totpQrCode: null
   });
+
+  const fetchNonce = async () => {
+    try {
+      // Use prefetched nonce if available, otherwise fetch fresh
+      const nonce = await prefetchNonce();
+      if (nonce) {
+        setGoogleNonce(nonce);
+        clearNoncePrefetch();
+        return;
+      }
+      // Fallback: fetch directly
+      const response = await fetch(apiUrl("/api/v1/auth/google/nonce"), {
+        credentials: "include"
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleNonce(data.nonce);
+      }
+    } catch (err) {
+      console.error("Error al obtener nonce de Google:", err);
+    }
+  };
+
+  // Obtener nonce cuando el componente monta (para Google OAuth)
+  useEffect(() => {
+    fetchNonce();
+  }, []);
+
+  // Mostrar mensaje de sesión expirada si viene redirigido
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("expired") === "true") {
+      setError("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+      // Limpiar el parámetro de la URL sin recargar
+      window.history.replaceState({}, "", location.pathname);
+    }
+  }, [location.search]);
 
   const normalizeLoginIdentifier = (value) => {
     const trimmed = value.trim();
@@ -79,13 +112,24 @@ export default function AuthWizard() {
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsLoading(true);
     setError(null);
+    
+    // Validar que tenemos un nonce válido
+    if (!googleNonce) {
+      setError("No se pudo obtener el nonce de seguridad. Por favor, recarga la página e intenta de nuevo.");
+      setIsLoading(false);
+      return;
+    }
+    
     try {
       // Usar la ruta relativa para aprovechar el proxy configurado en vite.config.js
       // Esto previene los bloqueos CORS del navegador y problemas con COOP
       const response = await fetch(apiUrl("/api/v1/auth/google"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id_token: credentialResponse.credential }),
+        body: JSON.stringify({ 
+          id_token: credentialResponse.credential,
+          nonce: googleNonce
+        }),
         credentials: "include"
       });
 
@@ -106,6 +150,8 @@ export default function AuthWizard() {
     } catch (err) {
       console.error(err);
       setError(err.message || "La autenticación con Google ha fallado.");
+      clearNoncePrefetch();
+      fetchNonce();
     } finally {
       setIsLoading(false);
     }
@@ -210,23 +256,18 @@ export default function AuthWizard() {
         empresa: "/empresa/escaner",
         alumno: "/dashboard",
       };
-      navigate(data.redirect_url || targetByRole[usuario?.rol] || "/dashboard", { replace: true });
+      const fallback = targetByRole[usuario?.rol] || "/dashboard";
+      const redirect = data.redirect_url;
+      const safeUrl = (typeof redirect === "string" && redirect.startsWith("/") && !redirect.startsWith("//"))
+        ? redirect
+        : fallback;
+      navigate(safeUrl, { replace: true });
     } catch (err) {
       console.error(err);
       setError(err.message || "Error al verificar código TOTP.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleStep4Submit = (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      alert("Registro completado! Redirigiendo a dashboard...");
-      // navigate("/dashboard");
-    }, 800);
   };
 
   const renderStepContent = () => {
@@ -236,7 +277,7 @@ export default function AuthWizard() {
           <form id="auth-wizard-form" onSubmit={handleStep1Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
               <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">
-                {isLogin ? "Inicia sesión" : "Crea tu cuenta"}
+                Inicia sesion
               </h2>
               <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
             </div>
@@ -300,60 +341,6 @@ export default function AuthWizard() {
           </form>
         );
 
-      case 4:
-        return (
-          <form id="auth-wizard-form" onSubmit={handleStep4Submit} className="space-y-5 w-full">
-            <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">Completa tu perfil</h2>
-              <p className="text-white/60 text-base">Necesitamos unos datos extra para finalizar tu registro.</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
-                  <User className="w-5 h-5 text-slate-700/90" />
-                </div>
-                <Input placeholder="Nombre completo" value={authData.nombre} onChange={(e) => setAuthData({ ...authData, nombre: e.target.value })}
-                  className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
-                />
-              </div>
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
-                  <Hash className="w-5 h-5 text-slate-700/90" />
-                </div>
-                <Input placeholder="Matrícula" value={authData.matricula} onChange={(e) => setAuthData({ ...authData, matricula: e.target.value })}
-                  className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
-                  <GraduationCap className="w-5 h-5 text-slate-700/90" />
-                </div>
-                <select value={authData.carrera} onChange={(e) => setAuthData({ ...authData, carrera: e.target.value })}
-                  className="w-full appearance-none bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus:ring-2 focus:ring-white/45 text-base font-medium backdrop-blur-md"
-                >
-                  <option value="" className="text-slate-700">Carrera...</option>
-                  <option value="ITC" className="text-slate-900">ITC</option>
-                  <option value="ISD" className="text-slate-900">ISD</option>
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-700/90 z-10 pointer-events-none" />
-              </div>
-              <div className="relative">
-                <div className="absolute left-0 top-0 bottom-0 w-12 flex items-center justify-center z-10">
-                  <BookOpen className="w-5 h-5 text-slate-700/90" />
-                </div>
-                <Input type="number" placeholder="Semestre" value={authData.semestre} onChange={(e) => setAuthData({ ...authData, semestre: e.target.value })}
-                  className="bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-12 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md"
-                />
-              </div>
-            </div>
-
-          </form>
-        );
-
       default:
         return null;
     }
@@ -410,17 +397,6 @@ export default function AuthWizard() {
             </div>
           </div>
 
-          {!isLogin && step > 1 && (
-            <div className="w-full bg-white/10 h-2 rounded-full mb-10 overflow-hidden shadow-inner flex">
-              <motion.div
-                className="bg-blue-500 h-full rounded-full shadow-[0_0_15px_rgba(59,130,246,0.8)]"
-                initial={{ width: 0 }}
-                animate={{ width: `${((step - 1) / 3) * 100}%` }}
-                transition={{ duration: 0.4, ease: "easeInOut" }}
-              />
-            </div>
-          )}
-
           {/* Error Message */}
           <AnimatePresence mode="wait">
             {error && (
@@ -461,7 +437,7 @@ export default function AuthWizard() {
             <ProgressIndicator
               step={step}
               totalSteps={3}
-              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : step === 3 ? 'Verificar Código' : 'Finalizar Registro'}
+              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : 'Verificar Código'}
               isLoading={isLoading}
               onBack={prevStep}
               formId="auth-wizard-form"
@@ -489,53 +465,34 @@ export default function AuthWizard() {
                     </div>
 
                     <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => setError("La autenticación con Google ha fallado.")}
-                        theme="filled_black"
-                        shape="pill"
-                        size="large"
-                        text="continue_with"
-                        width="100%"
-                      />
+                      {googleNonce ? (
+                        <GoogleLogin
+                          key={googleNonce}
+                          nonce={googleNonce}
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => setError("La autenticación con Google ha fallado.")}
+                          theme="filled_black"
+                          shape="pill"
+                          size="large"
+                          text="continue_with"
+                          width="100%"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-10 text-white/30 text-xs">
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Cargando...
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
 
-                {step === 2 && (
-                  <motion.div
-                    key="step-2-footer"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="absolute top-6"
-                  >
-                    <button type="button" className="text-white/60 text-sm hover:text-white transition-colors underline decoration-white/30 underline-offset-4">
-                      ¿Olvidaste tu contraseña?
-                    </button>
-                  </motion.div>
-                )}
               </AnimatePresence>
             </motion.div>
           </div>
 
         </div>
 
-        {/* Global Links Footer */}
-        {step === 1 && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm font-medium">
-            {isLogin ? (
-              <Link to="/registro" className="text-white/60 hover:text-white transition-colors underline decoration-white/30 underline-offset-4">
-                ¿No tienes cuenta? Regístrate
-              </Link>
-            ) : (
-              <Link to="/login" className="text-white/60 hover:text-white transition-colors underline decoration-white/30 underline-offset-4">
-                ¿Ya tienes cuenta? Iniciar sesión
-              </Link>
-            )}
-          </motion.div>
-        )}
       </div>
 
       {/* Footer */}

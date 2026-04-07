@@ -203,10 +203,10 @@ export default function Login() {
               )}
             </AnimatePresence>
 
-            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+            <form onSubmit={handleSubmit} noValidate className="space-y-3 flex flex-col items-center">
               {/* Login input */}
               <motion.div {...fadeIn(0.5)}>
-                <div className="relative">
+                <div className="relative w-full max-w-md mx-auto">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10">
                     <Mail className="w-4 h-4 text-slate-700/90" />
                   </div>
@@ -217,7 +217,7 @@ export default function Login() {
                     onChange={(e) => setCorreo(e.target.value)}
                     onBlur={() => setCorreo((prev) => normalizeLoginIdentifier(prev))}
                     required
-                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
+                    className="w-full bg-white/18 border border-white/35 text-slate-900 rounded-full h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
                     placeholder="Correo o matrícula (A01234567)"
                   />
                 </div>
@@ -250,13 +250,15 @@ export default function Login() {
 
               {/* Submit button */}
               <motion.div {...fadeIn(0.7)}>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-normal text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  {isLoading ? "Ingresando..." : "Ingresar"}
-                </Button>
+                <div className="w-full max-w-md mx-auto">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-normal text-base rounded-full backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
+                  >
+                    {isLoading ? "Ingresando..." : "Ingresar"}
+                  </Button>
+                </div>
               </motion.div>
             </form>
 

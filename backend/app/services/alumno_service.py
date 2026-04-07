@@ -5,6 +5,8 @@ y consulta de estado de inscripción.
 import json
 import time
 
+from app.core.crypto import encrypt_qr_payload
+
 import pyotp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -132,9 +134,10 @@ async def generar_qr_payload(
 
     Returns:
         {
-          "qr_data": '{"matricula":"A0x","totp":"123456","id_evento":2}',
+          "qr_data": '{"matricula":"A0x","totp":"123456","id_evento":2,"correo":"...","tel":"...","desc":"..."}',
           "expira_en_segundos": 18,
-          "ya_inscrito": false
+          "ya_inscrito": false,
+          "perfil_incompleto": false
         }
     Raises AlumnoError (403) si el alumno no tiene ese evento registrado.
     """
@@ -171,17 +174,49 @@ async def generar_qr_payload(
     codigo = totp.now()
     segundos_restantes = 30 - (int(time.time()) % 30)
 
-    # 5. Construir payload del QR como string JSON (lo serializa qrcode.js)
+    # 5. Verificar si tiene el perfil completo para el QR
+    perfil_incompleto = not all([
+        usuario.correo_alterno,
+        usuario.celular,
+        usuario.descripcion_personal
+    ])
+
+    if perfil_incompleto:
+        return {
+            "qr_data": None,
+            "expira_en_segundos": segundos_restantes,
+            "ya_inscrito": False,
+            "perfil_incompleto": True,
+            "datos_actuales": {
+                "correo_alterno": usuario.correo_alterno,
+                "celular": usuario.celular,
+                "descripcion_personal": usuario.descripcion_personal
+            }
+        }
+
+    # 6. Construir payload del QR como string JSON (lo serializa qrcode.js)
     payload = json.dumps({
         "matricula": id_matricula,
         "totp": codigo,
         "id_evento": id_evento,
+        "correo": usuario.correo_alterno,
+        "tel": usuario.celular,
+        "desc": usuario.descripcion_personal
     }, separators=(",", ":"))
 
+    # Cifrar payload antes de enviarlo (Seguridad avanzada)
+    encrypted_payload = encrypt_qr_payload(payload)
+
     return {
-        "qr_data": payload,
+        "qr_data": encrypted_payload,
         "expira_en_segundos": segundos_restantes,
         "ya_inscrito": False,
+        "perfil_incompleto": False,
+        "datos_actuales": {
+            "correo_alterno": usuario.correo_alterno,
+            "celular": usuario.celular,
+            "descripcion_personal": usuario.descripcion_personal
+        }
     }
 
 
@@ -235,4 +270,39 @@ async def obtener_estado_inscripcion(db: AsyncSession, id_matricula: str) -> dic
 
         eventos_data.append(evento_info)
 
+
     return {"matricula": id_matricula, "eventos": eventos_data}
+
+
+# ── Perfil Alumno ─────────────────────────────────────────────────────────────
+
+async def actualizar_perfil_alumno(
+    db: AsyncSession, id_matricula: str, data: dict
+) -> dict:
+    """
+    Actualiza los campos adicionales del perfil del alumno.
+    """
+    result = await db.execute(
+        select(Usuario).where(Usuario.id_matricula == id_matricula)
+    )
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise AlumnoError("Usuario no encontrado", 404)
+
+    # Solo actualizar los campos permitidos
+    if "correo_alterno" in data:
+        usuario.correo_alterno = data["correo_alterno"]
+    if "celular" in data:
+        usuario.celular = data["celular"]
+    if "descripcion_personal" in data:
+        usuario.descripcion_personal = data["descripcion_personal"]
+
+    await db.commit()
+    await db.refresh(usuario)
+
+    return {
+        "ok": True,
+        "correo_alterno": usuario.correo_alterno,
+        "celular": usuario.celular,
+        "descripcion_personal": usuario.descripcion_personal,
+    }

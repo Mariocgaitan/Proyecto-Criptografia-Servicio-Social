@@ -27,12 +27,26 @@ dependencies = [
     "sshtunnel>=0.4.0",
     "paramiko>=2.12,<3.0",
     "requests>=2.33.0",
+    # Cache
+    "redis>=5.0.0",
+    # Logging
+    "structlog>=24.0.0",
+    # Error tracking
+    "sentry-sdk[fastapi]>=2.0.0",
 ]
 
 [tool.uv]
 package = false
-dev-dependencies = [
+
+[dependency-groups]
+dev = [
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "httpx>=0.27.0",
+    "fakeredis>=2.21.0",
+    "aiosqlite>=0.20.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

@@ -1,6 +1,7 @@
 """
 Servicio del módulo de Correos — envío de notificaciones por SMTP.
 """
+import html
 import smtplib
 from email.message import EmailMessage
 from typing import Optional
@@ -49,18 +50,22 @@ def _crear_cliente_smtp() -> Optional[smtplib.SMTP]:
 def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_empresa: str):
     """Envía un correo notificando al alumno su inscripción exitosa."""
     asunto = f"¡Inscripción Exitosa! Proyecto: {nombre_proyecto}"
-    
+
+    esc_alumno = html.escape(nombre_alumno)
+    esc_proyecto = html.escape(nombre_proyecto)
+    esc_empresa = html.escape(nombre_empresa)
+
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h2 style="color: #003865;">Feria del Servicio Social - TEC CCM</h2>
         </div>
-        <p>Hola <strong>{nombre_alumno}</strong>,</p>
+        <p>Hola <strong>{esc_alumno}</strong>,</p>
         <p>Tu inscripción ha sido confirmada satisfactoriamente en el siguiente proyecto:</p>
         <div style="background-color: #f4f6f9; padding: 15px; border-left: 4px solid #003865; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {nombre_empresa}</p>
-          <p style="margin: 0;"><strong>Proyecto:</strong> {nombre_proyecto}</p>
+          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {esc_empresa}</p>
+          <p style="margin: 0;"><strong>Proyecto:</strong> {esc_proyecto}</p>
         </div>
         <p>Mantente en contacto con la organización para los siguientes pasos.</p>
         {TEC_FOOTER_HTML}
@@ -72,18 +77,22 @@ def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto
 def enviar_correo_baja(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_empresa: str):
     """Envía un correo notificando al alumno que ha sido dado de baja de un proyecto."""
     asunto = f"Aviso de Baja de Proyecto: {nombre_proyecto}"
-    
+
+    esc_alumno = html.escape(nombre_alumno)
+    esc_proyecto = html.escape(nombre_proyecto)
+    esc_empresa = html.escape(nombre_empresa)
+
     html_content = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333; line-height: 1.6; max-width: 600px; margin: 0 auto; padding: 20px;">
         <div style="text-align: center; margin-bottom: 20px;">
           <h2 style="color: #003865;">Feria del Servicio Social - TEC CCM</h2>
         </div>
-        <p>Hola <strong>{nombre_alumno}</strong>,</p>
+        <p>Hola <strong>{esc_alumno}</strong>,</p>
         <p>Te informamos que has sido <strong>dado(a) de baja</strong> del siguiente proyecto:</p>
         <div style="background-color: #fff0f0; padding: 15px; border-left: 4px solid #d32f2f; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {nombre_empresa}</p>
-          <p style="margin: 0;"><strong>Proyecto:</strong> {nombre_proyecto}</p>
+          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {esc_empresa}</p>
+          <p style="margin: 0;"><strong>Proyecto:</strong> {esc_proyecto}</p>
         </div>
         <p>Si consideras que esto es un error o requieres más información, te invitamos a que te comuniques con el encargado de la organización o con tu director de carrera.</p>
         {TEC_FOOTER_HTML}

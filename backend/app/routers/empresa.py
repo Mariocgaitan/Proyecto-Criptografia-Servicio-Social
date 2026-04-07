@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.services.empresa_service import (
     EscanerError,
@@ -71,6 +72,7 @@ class QRScan(BaseModel):
 
 
 @router.post("/api/v1/empresa/escanear", tags=["Empresa"])
+@limiter.limit("30/minute")
 async def api_escanear_qr(
     request: Request,
     payload: QRScan,

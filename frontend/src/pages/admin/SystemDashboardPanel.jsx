@@ -95,7 +95,7 @@ export default function SystemDashboardPanel() {
         fetch(endpoint("/api/v1/admin/sistema/status-distribucion"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/latencia"), { credentials: "include" }),
         fetch(endpoint("/api/v1/admin/sistema/logins"), { credentials: "include" }),
-        fetch(apiUrl("/api/v1/admin/estadisticas/logs-recientes?limite=25"), { credentials: "include" }),
+        fetch(apiUrl("/api/v1/admin/estadisticas/logs-recientes?page_size=25"), { credentials: "include" }),
       ]);
 
       if (!summaryRes.ok || !rpmRes.ok || !statusRes.ok || !latencyRes.ok || !loginsRes.ok || !logsRes.ok) {
@@ -116,7 +116,7 @@ export default function SystemDashboardPanel() {
       setStatusDist(statusData?.items || []);
       setLatency(latencyData || null);
       setLogins(loginsData || { totales: null, series: [] });
-      setAuditLogs(Array.isArray(logsData) ? logsData : Array.isArray(logsData?.logs) ? logsData.logs : []);
+      setAuditLogs(Array.isArray(logsData) ? logsData : Array.isArray(logsData?.data) ? logsData.data : Array.isArray(logsData?.logs) ? logsData.logs : []);
     } catch (err) {
       setError(err.message || "Error cargando métricas del sistema.");
     } finally {

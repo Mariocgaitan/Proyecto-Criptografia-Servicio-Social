@@ -7,6 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import cache_delete
+from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
@@ -18,15 +20,17 @@ from app.models.usuario_evento import UsuarioEvento
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
 
-async def listar_proyectos(db: AsyncSession) -> list[dict]:
-    """Devuelve todos los proyectos con datos de empresa y evento."""
-    result = await db.execute(
+async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20) -> dict:
+    """Devuelve proyectos con datos de empresa y evento, paginados."""
+    base_query = (
         select(Proyecto, Empresa, Evento)
         .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
         .join(Evento, Proyecto.id_evento == Evento.id_evento)
         .order_by(Evento.id_evento, Empresa.nombre_empresa)
     )
-    rows = result.all()
+
+    result = await paginate(db, base_query, page, page_size)
+    rows = result["data"]
 
     proyecto_ids = [p.id_proyecto for p, _, _ in rows]
     inscripciones_por_proyecto: dict[int, list[dict]] = {pid: [] for pid in proyecto_ids}
@@ -54,7 +58,7 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
                 }
             )
 
-    return [
+    result["data"] = [
         {
             "id_proyecto": p.id_proyecto,
             "nombre_proyecto": p.nombre_proyecto,
@@ -78,6 +82,8 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
         }
         for p, e, ev in rows
     ]
+
+    return result
 
 
 async def listar_empresas(db: AsyncSession) -> list[dict]:
@@ -133,6 +139,9 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
     await db.commit()
     await db.refresh(proyecto)
 
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
@@ -160,6 +169,9 @@ async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int)
     proyecto.capacidad_max = nueva_capacidad
     await db.commit()
     await db.refresh(proyecto)
+
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
 
     return {
         "id_proyecto": proyecto.id_proyecto,
@@ -216,6 +228,11 @@ async def eliminar_inscripcion(
 
     await db.delete(inscripcion)
     await db.commit()
+
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_carrera")
 
     return {
         "ok": True,
@@ -353,6 +370,11 @@ async def crear_inscripcion(
 
     await db.commit()
     await db.refresh(proyecto)
+
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_carrera")
 
     return {
         "ok": True,

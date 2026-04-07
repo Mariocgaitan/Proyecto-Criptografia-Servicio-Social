@@ -57,6 +57,19 @@ class RegistroRequest(BaseModel):
             raise ValueError("La carrera debe capturarse con siglas (ej. ITC).")
         return carrera
 
+    @field_validator("password")
+    @classmethod
+    def validar_password(cls, v: str) -> str:
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra mayúscula.")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("La contraseña debe contener al menos una letra minúscula.")
+        if not re.search(r"\d", v):
+            raise ValueError("La contraseña debe contener al menos un dígito.")
+        if not re.search(r"[!@#$%^&*(),.?\"':{}|<>_\-+=\[\];'/`~\\]", v):
+            raise ValueError("La contraseña debe contener al menos un carácter especial (!@#$%^&*(),.?\"':{}|<>_-+=[];'/`~).")
+        return v
+
 
 class RegistroResponse(BaseModel):
     """Respuesta exitosa del registro."""

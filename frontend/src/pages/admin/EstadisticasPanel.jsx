@@ -341,7 +341,8 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
   );
 
   const carreraSemestreChart = useMemo(() => {
-    const rows = generalData?.series?.alumnos_por_carrera || [];
+    const raw = generalData?.series?.alumnos_por_carrera;
+    const rows = Array.isArray(raw) ? raw : (raw?.data ?? []);
     const totalRegistrados = rows.reduce((acc, row) => acc + Number(row.cantidad || 0), 0);
     const totalInscritos = rows.reduce((acc, row) => acc + Number(row.cantidad_inscritos || 0), 0);
     const data = rows.map((row) => {
@@ -538,7 +539,7 @@ export default function EstadisticasPanel({ eventos = [], empresas = [] }) {
                 className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
               >
                 <option value="" className="bg-slate-900 text-white">Todas las carreras</option>
-                {(generalData?.series?.alumnos_por_carrera || []).map((item) => (
+                {(Array.isArray(generalData?.series?.alumnos_por_carrera) ? generalData.series.alumnos_por_carrera : (generalData?.series?.alumnos_por_carrera?.data ?? [])).map((item) => (
                   <option key={item.carrera} value={item.carrera} className="bg-slate-900 text-white">
                     {item.carrera}
                   </option>

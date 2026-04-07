@@ -55,11 +55,25 @@ MATRIZ_DATOS_GRAFICAS_ADMIN.md
 *.sql.session
 SID Local.session.sql
 
+# Certificados SSL locales (mkcert)
+certs/
+
 # Archivos temporales / locales
 *.tmp
 *.bak
 *.local
 
+# Node (shadcn en raíz)
+node_modules/
+package-lock.json
+
+# Claude Code
+.claude/
+scripts/
+docs/
+# Notas y planes personales
+notas.md
+PLAN_AUTENTICACION.md
+
 commits_20.txt
 commits_40.txt
-PLAN_AUTENTICACION.md
