@@ -38,11 +38,7 @@ async def _resolve_evento_id(db: AsyncSession, evento_id: int | None) -> int | N
     return await db.scalar(select(Evento.id_evento).order_by(desc(Evento.id_evento)).limit(1))
 
 
-<<<<<<< HEAD
-@cached(key="kpis_admin", ttl=30)
-=======
 @cached(key="kpis", ttl=120)
->>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_kpis(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -229,11 +225,7 @@ async def get_particular_contract(
     }
 
 
-<<<<<<< HEAD
-@cached(key="ocup_eventos", ttl=45)
-=======
 @cached(key="ocupacion_eventos", ttl=120)
->>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     filters = [Evento.id_evento == evento_id] if evento_id else []
     rows = (
@@ -409,11 +401,7 @@ async def get_alertas_proyectos(
     }
 
 
-<<<<<<< HEAD
-@cached(key="alum_emp", ttl=60)
-=======
 @cached(key="alumnos_por_empresa", ttl=120)
->>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_alumnos_por_empresa(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -447,11 +435,7 @@ async def get_alumnos_por_empresa(
     return result
 
 
-<<<<<<< HEAD
-@cached(key="alum_carr", ttl=60)
-=======
 @cached(key="alumnos_por_carrera", ttl=120)
->>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_alumnos_por_carrera(
     db: AsyncSession,
     evento_id: int | None = None,

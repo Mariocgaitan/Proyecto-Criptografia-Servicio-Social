@@ -7,11 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-<<<<<<< HEAD
-from app.core.cache import cached
-=======
-from app.core.cache import cache_delete
->>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
+from app.core.cache import cached, cache_delete
 from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento

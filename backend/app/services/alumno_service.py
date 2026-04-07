@@ -29,6 +29,31 @@ class AlumnoError(Exception):
         super().__init__(message)
 
 
+# Campos del modelo que se pueden actualizar via PATCH /alumno/perfil
+_PERFIL_CAMPOS_PERMITIDOS = {
+    "correo_alterno", "celular", "descripcion_personal", "carrera", "semestre"
+}
+
+async def actualizar_perfil_alumno(db: AsyncSession, id_matricula: str, datos: dict) -> dict:
+    """
+    Actualiza los campos de perfil del alumno.
+    Solo permite modificar los campos en _PERFIL_CAMPOS_PERMITIDOS.
+    """
+    result = await db.execute(select(Usuario).where(Usuario.id_matricula == id_matricula))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise AlumnoError("Usuario no encontrado", 404)
+
+    # Solo actualizar campos permitidos que vengan en el payload
+    for campo, valor in datos.items():
+        if campo in _PERFIL_CAMPOS_PERMITIDOS and valor is not None:
+            setattr(usuario, campo, valor)
+
+    await db.commit()
+    return {"ok": True, "mensaje": "Perfil actualizado correctamente"}
+
+
+
 # ── Dashboards & helpers ──────────────────────────────────────────────────────
 
 @cached(key="alum_cat_ev", ttl=30)
