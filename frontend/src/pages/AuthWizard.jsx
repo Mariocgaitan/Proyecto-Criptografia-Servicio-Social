@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "@/components/ui/progress-indicator";
 import { motion, AnimatePresence } from "framer-motion";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, prefetchNonce, clearNoncePrefetch } from "@/hooks/useAuth";
 import { apiUrl } from "@/lib/api";
 import { Component as Enable2FACard } from "@/components/ui/enable-2fa-card";
 
@@ -68,27 +68,42 @@ export default function AuthWizard() {
     periodo: ""
   });
 
+  const fetchNonce = async () => {
+    try {
+      // Use prefetched nonce if available, otherwise fetch fresh
+      const nonce = await prefetchNonce();
+      if (nonce) {
+        setGoogleNonce(nonce);
+        clearNoncePrefetch();
+        return;
+      }
+      // Fallback: fetch directly
+      const response = await fetch(apiUrl("/api/v1/auth/google/nonce"), {
+        credentials: "include"
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setGoogleNonce(data.nonce);
+      }
+    } catch (err) {
+      console.error("Error al obtener nonce de Google:", err);
+    }
+  };
+
   // Obtener nonce cuando el componente monta (para Google OAuth)
   useEffect(() => {
-    const fetchNonce = async () => {
-      try {
-        const response = await fetch(apiUrl("/api/v1/auth/google/nonce"), {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include"
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          setGoogleNonce(data.nonce);
-        }
-      } catch (err) {
-        console.error("Error al obtener nonce de Google:", err);
-      }
-    };
-    
     fetchNonce();
   }, []);
+
+  // Mostrar mensaje de sesión expirada si viene redirigido
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get("expired") === "true") {
+      setError("Tu sesión ha expirado. Por favor, inicia sesión nuevamente.");
+      // Limpiar el parámetro de la URL sin recargar
+      window.history.replaceState({}, "", location.pathname);
+    }
+  }, [location.search]);
 
   const normalizeLoginIdentifier = (value) => {
     const trimmed = value.trim();
@@ -140,6 +155,8 @@ export default function AuthWizard() {
     } catch (err) {
       console.error(err);
       setError(err.message || "La autenticación con Google ha fallado.");
+      clearNoncePrefetch();
+      fetchNonce();
     } finally {
       setIsLoading(false);
     }
@@ -553,15 +570,24 @@ export default function AuthWizard() {
                     </div>
 
                     <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
-                      <GoogleLogin
-                        onSuccess={handleGoogleSuccess}
-                        onError={() => setError("La autenticación con Google ha fallado.")}
-                        theme="filled_black"
-                        shape="pill"
-                        size="large"
-                        text="continue_with"
-                        width="100%"
-                      />
+                      {googleNonce ? (
+                        <GoogleLogin
+                          key={googleNonce}
+                          nonce={googleNonce}
+                          onSuccess={handleGoogleSuccess}
+                          onError={() => setError("La autenticación con Google ha fallado.")}
+                          theme="filled_black"
+                          shape="pill"
+                          size="large"
+                          text="continue_with"
+                          width="100%"
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-10 text-white/30 text-xs">
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          Cargando...
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

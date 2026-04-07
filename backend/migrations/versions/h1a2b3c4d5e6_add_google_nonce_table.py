@@ -21,16 +21,13 @@ def upgrade() -> None:
         op.create_table(
             'google_nonces',
             sa.Column('id', sa.Integer(), nullable=False),
-            sa.Column('nonce', sa.String(36), nullable=False),
             sa.Column('nonce_hash', sa.String(64), nullable=False),
             sa.Column('expira_en', sa.DateTime(timezone=True), nullable=False),
             sa.Column('usado', sa.Boolean(), nullable=False, server_default=sa.false()),
             sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
             sa.PrimaryKeyConstraint('id'),
-            sa.UniqueConstraint('nonce'),
             sa.UniqueConstraint('nonce_hash'),
         )
-        op.create_index(op.f('ix_google_nonces_nonce'), 'google_nonces', ['nonce'], unique=True)
         op.create_index(op.f('ix_google_nonces_nonce_hash'), 'google_nonces', ['nonce_hash'], unique=True)
 
 

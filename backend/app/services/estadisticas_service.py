@@ -38,7 +38,11 @@ async def _resolve_evento_id(db: AsyncSession, evento_id: int | None) -> int | N
     return await db.scalar(select(Evento.id_evento).order_by(desc(Evento.id_evento)).limit(1))
 
 
+<<<<<<< HEAD
 @cached(key="kpis_admin", ttl=30)
+=======
+@cached(key="kpis", ttl=120)
+>>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_kpis(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -128,7 +132,8 @@ async def get_general_contract(
         include_security_metrics=False,
     )
     ocupacion_eventos = await get_ocupacion_eventos(db, evento_id)
-    alumnos_por_carrera = await get_alumnos_por_carrera(db, evento_id, None)
+    alumnos_por_carrera_result = await get_alumnos_por_carrera(db, evento_id, None, page_size=100)
+    alumnos_por_carrera = alumnos_por_carrera_result.get("data", alumnos_por_carrera_result) if isinstance(alumnos_por_carrera_result, dict) else alumnos_por_carrera_result
     tendencia = await get_inscripciones_timeline(
         db,
         evento_id=evento_id,
@@ -183,7 +188,8 @@ async def get_particular_contract(
     if proyecto_id is not None:
         proyectos_cupo = [item for item in proyectos_cupo if int(item.get("id_proyecto", 0)) == proyecto_id]
 
-    alumnos_empresa = await get_alumnos_por_empresa(db, evento_id)
+    alumnos_empresa_result = await get_alumnos_por_empresa(db, evento_id, page_size=100)
+    alumnos_empresa = alumnos_empresa_result.get("data", alumnos_empresa_result) if isinstance(alumnos_empresa_result, dict) else alumnos_empresa_result
     ratio = await get_ratio_inscritos(db, evento_id=evento_id, empresa_id=empresa_id, carrera=carrera)
     if proyecto_id is not None:
         ratio = [item for item in ratio if int(item.get("id_proyecto", 0)) == proyecto_id]
@@ -223,7 +229,11 @@ async def get_particular_contract(
     }
 
 
+<<<<<<< HEAD
 @cached(key="ocup_eventos", ttl=45)
+=======
+@cached(key="ocupacion_eventos", ttl=120)
+>>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     filters = [Evento.id_evento == evento_id] if evento_id else []
     rows = (
@@ -399,7 +409,11 @@ async def get_alertas_proyectos(
     }
 
 
+<<<<<<< HEAD
 @cached(key="alum_emp", ttl=60)
+=======
+@cached(key="alumnos_por_empresa", ttl=120)
+>>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_alumnos_por_empresa(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -433,7 +447,11 @@ async def get_alumnos_por_empresa(
     return result
 
 
+<<<<<<< HEAD
 @cached(key="alum_carr", ttl=60)
+=======
+@cached(key="alumnos_por_carrera", ttl=120)
+>>>>>>> 0d58c32a58ca19ac964f4b63e0ba5ea1f96fc330
 async def get_alumnos_por_carrera(
     db: AsyncSession,
     evento_id: int | None = None,
