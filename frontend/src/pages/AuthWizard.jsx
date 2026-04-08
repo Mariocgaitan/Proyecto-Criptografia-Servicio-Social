@@ -323,7 +323,7 @@ export default function AuthWizard() {
           <form id="auth-wizard-form" onSubmit={handleStep1Submit} className="space-y-5 w-full">
             <div className="text-center mb-10">
               <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">
-                Inicia sesion
+                Inicia sesión
               </h2>
               <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
             </div>
