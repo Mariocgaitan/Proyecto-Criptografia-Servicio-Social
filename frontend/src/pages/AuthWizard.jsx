@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { GoogleLogin } from "@react-oauth/google";
-import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck, GraduationCap } from "lucide-react";
+import { Eye, EyeOff, Loader2, ArrowRight, ArrowLeft, Mail, Lock, ShieldCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import ProgressIndicator from "@/components/ui/progress-indicator";
@@ -62,10 +62,7 @@ export default function AuthWizard() {
     totpCode: "",
     tempToken: "",
     totpQrCode: null,
-    totpSecret: null,
-    carrera: "",
-    semestre: "",
-    periodo: ""
+    totpSecret: null
   });
 
   const fetchNonce = async () => {
@@ -172,7 +169,7 @@ export default function AuthWizard() {
   const nextStep = () => {
     setDirection(1);
     setError(null);
-    setStep((prev) => Math.min(prev + 1, 4));
+    setStep((prev) => Math.min(prev + 1, 3));
   };
 
   const prevStep = () => {
@@ -255,11 +252,6 @@ export default function AuthWizard() {
         throw new Error(data.detail || "Código TOTP inválido.");
       }
 
-      if (data.needs_profile) {
-        setStep(4);
-        return;
-      }
-
       const usuario = await fetchUser();
       const targetByRole = {
         admin: "/admin/dashboard",
@@ -275,42 +267,6 @@ export default function AuthWizard() {
     } catch (err) {
       console.error(err);
       setError(err.message || "Error al verificar código TOTP.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleStep4Submit = async (e) => {
-    e.preventDefault();
-    if (!authData.carrera || !authData.semestre || !authData.periodo) {
-      setError("Por favor completa todos los campos (Carrera, Semestre, Periodo).");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-    try {
-      const response = await fetch(apiUrl("/api/v1/auth/complete-profile"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          carrera: authData.carrera.toUpperCase().trim(),
-          semestre: parseInt(authData.semestre, 10),
-          periodo: authData.periodo
-        }),
-        credentials: "include"
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.detail || "Error al completar perfil.");
-      }
-
-      const usuario = await fetchUser();
-      navigate("/dashboard", { replace: true });
-    } catch (err) {
-      console.error(err);
-      setError(err.message || "Error al completar perfil.");
     } finally {
       setIsLoading(false);
     }
@@ -388,64 +344,6 @@ export default function AuthWizard() {
           </form>
         );
 
-      case 4:
-        return (
-          <form id="auth-wizard-form" onSubmit={handleStep4Submit} className="space-y-4 sm:space-y-5 w-full flex flex-col justify-center">
-            <div className="text-center mb-2">
-              <h3 className="text-xl sm:text-2xl font-normal text-white">Completar Perfil</h3>
-              <p className="text-sm text-white/50 mt-1">Queremos conocerte para asignarte los mejores proyectos.</p>
-            </div>
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none z-10">
-                <GraduationCap className="w-5 h-5 text-slate-700/90" />
-              </div>
-              <select
-                value={authData.carrera}
-                onChange={(e) => setAuthData({ ...authData, carrera: e.target.value })}
-                className="w-full bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 pl-14 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md outline-none appearance-none"
-                style={{ backgroundImage: "none" }}
-              >
-                <option value="" disabled className="text-slate-500">Carrera...</option>
-                <option value="ITC" className="text-black">Ingeniería en Tecnologías Computacionales (ITC)</option>
-                <option value="ISC" className="text-black">Ingeniería en Sistemas Computacionales (ISC)</option>
-                <option value="ICI" className="text-black">Ingeniería Civil (ICI)</option>
-                <option value="IIA" className="text-black">Ingeniería en Inteligencia Artificial (IIA)</option>
-                <option value="IIS" className="text-black">Ingeniería Industrial y de Sistemas (IIS)</option>
-                <option value="IMT" className="text-black">Ingeniería Mecatrónica (IMT)</option>
-              </select>
-            </div>
-            <div className="relative w-full flex gap-3">
-              <div className="relative w-1/2">
-                <select
-                  value={authData.semestre}
-                  onChange={(e) => setAuthData({ ...authData, semestre: e.target.value })}
-                  className="w-full bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 px-4 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md outline-none appearance-none"
-                  style={{ backgroundImage: "none" }}
-                >
-                  <option value="" disabled className="text-slate-500">Semestre...</option>
-                  {[1, 2, 3, 4, 5, 6, 7, 8].map((num) => (
-                    <option key={num} value={num} className="text-black">{num}º Semestre</option>
-                  ))}
-                </select>
-              </div>
-              <div className="relative w-1/2">
-                <select
-                  value={authData.periodo}
-                  onChange={(e) => setAuthData({ ...authData, periodo: e.target.value })}
-                  className="w-full bg-white/18 border border-white/35 text-slate-900 rounded-xl h-14 px-4 focus-visible:ring-2 focus-visible:ring-white/45 text-base font-medium backdrop-blur-md outline-none appearance-none"
-                  style={{ backgroundImage: "none" }}
-                >
-                  <option value="" disabled className="text-slate-500">Periodo...</option>
-                  <option value="INVIERNO" className="text-black">Invierno</option>
-                  <option value="FEB_JUN" className="text-black">Febrero-Junio</option>
-                  <option value="VERANO" className="text-black">Verano</option>
-                  <option value="AGO_DIC" className="text-black">Agosto-Diciembre</option>
-                </select>
-              </div>
-            </div>
-          </form>
-        );
-
       default:
         return null;
     }
@@ -519,7 +417,7 @@ export default function AuthWizard() {
           <div
             className="relative w-full transition-all duration-300 ease-in-out"
             style={{
-              minHeight: step === 1 || step === 2 ? '160px' : step === 3 ? 'auto' : '200px'
+              minHeight: step === 1 || step === 2 ? '160px' : 'auto'
             }}
           >
             <AnimatePresence custom={direction} mode="wait">
@@ -541,8 +439,8 @@ export default function AuthWizard() {
           <div className="w-full flex flex-col items-center mt-6 z-20">
             <ProgressIndicator
               step={step}
-              totalSteps={step >= 4 ? 4 : 3}
-              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : step === 3 ? 'Verificar Código' : 'Finalizar Registro'}
+              totalSteps={3}
+              text={step === 1 ? 'Continuar' : step === 2 ? 'Iniciar Sesión' : 'Verificar Código'}
               isLoading={isLoading}
               onBack={prevStep}
               formId="auth-wizard-form"

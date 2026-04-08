@@ -9,7 +9,7 @@ Rutas API JSON (protegidas por JWT en header Authorization):
   GET  /api/v1/alumno/estado-inscripcion  → Estado de inscripción en todos los eventos
 """
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_user
@@ -17,12 +17,38 @@ from app.db.session import get_db
 
 class PerfilAlumnoUpdate(BaseModel):
     # Datos de contacto
-    correo_alterno: str | None = Field(None, description="Correo personal")
-    celular: str | None = Field(None, description="Número de celular")
+    correo_alterno: str | None = Field(None, description="Correo personal válido")
+    celular: str | None = Field(None, description="Número de celular (10 dígitos, empieza con 55)")
     descripcion_personal: str | None = Field(None, description="Pequeña biografía o descripción")
     # Datos académicos (opcionales al editar)
     carrera: str | None = Field(None, description="Siglas de carrera, ej: ITC")
     semestre: int | None = Field(None, ge=1, le=12, description="Semestre actual")
+
+    @field_validator("celular")
+    @classmethod
+    def validar_celular(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if v == "":
+            return None
+        import re as _re
+        if not _re.fullmatch(r"55\d{8}", v):
+            raise ValueError("El celular debe tener 10 dígitos y empezar con 55")
+        return v
+
+    @field_validator("correo_alterno")
+    @classmethod
+    def validar_correo_alterno(cls, v: str | None) -> str | None:
+        if v is None:
+            return v
+        v = v.strip()
+        if v == "":
+            return None
+        import re as _re
+        if not _re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", v):
+            raise ValueError("El correo alternativo no es válido")
+        return v
 
     class Config:
         arbitrary_types_allowed = True

@@ -1,20 +1,10 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { GraduationCap, BookOpen, Calendar, Mail, Phone, FileText, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
+import { Calendar, Mail, Phone, FileText, ArrowLeft, Loader2, ChevronDown } from "lucide-react";
 import { apiUrl } from "@/lib/api";
 
 // ─── Opciones estáticas ────────────────────────────────────────────
-const CARRERAS = [
-  "ITC", "IIS", "IRS", "IMT", "IMD",
-  "LAF", "LAE", "LIN", "LDI", "LLE",
-  "MC",  "MCA", "MF",  "MBIT",
-  "IBT", "IQ",  "IC",  "IBQ", "IA",
-  "LC",  "CP",  "LAD", "LBC",
-];
-
-const SEMESTRES = [1, 2, 3, 4, 5, 6, 7, 8];
-
 const PERIODOS = [
   { label: "Febrero – Junio 2026",    value: "FEB_JUN"  },
   { label: "Agosto – Diciembre 2026", value: "AGO_DIC"  },
@@ -24,9 +14,6 @@ const PERIODOS = [
 // ─── Componente ────────────────────────────────────────────────────
 export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
   const [formData, setFormData] = useState({
-    // Datos académicos
-    carrera:              initialData?.carrera              || "",
-    semestre:             initialData?.semestre             || "",
     periodo:              initialData?.periodo              || "FEB_JUN",
     // Datos de contacto
     correo_alterno:       initialData?.correo_alterno       || "",
@@ -35,11 +22,39 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError]               = useState(null);
+  const [periodoOpen, setPeriodoOpen]   = useState(false);
+  const periodoRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (periodoRef.current && !periodoRef.current.contains(e.target)) {
+        setPeriodoOpen(false);
+      }
+    };
+    if (periodoOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [periodoOpen]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.carrera || !formData.semestre || !formData.periodo) {
-      setError("Completa los datos académicos para continuar.");
+    if (!formData.periodo) {
+      setError("Selecciona el periodo de servicio social.");
+      return;
+    }
+
+    const celular = formData.celular.trim();
+    if (!celular) {
+      setError("Ingresa tu número celular para continuar.");
+      return;
+    }
+    if (!/^55\d{8}$/.test(celular)) {
+      setError("El número celular debe tener 10 dígitos y empezar con 55.");
+      return;
+    }
+
+    const correoAlterno = formData.correo_alterno.trim();
+    if (correoAlterno && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoAlterno)) {
+      setError("Ingresa un correo alternativo válido.");
       return;
     }
 
@@ -47,14 +62,12 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
     setError(null);
 
     try {
-      // 1. Guardar datos académicos + periodo (registra el evento)
+      // 1. Registrar periodo (registra el evento)
       const profileRes = await fetch(apiUrl("/api/v1/auth/complete-profile"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          carrera:  formData.carrera,
-          semestre: parseInt(formData.semestre, 10),
-          periodo:  formData.periodo,
+          periodo: formData.periodo,
         }),
         credentials: "include",
       });
@@ -125,43 +138,49 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
 
-            {/* ── Sección académica ── */}
-            <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-1">Datos académicos</p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* Carrera */}
-              <div className="space-y-2">
-                <label className={labelCls}><GraduationCap className="w-3 h-3 text-blue-400/70" />Carrera</label>
-                <div className="relative">
-                  <select required value={formData.carrera} onChange={e => field("carrera", e.target.value)} className={selectCls}>
-                    <option value="" disabled className="bg-zinc-900">Selecciona tu carrera</option>
-                    {CARRERAS.map(c => <option key={c} value={c} className="bg-zinc-900">{c}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                </div>
-              </div>
-
-              {/* Semestre */}
-              <div className="space-y-2">
-                <label className={labelCls}><BookOpen className="w-3 h-3 text-blue-400/70" />Semestre</label>
-                <div className="relative">
-                  <select required value={formData.semestre} onChange={e => field("semestre", e.target.value)} className={selectCls}>
-                    <option value="" disabled className="bg-zinc-900">Semestre</option>
-                    {SEMESTRES.map(s => <option key={s} value={s} className="bg-zinc-900">Semestre {s}</option>)}
-                  </select>
-                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-                </div>
-              </div>
-            </div>
-
             {/* Periodo */}
+            <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-1">Inscripción al periodo</p>
             <div className="space-y-2">
               <label className={labelCls}><Calendar className="w-3 h-3 text-blue-400/70" />Periodo de Servicio Social</label>
-              <div className="relative">
-                <select required value={formData.periodo} onChange={e => field("periodo", e.target.value)} className={selectCls}>
-                  {PERIODOS.map(p => <option key={p.value} value={p.value} className="bg-zinc-900">{p.label}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <div className="relative" ref={periodoRef}>
+                <button
+                  type="button"
+                  onClick={() => setPeriodoOpen(o => !o)}
+                  className={`${selectCls} flex items-center justify-between text-left cursor-pointer`}
+                >
+                  <span className={formData.periodo ? "text-white" : "text-white/40"}>
+                    {PERIODOS.find(p => p.value === formData.periodo)?.label || "Selecciona un periodo"}
+                  </span>
+                  <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${periodoOpen ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {periodoOpen && (
+                    <motion.ul
+                      initial={{ opacity: 0, y: -6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute z-50 mt-2 w-full rounded-xl bg-zinc-900/95 border border-white/15 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.5)] overflow-hidden"
+                    >
+                      {PERIODOS.map(p => {
+                        const selected = formData.periodo === p.value;
+                        return (
+                          <li
+                            key={p.value}
+                            onClick={() => { field("periodo", p.value); setPeriodoOpen(false); }}
+                            className={`px-4 py-3 text-sm cursor-pointer transition-colors duration-150 ${
+                              selected
+                                ? "bg-blue-500/20 text-white"
+                                : "text-white/80 hover:bg-white/10 hover:text-white"
+                            }`}
+                          >
+                            {p.label}
+                          </li>
+                        );
+                      })}
+                    </motion.ul>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 
@@ -175,6 +194,7 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
                   <label className={labelCls}><Mail className="w-3 h-3 text-blue-400/70" />Email alternativo</label>
                   <input
                     type="email"
+                    pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                     placeholder="tu@correo.com"
                     value={formData.correo_alterno}
                     onChange={e => field("correo_alterno", e.target.value)}
@@ -184,12 +204,17 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
 
                 {/* Celular */}
                 <div className="space-y-2">
-                  <label className={labelCls}><Phone className="w-3 h-3 text-blue-400/70" />Número celular</label>
+                  <label className={labelCls}><Phone className="w-3 h-3 text-blue-400/70" />Número celular *</label>
                   <input
                     type="tel"
-                    placeholder="10 dígitos"
+                    required
+                    inputMode="numeric"
+                    maxLength={10}
+                    pattern="^55\d{8}$"
+                    title="10 dígitos empezando con 55"
+                    placeholder="55XXXXXXXX"
                     value={formData.celular}
-                    onChange={e => field("celular", e.target.value)}
+                    onChange={e => field("celular", e.target.value.replace(/\D/g, "").slice(0, 10))}
                     className={inputCls}
                   />
                 </div>

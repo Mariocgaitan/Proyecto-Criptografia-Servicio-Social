@@ -201,10 +201,12 @@ async def generar_qr_payload(
     codigo = totp.now()
     segundos_restantes = 30 - (int(time.time()) % 30)
 
-    # 5. Verificar si tiene el perfil completo (carrera y semestre son los datos clave)
-    perfil_incompleto = not all([
-        usuario.carrera,
-        usuario.semestre,
+    # 5. Verificar si el alumno ya completó su perfil de contacto.
+    # Consideramos el perfil completo cuando al menos un dato de contacto fue capturado.
+    perfil_incompleto = not any([
+        usuario.celular,
+        usuario.correo_alterno,
+        usuario.descripcion_personal,
     ])
 
     if perfil_incompleto:
@@ -216,6 +218,9 @@ async def generar_qr_payload(
             "datos_actuales": {
                 "carrera": usuario.carrera,
                 "semestre": usuario.semestre,
+                "correo_alterno": usuario.correo_alterno,
+                "celular": usuario.celular,
+                "descripcion_personal": usuario.descripcion_personal,
             }
         }
 

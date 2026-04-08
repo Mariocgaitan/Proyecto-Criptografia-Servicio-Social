@@ -144,10 +144,13 @@ async def api_complete_profile(
     from app.models.usuario_evento import UsuarioEvento
 
     user = await get_current_user(request, db)
-    
-    user.carrera = datos.carrera
-    user.semestre = datos.semestre
-    
+
+    if datos.carrera is not None:
+        user.carrera = datos.carrera
+    if datos.semestre is not None:
+        user.semestre = datos.semestre
+
+
     result = await db.execute(
         select(Evento).where(Evento.periodo == datos.periodo).order_by(Evento.id_evento.desc())
     )
