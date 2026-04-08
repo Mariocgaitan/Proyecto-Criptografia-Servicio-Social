@@ -4,7 +4,7 @@ import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  Command, Trash2,
+  Trash2,
   List
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { motion, AnimatePresence } from "framer-motion";
 import { apiUrl, downloadCsvExport } from "@/lib/api";
 import EstadisticasPanel from "./EstadisticasPanel";
+import AdminOverviewPanel from "./AdminOverviewPanel";
 import SystemDashboardPanel from "./SystemDashboardPanel";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
@@ -34,6 +35,7 @@ const normalizeSearchText = (value) =>
 
 const ALL_COMPANIES_FILTER = "todas";
 const ADMIN_SYNC_MS = 5000;
+const SYSTEM_DASHBOARD_ALLOWED_EMAILS = ["mariog@tec.mx", "alan1x@gmail.com"];
 
 const resolveCompanyGroupKey = (companyName, groupKeys) => {
   const normalizedCompany = normalizeSearchText(companyName);
@@ -114,6 +116,24 @@ const textMatchesQuery = (value, query) => {
     || hasNearWordMatch(normalizedValue, query);
 };
 
+const textIncludesQuery = (value, query) => {
+  if (!query) return true;
+  const normalizedValue = normalizeSearchText(value);
+  if (!normalizedValue) return false;
+  return normalizedValue.includes(query);
+};
+
+const buildAlumnoSearchText = (alumno) => [
+  alumno?.nombre,
+  alumno?.nombre_completo,
+  alumno?.matricula,
+  alumno?.id_matricula,
+  alumno?.carrera,
+  alumno?.carrera_nombre,
+  alumno?.correo,
+  alumno?.email,
+].filter(Boolean).join(" ");
+
 // ─── KPI Stat Card ───────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
   const toneMap = {
@@ -189,21 +209,18 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
-  const [commandOpen, setCommandOpen] = useState(false);
-  const [commandQuery, setCommandQuery] = useState("");
-  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
-  const commandInputRef = useRef(null);
-  const commandItemRefs = useRef([]);
   const proyectoOptionRefs = useRef([]);
   const alumnoOptionRefs = useRef([]);
   const alumnoInputRef = useRef(null);
   const hasInitializedProjectExpansionRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchDraft, setSearchDraft] = useState("");
   const [availability, setAvailability] = useState("todas");
   const [empresaFilter, setEmpresaFilter] = useState(ALL_COMPANIES_FILTER);
   const [sortMode, setSortMode] = useState("demanda");
   const [expandedEmpresas, setExpandedEmpresas] = useState([]);
+  const [expandedProyectos, setExpandedProyectos] = useState([]);
 
   // Modals Info
   const [isCrearProyectoOpen, setIsCrearProyectoOpen] = useState(false);
@@ -232,6 +249,8 @@ export default function AdminDashboard() {
   const [deleteModalInfo, setDeleteModalInfo] = useState(null);
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [preserveFiltersOnNextSearch, setPreserveFiltersOnNextSearch] = useState(false);
+
+  const canAccessSystemDashboard = SYSTEM_DASHBOARD_ALLOWED_EMAILS.includes((user?.correo || "").toLowerCase());
 
   const proyectosConCupo = useMemo(
     () => proyectos.filter((p) => p.cupo_actual < p.capacidad_max),
@@ -276,8 +295,8 @@ export default function AdminDashboard() {
     try {
       const [ps, es, evs] = await Promise.all([
         fetch(apiUrl("/api/v1/admin/proyectos?page_size=100"), { credentials: "include" }).then(res => res.json()).then(d => Array.isArray(d) ? d : (d?.data ?? [])),
-        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()),
-        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json())
+        fetch(apiUrl("/api/v1/admin/empresas"), { credentials: "include" }).then(res => res.json()).then(d => Array.isArray(d) ? d : (d?.data ?? [])),
+        fetch(apiUrl("/api/v1/admin/eventos"), { credentials: "include" }).then(res => res.json()).then(d => Array.isArray(d) ? d : (d?.data ?? []))
       ]);
       setProyectos(ps); setEmpresas(es); setEventos(evs);
     } catch (err) { console.error(err); }
@@ -470,9 +489,18 @@ export default function AdminDashboard() {
   }, []);
 
   // Computed stats
+  const safeEventos = Array.isArray(eventos) ? eventos : [];
   const totalAlumnos = proyectos.reduce((sum, p) => sum + (p.cupo_actual || 0), 0);
   const totalCapacidad = proyectos.reduce((sum, p) => sum + (p.capacidad_max || 0), 0);
-  const eventosActivos = eventos.filter(e => e.activo).length;
+  const eventosActivos = safeEventos.filter(e => e.activo).length;
+  const totalPendientes = Math.max(totalCapacidad - totalAlumnos, 0);
+  const proyectosSinMovimiento = proyectos.filter((p) => (p.cupo_actual || 0) === 0).length;
+  const proyectosPorLlenarse = proyectos.filter((p) => {
+    const cap = Number(p.capacidad_max || 0);
+    const current = Number(p.cupo_actual || 0);
+    if (!cap || current >= cap) return false;
+    return ((current / cap) * 100) >= 85;
+  }).length;
 
   // Search filtering
   const q = normalizeSearchText(searchQuery);
@@ -483,17 +511,10 @@ export default function AdminDashboard() {
   const filteredProyectos = useMemo(() => {
     const base = proyectos.filter((p) => {
       const alumnoMatchesQuery = Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.some((alumno) => {
-        return textMatchesQuery(alumno?.nombre, q)
-          || textMatchesQuery(alumno?.matricula, q)
-          || textMatchesQuery(alumno?.carrera, q)
-          || textMatchesQuery(alumno?.correo, q);
+        return textIncludesQuery(buildAlumnoSearchText(alumno), q);
       });
 
-      const matchesQuery = !q
-        || textMatchesQuery(p.nombre_proyecto, q)
-        || textMatchesQuery(p.empresa, q)
-        || textMatchesQuery(p.descripcion, q)
-        || alumnoMatchesQuery;
+      const matchesQuery = !q || alumnoMatchesQuery;
 
       const remaining = Math.max((p.capacidad_max || 0) - (p.cupo_actual || 0), 0);
       const isFull = (p.cupo_actual || 0) >= (p.capacidad_max || 0);
@@ -535,12 +556,12 @@ export default function AdminDashboard() {
 
   const filteredEmpresas = empresas;
   const filteredEventos = q
-    ? eventos.filter(
+    ? safeEventos.filter(
       (e) =>
         textMatchesQuery(e.nombre, q)
         || textMatchesQuery(e.periodo, q)
     )
-    : eventos;
+    : safeEventos;
 
   // Group projects by empresa
   const proyectosPorEmpresa = useMemo(() => {
@@ -571,8 +592,33 @@ export default function AdminDashboard() {
     });
   }, [activeSection, companyGroupKeys]);
 
+  useEffect(() => {
+    const visibleProjectIds = new Set(filteredProyectos.map((project) => project.id_proyecto));
+    setExpandedProyectos((prev) => prev.filter((projectId) => visibleProjectIds.has(projectId)));
+  }, [filteredProyectos]);
+
+  useEffect(() => {
+    if (activeSection !== "proyectos") return;
+    if (!q) return;
+
+    setExpandedEmpresas(companyGroupKeys);
+    setExpandedProyectos(filteredProyectos.map((project) => project.id_proyecto));
+  }, [activeSection, q, companyGroupKeys, filteredProyectos]);
+
+  const toggleProyectoExpanded = useCallback((projectId) => {
+    setExpandedProyectos((prev) => (
+      prev.includes(projectId)
+        ? prev.filter((id) => id !== projectId)
+        : [...prev, projectId]
+    ));
+  }, []);
+
   const handleSectionChange = (section) => {
     setActiveSection(section);
+  };
+
+  const executeProjectSearch = (queryValue) => {
+    applySearchQuery(queryValue, { preserveFilters: false });
   };
 
   const applySearchQuery = (nextQuery, options = {}) => {
@@ -589,6 +635,7 @@ export default function AdminDashboard() {
     setAvailability("todas");
     setEmpresaFilter(ALL_COMPANIES_FILTER);
     setExpandedEmpresas([]);
+    setExpandedProyectos([]);
   };
 
   useEffect(() => {
@@ -596,10 +643,14 @@ export default function AdminDashboard() {
     setPreserveFiltersOnNextSearch(false);
   }, [searchQuery, preserveFiltersOnNextSearch]);
 
+  useEffect(() => {
+    setSearchDraft(searchQuery);
+  }, [searchQuery]);
+
   const sectionMeta = {
     overview: {
       title: "Dashboard",
-      description: "Observabilidad del sistema: salud, requests, latencia y actividad de login",
+      description: "Seguimiento claro del evento, alumnos pendientes y estado de los proyectos",
     },
     estadisticas: {
       title: "Estadísticas",
@@ -613,239 +664,11 @@ export default function AdminDashboard() {
       title: "Gestión de Empresas y Eventos",
       description: "Socios formadores, periodos académicos y registro operativo",
     },
+    sistema: {
+      title: "Sistema",
+      description: "Observabilidad técnica para soporte, desarrollo y diagnóstico interno",
+    },
   };
-
-  const studentCommandItems = useMemo(() => {
-    const normalized = normalizeSearchText(commandQuery);
-    if (!normalized) return [];
-
-    const items = [];
-
-    proyectos.forEach((proyecto) => {
-      if (!Array.isArray(proyecto.alumnos_inscritos)) return;
-
-      proyecto.alumnos_inscritos.forEach((alumno) => {
-        const nombre = alumno?.nombre || "Alumno sin nombre";
-        const matricula = alumno?.matricula || "Sin matrícula";
-        const carrera = alumno?.carrera || "";
-        const correo = alumno?.correo || "";
-
-        const searchable = [
-          nombre,
-          matricula,
-          carrera,
-          correo,
-          proyecto?.nombre_proyecto || "",
-          proyecto?.empresa || "",
-        ].map((value) => normalizeSearchText(value)).join(" ");
-
-        if (!textMatchesQuery(searchable, normalized)) return;
-
-        items.push({
-          id: `student-${proyecto.id_proyecto}-${alumno.id_inscripcion || matricula}`,
-          label: `Alumno: ${nombre}`,
-          hint: `Proyecto: ${proyecto.nombre_proyecto || "Sin proyecto"} - ${proyecto.empresa || "Sin Empresa"}`,
-          keepSearchContext: true,
-          action: () => {
-            setActiveSection("proyectos");
-            setExpandedEmpresas((prev) => {
-              const companyKey = proyecto.empresa || "Sin Empresa";
-              if (prev.includes(companyKey)) return prev;
-              return [...prev, companyKey];
-            });
-            setAvailability("todas");
-            setEmpresaFilter(proyecto.empresa || ALL_COMPANIES_FILTER);
-            applySearchQuery(alumno?.matricula || alumno?.nombre || "", { preserveFilters: true });
-          },
-        });
-      });
-    });
-
-    return items.slice(0, 30);
-  }, [proyectos, commandQuery]);
-
-  const projectCommandItems = useMemo(() => {
-    const normalized = normalizeSearchText(commandQuery);
-    if (!normalized) return [];
-
-    const items = proyectos
-      .filter((proyecto) => {
-        const searchable = [
-          proyecto?.nombre_proyecto || "",
-          proyecto?.empresa || "",
-          proyecto?.descripcion || "",
-        ].join(" ");
-
-        return textMatchesQuery(searchable, normalized);
-      })
-      .slice(0, 25)
-      .map((proyecto) => ({
-        id: `project-${proyecto.id_proyecto}`,
-        label: `Proyecto: ${proyecto.nombre_proyecto || "Sin nombre"}`,
-        hint: `Empresa: ${proyecto.empresa || "Sin Empresa"}`,
-        keepSearchContext: true,
-        action: () => {
-          setActiveSection("proyectos");
-          setAvailability("todas");
-          setEmpresaFilter(ALL_COMPANIES_FILTER);
-          setExpandedEmpresas([]);
-          applySearchQuery(proyecto?.nombre_proyecto || "", { preserveFilters: true });
-        },
-      }));
-
-    return items;
-  }, [proyectos, commandQuery]);
-
-  const companyCommandItems = useMemo(() => {
-    const normalized = normalizeSearchText(commandQuery);
-    if (!normalized) return [];
-
-    const items = empresas
-      .filter((empresa) => {
-        const searchable = [
-          empresa?.nombre_empresa || "",
-          empresa?.razon_social || "",
-          empresa?.id_asociado || "",
-          empresa?.descripcion || "",
-        ].join(" ");
-
-        return textMatchesQuery(searchable, normalized);
-      })
-      .slice(0, 25)
-      .map((empresa) => ({
-        id: `company-${empresa.id_empresa}`,
-        label: `Empresa: ${empresa.nombre_empresa || "Sin nombre"}`,
-        hint: `ID: ${empresa.id_asociado || "N/A"}`,
-        keepSearchContext: true,
-        action: () => {
-          setActiveSection("proyectos");
-          setAvailability("todas");
-          const selectedCompanyName = empresa?.nombre_empresa || "";
-          const companyGroupKey = resolveCompanyGroupKey(selectedCompanyName, companyGroupKeys);
-
-          setEmpresaFilter(companyGroupKey || ALL_COMPANIES_FILTER);
-          setExpandedEmpresas(companyGroupKey ? [companyGroupKey] : companyGroupKeys);
-          applySearchQuery(companyGroupKey || selectedCompanyName, { preserveFilters: true });
-        },
-      }));
-
-    return items;
-  }, [empresas, commandQuery, companyGroupKeys]);
-
-  const commandItems = useMemo(() => {
-    const baseItems = [
-      { id: "sec-overview", label: "Ir a Dashboard", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("overview") },
-      { id: "sec-stats", label: "Ir a Estadísticas", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("estadisticas") },
-      { id: "sec-projects", label: "Ir a Proyectos", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("proyectos") },
-      { id: "sec-manage", label: "Ir a Gestión Integral", hint: "Secciones", keepSearchContext: false, action: () => setActiveSection("gestion") },
-      { id: "act-new-project", label: "Abrir: Registrar Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsCrearProyectoOpen(true); } },
-      { id: "act-new-company", label: "Abrir: Dar de Alta Organización", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEmpresaOpen(true); } },
-      { id: "act-new-event", label: "Abrir: Aperturar Periodo", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("gestion"); setIsCrearEventoOpen(true); } },
-      { id: "act-add-alumno", label: "Abrir: Agregar Alumno a Proyecto", hint: "Acciones", keepSearchContext: false, action: () => { setActiveSection("proyectos"); setIsAgregarAlumnoOpen(true); setSelectedProyectoForAlumno(null); } },
-      { id: "act-export-ins", label: "Exportar CSV: Inscripciones", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("inscripciones"); } },
-      { id: "act-export-proy", label: "Exportar CSV: Proyectos", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("proyectos"); } },
-      { id: "act-export-emp", label: "Exportar CSV: Empresas", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("empresas"); } },
-      { id: "act-export-padron", label: "Exportar CSV: Usuarios/Padrón", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("usuarios_padron"); } },
-      { id: "act-export-logs", label: "Exportar CSV: Logs", hint: "Exportación", keepSearchContext: false, action: () => { void handleQuickExport("logs"); } },
-    ];
-
-    const normalized = normalizeSearchText(commandQuery);
-    if (!normalized) return baseItems;
-
-    const filteredBaseItems = baseItems.filter((item) =>
-      textMatchesQuery(item.label, normalized)
-      || textMatchesQuery(item.hint, normalized)
-    );
-
-    return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
-  }, [commandQuery, studentCommandItems, projectCommandItems, companyCommandItems, handleQuickExport]);
-
-  const runCommandItem = (item) => {
-    if (!item) return;
-
-    item.action();
-    if (!item.keepSearchContext) {
-      applySearchQuery("");
-    }
-    setCommandOpen(false);
-  };
-
-  useEffect(() => {
-    const onKeyDown = (event) => {
-      const key = event.key.toLowerCase();
-      const isOpenShortcut = (event.ctrlKey || event.metaKey) && key === "k";
-
-      if (isOpenShortcut) {
-        event.preventDefault();
-        setCommandOpen(true);
-        return;
-      }
-
-      if (event.key === "Escape") {
-        setCommandOpen(false);
-        return;
-      }
-
-      if (!commandOpen) return;
-
-      if (event.key === "ArrowDown") {
-        event.preventDefault();
-        setActiveCommandIndex((prev) => {
-          if (!commandItems.length) return 0;
-          return (prev + 1) % commandItems.length;
-        });
-        return;
-      }
-
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        setActiveCommandIndex((prev) => {
-          if (!commandItems.length) return 0;
-          return (prev - 1 + commandItems.length) % commandItems.length;
-        });
-        return;
-      }
-
-      if (event.key === "Enter") {
-        event.preventDefault();
-        const selected = commandItems[activeCommandIndex];
-        if (selected) {
-          runCommandItem(selected);
-        }
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [commandOpen, commandItems, activeCommandIndex]);
-
-  useEffect(() => {
-    if (!commandOpen) {
-      setCommandQuery("");
-      setActiveCommandIndex(0);
-      return;
-    }
-
-    const frame = requestAnimationFrame(() => {
-      commandInputRef.current?.focus();
-      commandInputRef.current?.select();
-    });
-
-    return () => cancelAnimationFrame(frame);
-  }, [commandOpen]);
-
-  useEffect(() => {
-    setActiveCommandIndex(0);
-  }, [commandQuery]);
-
-  useEffect(() => {
-    if (!commandOpen) return;
-
-    const activeElement = commandItemRefs.current[activeCommandIndex];
-    if (activeElement) {
-      activeElement.scrollIntoView({ block: "nearest" });
-    }
-  }, [commandOpen, activeCommandIndex]);
 
   // ─── RENDER ──────────────────────────────────────────────────
   return (
@@ -870,16 +693,6 @@ export default function AdminDashboard() {
         </div>
 
         <div className="inline-flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setCommandOpen(true)}
-            className="inline-flex items-center gap-2 px-3 py-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white transition-colors"
-            title="Command palette"
-          >
-            <Command className="w-4 h-4" />
-            <span className="hidden sm:inline text-xs font-normal">Ctrl+K</span>
-          </button>
-
           <button
             onClick={logout}
             className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
@@ -909,7 +722,11 @@ export default function AdminDashboard() {
                 <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
                 <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
                 <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+                {canAccessSystemDashboard ? (
+                  <button onClick={() => handleSectionChange("sistema")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "sistema" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Sistema</button>
+                ) : null}
               </div>
+
             </div>
 
             <AnimatePresence mode="wait">
@@ -917,6 +734,22 @@ export default function AdminDashboard() {
               {activeSection === "overview" && (
                 <motion.div
                   key="overview"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-8"
+                >
+                  <AdminOverviewPanel
+                    onOpenProjects={() => handleSectionChange("proyectos")}
+                    onOpenStats={() => handleSectionChange("estadisticas")}
+                  />
+                </motion.div>
+              )}
+
+              {activeSection === "sistema" && canAccessSystemDashboard && (
+                <motion.div
+                  key="sistema"
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -12 }}
@@ -938,14 +771,14 @@ export default function AdminDashboard() {
                         onClick={() => setExpandedEmpresas(companyGroupKeys)}
                         className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
                       >
-                        Expandir todas
+                        Expandir empresas
                       </button>
                       <button
                         type="button"
                         onClick={() => setExpandedEmpresas([])}
                         className="px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-[11px] font-normal uppercase tracking-wider text-white/75 hover:text-white hover:bg-white/10 transition-colors"
                       >
-                        Colapsar todas
+                        Colapsar empresas
                       </button>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
@@ -953,59 +786,8 @@ export default function AdminDashboard() {
                         onClick={() => setIsAgregarAlumnoOpen(true)}
                         className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
                       >
-                        <Users className="w-4 h-4 mr-2" /> Agregar Alumno
+                        <Users className="w-4 h-4 mr-2" /> Asignar alumno
                       </Button>
-                      <Dialog open={isCrearProyectoOpen} onOpenChange={setIsCrearProyectoOpen}>
-                        <DialogTrigger asChild>
-                          <div role="button" className="w-full sm:w-auto border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl transition-all flex items-center justify-center cursor-pointer">
-                            <Plus className="w-4 h-4 mr-2" /> Aperturar Puesto
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-xl bg-slate-950/92 border border-white/15 text-white shadow-2xl backdrop-blur-md">
-                          <DialogHeader>
-                            <DialogTitle className="text-xl font-normal tracking-tight text-white">Nuevo Puesto de Proyecto</DialogTitle>
-                            <DialogDescription className="text-white/60">Configura la empresa anfitriona, el evento y su aforo.</DialogDescription>
-                          </DialogHeader>
-                          <form onSubmit={handleCrearProyecto} className="space-y-5 mt-4">
-                            {errorText && <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-200 text-sm font-medium">{errorText}</div>}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Empresa Receptora</Label>
-                                <Select required onValueChange={v => setFormProyecto({ ...formProyecto, id_empresa: v })}>
-                                  <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                                  <SelectContent className="bg-slate-950 border-white/15 text-white">
-                                    {empresas.map(e => <SelectItem key={e.id_empresa} value={e.id_empresa.toString()}>{e.nombre_empresa}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Evento Activo</Label>
-                                <Select required onValueChange={v => setFormProyecto({ ...formProyecto, id_evento: v })}>
-                                  <SelectTrigger className="bg-white/10 border-white/15 text-white"><SelectValue placeholder="Selecciona..." /></SelectTrigger>
-                                  <SelectContent className="bg-slate-950 border-white/15 text-white">
-                                    {eventos.filter(e => e.activo).map(ev => <SelectItem key={ev.id_evento} value={ev.id_evento.toString()}>{ev.nombre}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Título Oficial del Proyecto</Label>
-                              <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.nombre} onChange={e => setFormProyecto({ ...formProyecto, nombre: e.target.value })} />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción (Opcional)</Label>
-                              <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formProyecto.desc} onChange={e => setFormProyecto({ ...formProyecto, desc: e.target.value })} />
-                            </div>
-                            <div className="bg-black/30 p-4 rounded-xl border border-white/10">
-                              <div className="space-y-2">
-                                <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Límite de Alumnos</Label>
-                                <Input type="number" required min="1" className="bg-white/10 border-white/15 text-white font-normal text-lg text-center" value={formProyecto.cap_max} onChange={e => setFormProyecto({ ...formProyecto, cap_max: e.target.value })} />
-                              </div>
-                            </div>
-                            <Button type="submit" disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal shadow-none">Finalizar y Crear Proyecto</Button>
-                          </form>
-                        </DialogContent>
-                      </Dialog>
                     </div>
                   </div>
 
@@ -1033,6 +815,27 @@ export default function AdminDashboard() {
                     </div>
 
                     <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
+                      <form
+                        className="w-full md:flex-1 md:min-w-[300px] flex items-center gap-2"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          executeProjectSearch(searchDraft);
+                        }}
+                      >
+                        <div className="relative flex-1">
+                          <Search className="w-4 h-4 text-white/45 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <Input
+                            value={searchDraft}
+                            onChange={(e) => setSearchDraft(e.target.value)}
+                            placeholder="Buscar alumno, matricula o carrera"
+                            className="h-9 pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/45"
+                          />
+                        </div>
+                        <Button type="submit" className="h-9 px-3 border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 text-xs">
+                          Buscar
+                        </Button>
+                      </form>
+
                       <div className="w-full md:w-auto md:min-w-[260px]">
                         <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
                         <select
@@ -1092,81 +895,122 @@ export default function AdminDashboard() {
                           {expandedEmpresas.includes(empresaName) && (
                             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
                               <div className="border-t border-white/10">
-                                {proys.map(p => (
-                                  <div key={p.id_proyecto} className="px-6 py-3.5 border-b last:border-0 transition-colors border-white/10 hover:bg-white/[0.03]">
-                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                      <div className="flex-1">
-                                        <p className="text-sm font-normal text-white">{p.nombre_proyecto}</p>
-                                      </div>
-                                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-                                        <div className="w-full md:w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div>
-                                        {p.cupo_actual >= p.capacidad_max ? (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
-                                        ) : (
-                                          <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
+                                {proys.map((p) => {
+                                  const isProyectoExpanded = expandedProyectos.includes(p.id_proyecto);
+                                  const inscritos = Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos : [];
+                                  const inscritosVisibles = q
+                                    ? inscritos.filter((alumno) => textIncludesQuery(buildAlumnoSearchText(alumno), q))
+                                    : inscritos;
+
+                                  return (
+                                    <div key={p.id_proyecto} className="border-b last:border-0 transition-colors border-white/10 hover:bg-white/[0.03]">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleProyectoExpanded(p.id_proyecto)}
+                                        className="w-full px-6 py-3.5 text-left"
+                                      >
+                                        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                                          <div className="flex items-start gap-3">
+                                            <motion.div animate={{ rotate: isProyectoExpanded ? 180 : 0 }} transition={{ duration: 0.2 }} className="mt-0.5 text-white/60">
+                                              <ChevronDown className="w-4 h-4" />
+                                            </motion.div>
+                                            <div className="flex-1 min-w-0">
+                                              <p className="text-sm font-normal text-white">{p.nombre_proyecto}</p>
+                                              <p className="text-[11px] mt-1 text-white/60">{inscritosVisibles.length} alumno{inscritosVisibles.length !== 1 ? "s" : ""} visible{inscritosVisibles.length !== 1 ? "s" : ""}</p>
+                                            </div>
+                                          </div>
+
+                                          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+                                            <div className="w-full md:w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div>
+                                            {p.cupo_actual >= p.capacidad_max ? (
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
+                                            ) : (
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
+                                            )}
+                                            <div className="flex gap-1.5">
+                                              <button
+                                                type="button"
+                                                onClick={(event) => {
+                                                  event.stopPropagation();
+                                                  setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max });
+                                                  setNuevaCapacidad(p.capacidad_max + 1);
+                                                }}
+                                                className="text-xs font-normal text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg"
+                                              >
+                                                Aumentar cupo
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </button>
+
+                                      <AnimatePresence>
+                                        {isProyectoExpanded && (
+                                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
+                                            <div className="px-6 pb-4">
+                                              <div className="rounded-xl border border-white/10 bg-black/25 overflow-hidden">
+                                                <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
+                                                  <p className="text-[11px] font-normal uppercase tracking-wider text-white/60">Alumnos enrolados</p>
+                                                  <p className="text-xs text-white/55">{inscritosVisibles.length}</p>
+                                                </div>
+
+                                                {inscritosVisibles.length > 0 ? (
+                                                  <div className="overflow-x-auto">
+                                                    <table className="w-full min-w-[900px]">
+                                                      <thead>
+                                                        <tr className="border-b border-white/10">
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Alumno</th>
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Matricula</th>
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Carrera</th>
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Correo</th>
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Fecha Registro</th>
+                                                          <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Hora Registro</th>
+                                                          <th className="text-right px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Accion</th>
+                                                        </tr>
+                                                      </thead>
+                                                      <tbody>
+                                                        {inscritosVisibles.map((alumno) => {
+                                                          const fecha = alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion) : null;
+                                                          const fechaStr = fecha ? fecha.toLocaleDateString("es-MX") : "--";
+                                                          const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--";
+                                                          return (
+                                                            <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
+                                                              <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
+                                                              <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
+                                                              <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
+                                                              <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
+                                                              <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
+                                                              <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
+                                                              <td className="px-3 py-2 text-right">
+                                                                <button
+                                                                  type="button"
+                                                                  onClick={() => handleEliminarInscripcion(alumno)}
+                                                                  disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                                                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                                                                >
+                                                                  <Trash2 className="w-3.5 h-3.5" />
+                                                                  {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                                                </button>
+                                                              </td>
+                                                            </tr>
+                                                          );
+                                                        })}
+                                                      </tbody>
+                                                    </table>
+                                                  </div>
+                                                ) : (
+                                                  <div className="px-3 py-4 text-xs text-white/45">
+                                                    {q ? "No hay alumnos en este proyecto que coincidan con la busqueda." : "Este proyecto no tiene alumnos inscritos todavia."}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            </div>
+                                          </motion.div>
                                         )}
-                                        <div className="flex gap-1.5">
-                                          <button onClick={() => { setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max }); setNuevaCapacidad(p.capacidad_max + 1); }} className="text-xs font-normal text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg">+ Cupo</button>
-                                        </div>
-                                      </div>
+                                      </AnimatePresence>
                                     </div>
-
-                                    <div className="mt-3 rounded-xl border border-white/10 bg-black/25 overflow-hidden">
-                                      <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
-                                        <p className="text-[11px] font-normal uppercase tracking-wider text-white/60">Alumnos enrolados</p>
-                                        <p className="text-xs text-white/55">{Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos.length : 0}</p>
-                                      </div>
-
-                                      {Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.length > 0 ? (
-                                        <div className="overflow-x-auto">
-                                          <table className="w-full min-w-[900px]">
-                                            <thead>
-                                              <tr className="border-b border-white/10">
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Alumno</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Matricula</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Carrera</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Correo</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Fecha Registro</th>
-                                                <th className="text-left px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Hora Registro</th>
-                                                <th className="text-right px-3 py-2 text-[10px] font-normal uppercase tracking-wider text-white/50">Accion</th>
-                                              </tr>
-                                            </thead>
-                                            <tbody>
-                                              {p.alumnos_inscritos.map((alumno) => {
-                                                const fecha = alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion) : null;
-                                                const fechaStr = fecha ? fecha.toLocaleDateString("es-MX") : "--";
-                                                const horaStr = fecha ? fecha.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "--";
-                                                return (
-                                                  <tr key={alumno.id_inscripcion || `${p.id_proyecto}-${alumno.matricula}`} className="border-b last:border-0 border-white/10">
-                                                    <td className="px-3 py-2 text-sm text-white/85">{alumno.nombre || "--"}</td>
-                                                    <td className="px-3 py-2 text-xs font-mono text-white/70">{alumno.matricula || "--"}</td>
-                                                    <td className="px-3 py-2 text-xs text-white/70">{alumno.carrera || "--"}</td>
-                                                    <td className="px-3 py-2 text-xs text-white/65">{alumno.correo || "--"}</td>
-                                                    <td className="px-3 py-2 text-xs text-white/65">{fechaStr}</td>
-                                                    <td className="px-3 py-2 text-xs font-mono text-white/60">{horaStr}</td>
-                                                    <td className="px-3 py-2 text-right">
-                                                      <button
-                                                        type="button"
-                                                        onClick={() => handleEliminarInscripcion(alumno)}
-                                                        disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-[11px] font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60"
-                                                      >
-                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                        {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
-                                                      </button>
-                                                    </td>
-                                                  </tr>
-                                                );
-                                              })}
-                                            </tbody>
-                                          </table>
-                                        </div>
-                                      ) : (
-                                        <div className="px-3 py-4 text-xs text-white/45">Este proyecto no tiene alumnos inscritos todavia.</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                               </div>
                             </motion.div>
                           )}
@@ -1611,64 +1455,6 @@ export default function AdminDashboard() {
         </div>
       </footer>
 
-      {commandOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
-          <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-black/75 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="p-3 border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
-                <input
-                  ref={commandInputRef}
-                  type="text"
-                  value={commandQuery}
-                  onChange={(e) => setCommandQuery(e.target.value)}
-                  placeholder="Buscar comando, alumno, empresa o proyecto..."
-                  role="combobox"
-                  aria-expanded={commandOpen}
-                  aria-controls="admin-command-list"
-                  aria-activedescendant={commandItems.length ? `admin-command-item-${commandItems[activeCommandIndex]?.id}` : undefined}
-                  className="w-full h-11 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/45 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
-                />
-              </div>
-            </div>
-
-            <div id="admin-command-list" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
-              {commandItems.length > 0 ? commandItems.map((item, idx) => (
-                <button
-                  key={item.id}
-                  id={`admin-command-item-${item.id}`}
-                  role="option"
-                  aria-selected={idx === activeCommandIndex}
-                  ref={(node) => {
-                    commandItemRefs.current[idx] = node;
-                  }}
-                  type="button"
-                  onClick={() => runCommandItem(item)}
-                  className={`relative w-full text-left px-3 py-2 rounded-lg transition-colors ${idx === activeCommandIndex ? "text-white" : "hover:bg-white/10"}`}
-                >
-                  {idx === activeCommandIndex ? (
-                    <motion.span
-                      layoutId="admin-command-active-highlight"
-                      className="absolute inset-0 rounded-lg border border-blue-400/35 bg-gradient-to-r from-blue-500/20 via-blue-400/10 to-transparent"
-                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
-                    />
-                  ) : null}
-                  <div className="relative z-10">
-                    <p className="text-sm font-normal text-white">{item.label}</p>
-                    <p className="text-[11px] text-white/50 uppercase tracking-wider">{item.hint}</p>
-                  </div>
-                </button>
-              )) : (
-                <div className="px-3 py-6 text-sm text-white/45">Sin comandos que coincidan.</div>
-              )}
-            </div>
-
-            <div className="px-4 py-2 border-t border-white/10 text-[11px] text-white/45 uppercase tracking-wider">
-              Navegación: ↑ ↓ Enter - Abrir: Ctrl+K - Cerrar: Esc - Busca alumnos, empresas y proyectos
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

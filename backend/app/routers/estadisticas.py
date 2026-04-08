@@ -191,6 +191,24 @@ async def api_estadisticas_general(
     )
 
 
+@router.get("/api/v1/admin/estadisticas/overview", tags=["Admin", "Estadisticas"])
+async def api_estadisticas_overview(
+    evento_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_overview_contract(db, evento_id=evento_id)
+
+
+@router.get("/api/v1/admin/estadisticas/alumnos-pendientes", tags=["Admin", "Estadisticas"])
+async def api_alumnos_pendientes(
+    evento_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_alumnos_pendientes(db, evento_id=evento_id)
+
+
 @router.get("/api/v1/admin/estadisticas/particular", tags=["Admin", "Estadisticas"])
 async def api_estadisticas_particular(
     evento_id: int | None = None,
