@@ -325,9 +325,9 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
         <motion.div
           initial={false}
           animate={{ opacity: 1 }}
-          className="flex-1 w-full flex justify-center items-center"
+          className="flex-1 w-full flex justify-center items-center select-none cursor-default"
         >
-          <div className="flex flex-col items-center justify-center gap-8 text-center">
+          <div className="flex flex-col items-center justify-center gap-8 text-center select-none">
             {qrPayload ? (
               <div className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center">
                 <QRCodeSVG

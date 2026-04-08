@@ -134,6 +134,25 @@ const buildAlumnoSearchText = (alumno) => [
   alumno?.email,
 ].filter(Boolean).join(" ");
 
+const buildProyectoSearchText = (proyecto) => [
+  proyecto?.nombre_proyecto,
+  proyecto?.empresa,
+  proyecto?.descripcion,
+  Array.isArray(proyecto?.alumnos_inscritos)
+    ? proyecto.alumnos_inscritos.map((alumno) => buildAlumnoSearchText(alumno)).join(" ")
+    : "",
+].filter(Boolean).join(" ");
+
+const isMatriculaQuery = (query) => /^[a-zA-Z]0\d{7}$/.test((query || "").replace(/\s+/g, ""));
+
+const doesProjectMatchNonStudentFields = (proyecto, query) => {
+  if (!query) return false;
+  const projectFields = [proyecto?.nombre_proyecto, proyecto?.empresa, proyecto?.descripcion]
+    .filter(Boolean)
+    .join(" ");
+  return textMatchesQuery(projectFields, query);
+};
+
 // ─── KPI Stat Card ───────────────────────────────────────────────
 function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
   const toneMap = {
@@ -209,9 +228,15 @@ export default function AdminDashboard() {
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
   const [activeSection, setActiveSection] = useState("overview");
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
+  const [activeCommandIndex, setActiveCommandIndex] = useState(0);
+  const commandInputRef = useRef(null);
+  const commandItemRefs = useRef([]);
   const proyectoOptionRefs = useRef([]);
   const alumnoOptionRefs = useRef([]);
   const alumnoInputRef = useRef(null);
+  const projectSearchInputRef = useRef(null);
   const hasInitializedProjectExpansionRef = useRef(false);
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -510,11 +535,16 @@ export default function AdminDashboard() {
 
   const filteredProyectos = useMemo(() => {
     const base = proyectos.filter((p) => {
-      const alumnoMatchesQuery = Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.some((alumno) => {
+      const studentMatchesQuery = Array.isArray(p.alumnos_inscritos) && p.alumnos_inscritos.some((alumno) => {
         return textIncludesQuery(buildAlumnoSearchText(alumno), q);
       });
 
-      const matchesQuery = !q || alumnoMatchesQuery;
+      const projectMatchesQuery = textMatchesQuery(buildProyectoSearchText(p), q);
+      const matchesQuery = !q
+        ? true
+        : isMatriculaQuery(q)
+          ? studentMatchesQuery
+          : projectMatchesQuery || studentMatchesQuery;
 
       const remaining = Math.max((p.capacidad_max || 0) - (p.cupo_actual || 0), 0);
       const isFull = (p.cupo_actual || 0) >= (p.capacidad_max || 0);
@@ -646,6 +676,321 @@ export default function AdminDashboard() {
   useEffect(() => {
     setSearchDraft(searchQuery);
   }, [searchQuery]);
+
+  const focusProjectSearch = useCallback(() => {
+    requestAnimationFrame(() => {
+      projectSearchInputRef.current?.focus();
+      projectSearchInputRef.current?.select();
+    });
+  }, []);
+
+  const runCommandItem = useCallback((item) => {
+    if (!item) return;
+    item.action();
+    if (!item.keepSearchContext) {
+      applySearchQuery("");
+    }
+    setCommandOpen(false);
+  }, [applySearchQuery]);
+
+  const studentCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    const items = [];
+
+    proyectos.forEach((proyecto) => {
+      if (!Array.isArray(proyecto.alumnos_inscritos)) return;
+
+      proyecto.alumnos_inscritos.forEach((alumno) => {
+        const nombre = alumno?.nombre || alumno?.nombre_completo || "Alumno sin nombre";
+        const matricula = alumno?.matricula || alumno?.id_matricula || "Sin matricula";
+        const carrera = alumno?.carrera || alumno?.carrera_nombre || "";
+        const correo = alumno?.correo || alumno?.email || "";
+
+        const searchable = [
+          nombre,
+          matricula,
+          carrera,
+          correo,
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+        ].map((value) => normalizeSearchText(value)).join(" ");
+
+        if (!textMatchesQuery(searchable, normalized)) return;
+
+        items.push({
+          id: `student-${proyecto.id_proyecto}-${alumno.id_inscripcion || matricula}`,
+          label: `Alumno: ${nombre}`,
+          hint: `Matricula: ${matricula} · Proyecto: ${proyecto.nombre_proyecto || "Sin proyecto"}`,
+          keepSearchContext: true,
+          action: () => {
+            const companyKey = proyecto.empresa || "Sin Empresa";
+            setActiveSection("proyectos");
+            setExpandedEmpresas((prev) => (prev.includes(companyKey) ? prev : [...prev, companyKey]));
+            setAvailability("todas");
+            setEmpresaFilter(proyecto.empresa || ALL_COMPANIES_FILTER);
+            applySearchQuery(matricula || nombre, { preserveFilters: true });
+            focusProjectSearch();
+          },
+        });
+      });
+    });
+
+    return items.slice(0, 30);
+  }, [proyectos, commandQuery, focusProjectSearch]);
+
+  const projectCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    return proyectos
+      .filter((proyecto) => {
+        const searchable = [
+          proyecto?.nombre_proyecto || "",
+          proyecto?.empresa || "",
+          proyecto?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((proyecto) => ({
+        id: `project-${proyecto.id_proyecto}`,
+        label: `Proyecto: ${proyecto.nombre_proyecto || "Sin nombre"}`,
+        hint: `Empresa: ${proyecto.empresa || "Sin Empresa"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          setEmpresaFilter(ALL_COMPANIES_FILTER);
+          setExpandedEmpresas([]);
+          applySearchQuery(proyecto?.nombre_proyecto || "", { preserveFilters: true });
+          focusProjectSearch();
+        },
+      }));
+  }, [proyectos, commandQuery, focusProjectSearch]);
+
+  const companyCommandItems = useMemo(() => {
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return [];
+
+    return empresas
+      .filter((empresa) => {
+        const searchable = [
+          empresa?.nombre_empresa || "",
+          empresa?.razon_social || "",
+          empresa?.id_asociado || "",
+          empresa?.descripcion || "",
+        ].join(" ");
+
+        return textMatchesQuery(searchable, normalized);
+      })
+      .slice(0, 25)
+      .map((empresa) => ({
+        id: `company-${empresa.id_empresa}`,
+        label: `Empresa: ${empresa.nombre_empresa || "Sin nombre"}`,
+        hint: `ID: ${empresa.id_asociado || "N/A"}`,
+        keepSearchContext: true,
+        action: () => {
+          setActiveSection("proyectos");
+          setAvailability("todas");
+          const selectedCompanyName = empresa?.nombre_empresa || "";
+          const companyGroupKey = resolveCompanyGroupKey(selectedCompanyName, companyGroupKeys);
+
+          setEmpresaFilter(companyGroupKey || ALL_COMPANIES_FILTER);
+          setExpandedEmpresas(companyGroupKey ? [companyGroupKey] : companyGroupKeys);
+          applySearchQuery(companyGroupKey || selectedCompanyName, { preserveFilters: true });
+          focusProjectSearch();
+        },
+      }));
+  }, [empresas, commandQuery, companyGroupKeys, focusProjectSearch]);
+
+  const commandItems = useMemo(() => {
+    const baseItems = [
+      {
+        id: "section-overview",
+        label: "Ir a Dashboard",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("overview"),
+      },
+      {
+        id: "section-stats",
+        label: "Ir a Estadísticas",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("estadisticas"),
+      },
+      {
+        id: "section-projects",
+        label: "Ir a Proyectos",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("proyectos"),
+      },
+      {
+        id: "section-gestion",
+        label: "Ir a Gestión",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("gestion"),
+      },
+      {
+        id: "act-add-alumno",
+        label: "Abrir: Agregar Alumno a Proyecto",
+        hint: "Acciones",
+        keepSearchContext: false,
+        action: () => {
+          setActiveSection("proyectos");
+          setIsAgregarAlumnoOpen(true);
+          setSelectedProyectoForAlumno(null);
+        },
+      },
+      {
+        id: "act-export-ins",
+        label: "Exportar CSV: Inscripciones",
+        hint: "Exportación",
+        keepSearchContext: false,
+        action: () => {
+          void handleQuickExport("inscripciones");
+        },
+      },
+      {
+        id: "act-export-proy",
+        label: "Exportar CSV: Proyectos",
+        hint: "Exportación",
+        keepSearchContext: false,
+        action: () => {
+          void handleQuickExport("proyectos");
+        },
+      },
+      {
+        id: "act-export-emp",
+        label: "Exportar CSV: Empresas",
+        hint: "Exportación",
+        keepSearchContext: false,
+        action: () => {
+          void handleQuickExport("empresas");
+        },
+      },
+      {
+        id: "act-export-padron",
+        label: "Exportar CSV: Usuarios/Padrón",
+        hint: "Exportación",
+        keepSearchContext: false,
+        action: () => {
+          void handleQuickExport("usuarios_padron");
+        },
+      },
+      {
+        id: "act-export-logs",
+        label: "Exportar CSV: Logs",
+        hint: "Exportación",
+        keepSearchContext: false,
+        action: () => {
+          void handleQuickExport("logs");
+        },
+      },
+    ];
+
+    if (canAccessSystemDashboard) {
+      baseItems.push({
+        id: "section-system",
+        label: "Ir a Sistema",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("sistema"),
+      });
+    }
+
+    const normalized = normalizeSearchText(commandQuery);
+    if (!normalized) return baseItems;
+
+    const filteredBaseItems = baseItems.filter((item) =>
+      textMatchesQuery(item.label, normalized)
+      || textMatchesQuery(item.hint, normalized)
+    );
+
+    return [...filteredBaseItems, ...projectCommandItems, ...companyCommandItems, ...studentCommandItems];
+  }, [
+    commandQuery,
+    canAccessSystemDashboard,
+    projectCommandItems,
+    companyCommandItems,
+    studentCommandItems,
+    handleQuickExport,
+  ]);
+
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      const key = event.key.toLowerCase();
+      const isOpenShortcut = (event.ctrlKey || event.metaKey) && key === "k";
+
+      if (isOpenShortcut) {
+        event.preventDefault();
+        setCommandOpen(true);
+        return;
+      }
+
+      if (!commandOpen) return;
+
+      if (key === "escape") {
+        event.preventDefault();
+        setCommandOpen(false);
+        return;
+      }
+
+      if (!commandItems.length) return;
+
+      if (key === "arrowdown") {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => (prev + 1) % commandItems.length);
+        return;
+      }
+
+      if (key === "arrowup") {
+        event.preventDefault();
+        setActiveCommandIndex((prev) => (prev - 1 + commandItems.length) % commandItems.length);
+        return;
+      }
+
+      if (key === "enter") {
+        event.preventDefault();
+        runCommandItem(commandItems[activeCommandIndex]);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [commandOpen, commandItems, activeCommandIndex, runCommandItem]);
+
+  useEffect(() => {
+    if (!commandOpen) {
+      setCommandQuery("");
+      setActiveCommandIndex(0);
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      commandInputRef.current?.focus();
+      commandInputRef.current?.select();
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [commandOpen]);
+
+  useEffect(() => {
+    setActiveCommandIndex(0);
+  }, [commandQuery]);
+
+  useEffect(() => {
+    if (!commandOpen || !commandItems.length) return;
+    const activeElement = commandItemRefs.current[activeCommandIndex];
+    if (activeElement) {
+      activeElement.scrollIntoView({ block: "nearest" });
+    }
+  }, [commandOpen, commandItems.length, activeCommandIndex]);
 
   const sectionMeta = {
     overview: {
@@ -812,6 +1157,24 @@ export default function AdminDashboard() {
                           {item.label}
                         </button>
                       ))}
+
+                      {(searchQuery || availability !== "todas" || empresaFilter !== ALL_COMPANIES_FILTER || sortMode !== "demanda") ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSearchQuery("");
+                            setSearchDraft("");
+                            setAvailability("todas");
+                            setEmpresaFilter(ALL_COMPANIES_FILTER);
+                            setSortMode("demanda");
+                            setExpandedEmpresas([]);
+                            setExpandedProyectos([]);
+                          }}
+                          className="px-3 py-1.5 rounded-full text-xs border transition-colors bg-red-500/10 border-red-400/25 text-red-100 hover:bg-red-500/20"
+                        >
+                          Reset filtros
+                        </button>
+                      ) : null}
                     </div>
 
                     <div className="mt-3 flex flex-col md:flex-row md:items-center gap-2 md:gap-3">
@@ -825,6 +1188,7 @@ export default function AdminDashboard() {
                         <div className="relative flex-1">
                           <Search className="w-4 h-4 text-white/45 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                           <Input
+                            ref={projectSearchInputRef}
                             value={searchDraft}
                             onChange={(e) => setSearchDraft(e.target.value)}
                             placeholder="Buscar alumno, matricula o carrera"
@@ -898,7 +1262,8 @@ export default function AdminDashboard() {
                                 {proys.map((p) => {
                                   const isProyectoExpanded = expandedProyectos.includes(p.id_proyecto);
                                   const inscritos = Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos : [];
-                                  const inscritosVisibles = q
+                                  const projectMatchesQuery = doesProjectMatchNonStudentFields(p, q);
+                                  const inscritosVisibles = q && !projectMatchesQuery
                                     ? inscritos.filter((alumno) => textIncludesQuery(buildAlumnoSearchText(alumno), q))
                                     : inscritos;
 
@@ -1000,7 +1365,7 @@ export default function AdminDashboard() {
                                                   </div>
                                                 ) : (
                                                   <div className="px-3 py-4 text-xs text-white/45">
-                                                    {q ? "No hay alumnos en este proyecto que coincidan con la busqueda." : "Este proyecto no tiene alumnos inscritos todavia."}
+                                                    {q && !projectMatchesQuery ? "No hay alumnos en este proyecto que coincidan con la busqueda." : "Este proyecto no tiene alumnos inscritos todavia."}
                                                   </div>
                                                 )}
                                               </div>
@@ -1447,6 +1812,65 @@ export default function AdminDashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {commandOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
+          <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-black/75 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
+            <div className="p-3 border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/45" />
+                <input
+                  ref={commandInputRef}
+                  type="text"
+                  value={commandQuery}
+                  onChange={(event) => setCommandQuery(event.target.value)}
+                  placeholder="Buscar comando, alumno, empresa o proyecto..."
+                  role="combobox"
+                  aria-expanded={commandOpen}
+                  aria-controls="admin-command-list"
+                  aria-activedescendant={commandItems.length ? `admin-command-item-${commandItems[activeCommandIndex]?.id}` : undefined}
+                  className="w-full h-11 rounded-xl bg-white/10 border border-white/15 text-white placeholder:text-white/45 pl-9 pr-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/30"
+                />
+              </div>
+            </div>
+
+            <div id="admin-command-list" role="listbox" className="max-h-[55vh] overflow-y-auto p-2">
+              {commandItems.length > 0 ? commandItems.map((item, idx) => (
+                <button
+                  key={item.id}
+                  id={`admin-command-item-${item.id}`}
+                  role="option"
+                  aria-selected={idx === activeCommandIndex}
+                  ref={(node) => {
+                    commandItemRefs.current[idx] = node;
+                  }}
+                  type="button"
+                  onClick={() => runCommandItem(item)}
+                  className={`relative w-full text-left px-3 py-2 rounded-lg transition-colors ${idx === activeCommandIndex ? "text-white" : "hover:bg-white/10"}`}
+                >
+                  {idx === activeCommandIndex ? (
+                    <motion.span
+                      layoutId="admin-command-active-highlight"
+                      className="absolute inset-0 rounded-lg border border-blue-400/35 bg-gradient-to-r from-blue-500/20 via-blue-400/10 to-transparent"
+                      transition={{ type: "spring", stiffness: 380, damping: 34 }}
+                    />
+                  ) : null}
+                  <div className="relative z-10">
+                    <p className="text-sm font-semibold text-white">{item.label}</p>
+                    <p className="text-[11px] text-white/50 uppercase tracking-wider">{item.hint}</p>
+                  </div>
+                </button>
+              )) : (
+                <div className="px-3 py-6 text-sm text-white/45">Sin comandos que coincidan.</div>
+              )}
+            </div>
+
+            <div className="px-4 py-2 border-t border-white/10 text-[11px] text-white/45 uppercase tracking-wider">
+              Navegación: ↑ ↓ Enter - Abrir: Ctrl+K - Cerrar: Esc - Busca alumnos, empresas y proyectos
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
