@@ -15,8 +15,14 @@ def upgrade() -> None:
 
     if "google_nonces" in inspector.get_table_names():
         columns = [c["name"] for c in inspector.get_columns("google_nonces")]
-        if "nonce" in columns:
+        indexes = [idx["name"] for idx in inspector.get_indexes("google_nonces")]
+        
+        # Solo eliminar el índice si existe
+        if "ix_google_nonces_nonce" in indexes:
             op.drop_index("ix_google_nonces_nonce", table_name="google_nonces")
+        
+        # Solo eliminar la columna si existe
+        if "nonce" in columns:
             op.drop_column("google_nonces", "nonce")
 
 

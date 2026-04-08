@@ -57,7 +57,6 @@ async def generate_and_store_nonce(db: AsyncSession) -> str:
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
     
     db.add(GoogleNonce(
-        nonce=nonce,
         nonce_hash=nonce_h,
         expira_en=expires_at,
         usado=False,
