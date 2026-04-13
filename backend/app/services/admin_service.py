@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.core.cache import cached, cache_delete
+from app.core.cache import cached, cache_delete, cache_delete_prefix
 from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
@@ -142,6 +142,7 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
 
     await cache_delete("kpis")
     await cache_delete("ocupacion_eventos")
+    await cache_delete_prefix("admin_proyectos")
 
     return {
         "id_proyecto": proyecto.id_proyecto,
@@ -173,6 +174,7 @@ async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int)
 
     await cache_delete("kpis")
     await cache_delete("ocupacion_eventos")
+    await cache_delete_prefix("admin_proyectos")
 
     return {
         "id_proyecto": proyecto.id_proyecto,
@@ -234,6 +236,7 @@ async def eliminar_inscripcion(
     await cache_delete("ocupacion_eventos")
     await cache_delete("alumnos_por_empresa")
     await cache_delete("alumnos_por_carrera")
+    await cache_delete_prefix("admin_proyectos")
 
     return {
         "ok": True,
@@ -376,6 +379,7 @@ async def crear_inscripcion(
     await cache_delete("ocupacion_eventos")
     await cache_delete("alumnos_por_empresa")
     await cache_delete("alumnos_por_carrera")
+    await cache_delete_prefix("admin_proyectos")
 
     return {
         "ok": True,

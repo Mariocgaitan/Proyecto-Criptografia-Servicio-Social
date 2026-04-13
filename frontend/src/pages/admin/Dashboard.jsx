@@ -208,7 +208,10 @@ export default function AdminDashboard() {
   const [proyectos, setProyectos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
-  const [activeSection, setActiveSection] = useState("overview");
+  
+  // Usuarios técnicos solo ven "sistema", admins normales ven todo excepto "sistema"
+  const canAccessSystemDashboard = SYSTEM_DASHBOARD_ALLOWED_EMAILS.includes((user?.correo || "").toLowerCase());
+  const [activeSection, setActiveSection] = useState(canAccessSystemDashboard ? "sistema" : "overview");
   const proyectoOptionRefs = useRef([]);
   const alumnoOptionRefs = useRef([]);
   const alumnoInputRef = useRef(null);
@@ -250,8 +253,6 @@ export default function AdminDashboard() {
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [preserveFiltersOnNextSearch, setPreserveFiltersOnNextSearch] = useState(false);
 
-  const canAccessSystemDashboard = SYSTEM_DASHBOARD_ALLOWED_EMAILS.includes((user?.correo || "").toLowerCase());
-
   const proyectosConCupo = useMemo(
     () => proyectos.filter((p) => p.cupo_actual < p.capacidad_max),
     [proyectos]
@@ -292,6 +293,9 @@ export default function AdminDashboard() {
   }, [alumnoActiveIndex, filteredAlumnosDisponibles.length]);
 
   const fetchData = async () => {
+    // Usuarios técnicos no necesitan cargar proyectos/empresas/eventos
+    if (canAccessSystemDashboard) return;
+    
     try {
       const [ps, es, evs] = await Promise.all([
         fetch(apiUrl("/api/v1/admin/proyectos?page_size=100"), { credentials: "include" }).then(res => res.json()).then(d => Array.isArray(d) ? d : (d?.data ?? [])),
@@ -305,6 +309,9 @@ export default function AdminDashboard() {
   useEffect(() => { fetchData(); }, []);
 
   useEffect(() => {
+    // Usuarios técnicos no necesitan auto-refresh de proyectos/empresas/eventos
+    if (canAccessSystemDashboard) return;
+    
     const syncIfVisible = () => {
       if (document.hidden) return;
       fetchData();
@@ -718,13 +725,18 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
-                <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
-                <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
-                <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
                 {canAccessSystemDashboard ? (
+                  // Usuario técnico: solo mostrar "Sistema"
                   <button onClick={() => handleSectionChange("sistema")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "sistema" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Sistema</button>
-                ) : null}
+                ) : (
+                  // Admin normal: todos los tabs EXCEPTO "Sistema"
+                  <>
+                    <button onClick={() => handleSectionChange("overview")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "overview" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Dashboard</button>
+                    <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
+                    <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
+                    <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+                  </>
+                )}
               </div>
 
             </div>

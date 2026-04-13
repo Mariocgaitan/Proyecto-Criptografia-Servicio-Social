@@ -179,15 +179,14 @@ async def request_metrics_middleware(request: Request, call_next) -> Response:
         status_code = response.status_code
         return response
     finally:
-        if request.url.path.startswith("/api/"):
-            ended_at = datetime.now(UTC)
-            duration_ms = max((ended_at - started_at).total_seconds() * 1000, 0.0)
+        ended_at = datetime.now(UTC)
+        duration_ms = max((ended_at - started_at).total_seconds() * 1000, 0.0)
 
-            # Fire-and-forget: don't block the response waiting for DB write
-            asyncio.create_task(_save_metric(
-                started_at, request.url.path[:255], request.method,
-                int(status_code), round(duration_ms, 3),
-            ))
+        # Fire-and-forget: don't block the response waiting for DB write
+        asyncio.create_task(_save_metric(
+            started_at, request.url.path[:255], request.method,
+            int(status_code), round(duration_ms, 3),
+        ))
 
 
 async def _save_metric(

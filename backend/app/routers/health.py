@@ -13,7 +13,7 @@ router = APIRouter(tags=["Health"])
 _VERSION = "0.5.0"
 
 
-@router.get("/health")
+@router.get("/api/v1/health")
 async def health_check():
     """Public health check. No auth required."""
     db_ok = await _check_db()

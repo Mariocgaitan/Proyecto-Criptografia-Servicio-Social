@@ -60,3 +60,13 @@ async def api_cache_stats(
 ):
     """Returns Redis cache hit/miss statistics."""
     return await cache_stats()
+
+
+@router.get("/api/v1/admin/sistema/login-eventos", tags=["Admin", "Sistema"])
+async def api_login_eventos(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await system_metrics_service.get_login_events(db, page=page, page_size=page_size)
