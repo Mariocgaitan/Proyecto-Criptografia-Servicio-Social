@@ -35,7 +35,7 @@ const normalizeSearchText = (value) =>
 
 const ALL_COMPANIES_FILTER = "todas";
 const ADMIN_SYNC_MS = 5000;
-const SYSTEM_DASHBOARD_ALLOWED_EMAILS = ["dashboarddelospros@tec.mx"];
+const SYSTEM_DASHBOARD_ALLOWED_EMAILS = ["mariog@tec.mx", "alan1x@gmail.com"];
 
 const resolveCompanyGroupKey = (companyName, groupKeys) => {
   const normalizedCompany = normalizeSearchText(companyName);

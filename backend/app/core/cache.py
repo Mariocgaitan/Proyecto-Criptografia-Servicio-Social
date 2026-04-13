@@ -69,23 +69,64 @@ async def cache_delete(key: str) -> None:
         logger.warning("cache_delete_error", key=key)
 
 
+async def cache_delete_prefix(prefix: str) -> int:
+    """Delete all cache keys that start with a logical prefix."""
+    redis = get_redis()
+    if redis is None:
+        return 0
+    try:
+        pattern = f"{PREFIX}{prefix}*"
+        keys = await redis.keys(pattern)
+        if not keys:
+            return 0
+        return int(await redis.delete(*keys) or 0)
+    except Exception:
+        logger.warning("cache_delete_prefix_error", prefix=prefix)
+        return 0
+
+
 async def cache_stats() -> dict:
     """Return cache hit/miss statistics."""
     redis = get_redis()
     if redis is None:
-        return {"hits": 0, "misses": 0, "ratio": None, "available": False}
+        return {
+            "hits": 0,
+            "misses": 0,
+            "total_requests": 0,
+            "hit_rate": "0%",
+            "miss_rate": "0%",
+            "time_saved": "0s",
+            "available": False,
+        }
     try:
         hits = int(await redis.get(HITS_KEY) or 0)
         misses = int(await redis.get(MISSES_KEY) or 0)
         total = hits + misses
+        hit_rate = (hits / total * 100) if total > 0 else 0
+        miss_rate = (misses / total * 100) if total > 0 else 0
+        # Asumimos ~50ms ahorrados por hit (evitamos query a DB)
+        time_saved_ms = hits * 50
+        time_saved_s = time_saved_ms / 1000
+        
         return {
             "hits": hits,
             "misses": misses,
-            "ratio": round(hits / total, 4) if total > 0 else None,
+            "total_requests": total,
+            "hit_rate": f"{hit_rate:.1f}%",
+            "miss_rate": f"{miss_rate:.1f}%",
+            "time_saved": f"{time_saved_s:.1f}s" if time_saved_s < 60 else f"{(time_saved_s/60):.1f}m",
             "available": True,
         }
     except Exception:
-        return {"hits": 0, "misses": 0, "ratio": None, "available": False}
+        return {
+            "hits": 0,
+            "misses": 0,
+            "total_requests": 0,
+            "hit_rate": "0%",
+            "miss_rate": "0%",
+            "time_saved": "0s",
+            "available": False,
+        }
 
 
 def cached(key: str, ttl: int = 300):
