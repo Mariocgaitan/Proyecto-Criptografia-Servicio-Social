@@ -127,7 +127,7 @@ export default function Login() {
   });
 
   return (
-    <div className="min-h-screen relative flex flex-col overflow-hidden">
+    <div className="min-h-screen relative flex flex-col overflow-hidden select-none cursor-default">
       {/* ─── Full-screen Background Image ─── */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <AnimatePresence mode="sync" initial={false}>
