@@ -21,6 +21,7 @@ from app.core.security import (
 from app.models.evento import Evento
 from app.models.google_nonce import GoogleNonce
 from app.models.log_auditoria import LogAuditoria
+from app.models.padron_alumno import PadronAlumno
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
@@ -484,17 +485,69 @@ async def verify_totp_and_get_token(
             effective_role = "admin"
             needs_profile = False
 
-        import uuid
-        prefix = "ADM" if effective_role == "admin" else "EMP" if effective_role == "empresa" else "GGL"
-        temp_matricula = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
+        # Intentar extraer matrícula del correo institucional (A01234567@tec.mx)
+        # La matrícula es la ÚNICA llave de match contra el padrón: de ahí sale
+        # el nombre, la carrera y el semestre oficiales.
+        padron_nombre = None
+        padron_carrera = None
+        padron_semestre = None
+        padron_matricula = None
+        if effective_role == "alumno":
+            match = re.match(r"^(a0\d{7})@tec\.mx$", correo.lower())
+            if match:
+                matricula_candidata = match.group(1).upper()
+                try:
+                    padron_result = await db.execute(
+                        select(PadronAlumno).where(PadronAlumno.id_matricula == matricula_candidata)
+                    )
+                    padron_record = padron_result.scalar_one_or_none()
+                    if padron_record:
+                        padron_matricula = padron_record.id_matricula
+                        padron_nombre = padron_record.nombre_completo
+                        padron_carrera = padron_record.carrera
+                        padron_semestre = padron_record.semestre
+                except Exception as e:
+                    # Si hay error consultando el padrón, continúa con el fallback
+                    import logging
+                    logging.getLogger(__name__).warning(
+                        f"Error consultando padrón para {matricula_candidata}: {e}"
+                    )
 
-        # Asignar PENDIENTE de carrera y 0 de semestre sólo si se le obligará a tener perfil
+        # Verificar que la matrícula del padrón no esté ya ocupada por otro Usuario
+        if padron_matricula:
+            existing_check = await db.execute(
+                select(Usuario).where(Usuario.id_matricula == padron_matricula)
+            )
+            if existing_check.scalar_one_or_none():
+                padron_matricula = None  # Hay colisión, cae al fallback
+                padron_nombre = None
+                padron_carrera = None
+                padron_semestre = None
+
+        if padron_matricula:
+            id_matricula_final = padron_matricula
+        else:
+            import uuid
+            prefix = "ADM" if effective_role == "admin" else "EMP" if effective_role == "empresa" else "GGL"
+            id_matricula_final = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
+
+        # Nombre: el del padrón es la fuente de verdad; si no hay, cae al de Google
+        nombre_final = padron_nombre or nombre
+
+        # Carrera/semestre: del padrón si existen; de lo contrario PENDIENTE (alumnos) o N/A
+        if padron_carrera:
+            carrera_final = padron_carrera
+            semestre_final = padron_semestre or 0
+        else:
+            carrera_final = "PENDIENTE" if effective_role == "alumno" else "N/A"
+            semestre_final = 0
+
         usuario = Usuario(
-            id_matricula=temp_matricula,
-            nombre=nombre,
+            id_matricula=id_matricula_final,
+            nombre=nombre_final,
             correo=correo,
-            carrera="PENDIENTE" if needs_profile else "N/A",
-            semestre=0,
+            carrera=carrera_final,
+            semestre=semestre_final,
             password_hash=None,
             is_google_login=True,
             totp_secret=totp_secret,
@@ -502,7 +555,7 @@ async def verify_totp_and_get_token(
         )
         db.add(usuario)
         await db.flush()
-        await _log(db, "REGISTRO_GOOGLE_NUEVO", id_matricula=temp_matricula, ip_origen=ip_origen)
+        await _log(db, "REGISTRO_GOOGLE_NUEVO", id_matricula=id_matricula_final, ip_origen=ip_origen)
 
         # Marcar token temporal como usado
         temp_totp_record.usado = True
