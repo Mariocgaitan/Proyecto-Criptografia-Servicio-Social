@@ -5,6 +5,8 @@ from typing import Annotated
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
+from app.core.secrets import load_secrets
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ROOT_ENV_FILE = PROJECT_ROOT / ".env"
@@ -130,4 +132,5 @@ class Settings(BaseSettings):
         return self.is_production or self.USE_HTTPS
 
 
+load_secrets()
 settings = Settings()
