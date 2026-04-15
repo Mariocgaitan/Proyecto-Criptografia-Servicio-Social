@@ -33,6 +33,8 @@ dependencies = [
     "structlog>=24.0.0",
     # Error tracking
     "sentry-sdk[fastapi]>=2.0.0",
+    # AWS (Parameter Store secrets provider)
+    "boto3>=1.34.0",
 ]
 
 [tool.uv]
