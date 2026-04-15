@@ -78,17 +78,28 @@ def test_aws_provider_handles_trailing_slash_in_prefix(fake_ssm_page):
         assert provider.get("JWT_SECRET_KEY") == "jwt-value"
 
 
-def test_build_provider_selects_aws_backend(monkeypatch, fake_ssm_page):
+def test_build_provider_selects_aws_backend(monkeypatch):
     from app.core import secrets as secrets_module
 
     monkeypatch.setenv("SECRETS_BACKEND", "aws")
     monkeypatch.setenv("AWS_SECRETS_PREFIX", "/sid/prod")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
 
-    fake_client = _make_fake_client(fake_ssm_page)
-    with patch("boto3.client", return_value=fake_client):
+    # boto3.client is patched so construction does not touch real AWS;
+    # _load() is not exercised here — that's covered by other tests.
+    with patch("boto3.client", return_value=MagicMock()):
         provider = secrets_module._build_provider()
         assert isinstance(provider, secrets_module.AwsParameterStoreProvider)
+
+
+def test_build_provider_aws_fails_fast_when_prefix_missing(monkeypatch):
+    from app.core import secrets as secrets_module
+
+    monkeypatch.setenv("SECRETS_BACKEND", "aws")
+    monkeypatch.delenv("AWS_SECRETS_PREFIX", raising=False)
+
+    with pytest.raises(KeyError):
+        secrets_module._build_provider()
 
 
 def test_load_secrets_populates_os_environ_from_aws(monkeypatch, fake_ssm_page):
@@ -108,6 +119,9 @@ def test_load_secrets_populates_os_environ_from_aws(monkeypatch, fake_ssm_page):
     assert os.environ["JWT_SECRET_KEY"] == "jwt-value"
     assert os.environ["DATABASE_URL"] == "db-value"
     assert os.environ["REDIS_URL"] == "redis-value"
+    # Keys present in SECRET_KEYS but absent from Parameter Store must
+    # not be injected into the environment (harmless placeholder behavior).
+    assert "SENTRY_DSN" not in os.environ
 
 
 def test_redis_url_is_in_secret_keys():

@@ -1,8 +1,8 @@
 """Secrets provider abstraction.
 
 Today secrets come from environment variables (.env). In production they
-should come from a real secret manager (HashiCorp Vault, GCP Secret Manager,
-etc.). This module is the single seam that decides where
+should come from a real secret manager (HashiCorp Vault, AWS Systems Manager
+Parameter Store, GCP Secret Manager, etc.). This module is the single seam that decides where
 secrets come from, so the rest of the backend never needs to change when we
 migrate.
 
