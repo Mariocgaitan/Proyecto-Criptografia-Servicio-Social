@@ -1,8 +1,8 @@
 """Secrets provider abstraction.
 
 Today secrets come from environment variables (.env). In production they
-should come from a real secret manager (HashiCorp Vault, AWS Secrets Manager,
-GCP Secret Manager, etc.). This module is the single seam that decides where
+should come from a real secret manager (HashiCorp Vault, GCP Secret Manager,
+etc.). This module is the single seam that decides where
 secrets come from, so the rest of the backend never needs to change when we
 migrate.
 
@@ -29,6 +29,7 @@ SECRET_KEYS: tuple[str, ...] = (
     "SMTP_PASSWORD",
     "DATABASE_URL",
     "GOOGLE_CLIENT_ID",
+    "REDIS_URL",
     "SENTRY_DSN",
 )
 
@@ -44,11 +45,46 @@ class EnvSecretsProvider:
         return os.environ.get(name)
 
 
+class AwsParameterStoreProvider:
+    """Reads secrets from AWS Systems Manager Parameter Store under a prefix.
+
+    One paginated `get_parameters_by_path` call pulls every parameter at boot;
+    values are cached in-memory for the lifetime of the process.
+    """
+
+    def __init__(self, prefix: str, region: str) -> None:
+        import boto3
+
+        self._prefix = prefix.rstrip("/")
+        self._client = boto3.client("ssm", region_name=region)
+        self._cache: dict[str, str] = {}
+        self._loaded = False
+
+    def _load(self) -> None:
+        paginator = self._client.get_paginator("get_parameters_by_path")
+        for page in paginator.paginate(
+            Path=self._prefix, Recursive=True, WithDecryption=True
+        ):
+            for param in page["Parameters"]:
+                key = param["Name"].removeprefix(self._prefix + "/")
+                self._cache[key] = param["Value"]
+        self._loaded = True
+
+    def get(self, name: str) -> str | None:
+        if not self._loaded:
+            self._load()
+        return self._cache.get(name)
+
+
 def _build_provider() -> SecretsProvider:
     backend = os.environ.get("SECRETS_BACKEND", "env").lower()
     if backend == "env":
         return EnvSecretsProvider()
-    # Future: "vault", "aws", "gcp", "sops". Each adds one branch here.
+    if backend == "aws":
+        prefix = os.environ["AWS_SECRETS_PREFIX"]
+        region = os.environ.get("AWS_REGION", "us-east-1")
+        return AwsParameterStoreProvider(prefix=prefix, region=region)
+    # Future: "vault", "gcp", "sops". Each adds one branch here.
     raise ValueError(f"Unknown SECRETS_BACKEND: {backend!r}")
 
 
