@@ -60,6 +60,9 @@ MATRIZ_DATOS_GRAFICAS_ADMIN.md
 # Certificados SSL locales (mkcert)
 certs/
 
+# Flag file del maintenance kill-switch (vive en el VPS, no en el repo).
+nginx/state/*.on
+
 # Archivos temporales / locales
 *.tmp
 *.bak
