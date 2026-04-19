@@ -1,5 +1,6 @@
 import hashlib
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -52,5 +53,132 @@ def generate_refresh_token() -> str:
 def hash_refresh_token(raw_token: str) -> str:
     """Hashea un refresh token con SHA-256 para guardarlo en DB."""
     return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+# ── Pre-Auth Temp Token ────────────────────────────────────────────────────────
+
+def generate_pre_auth_token() -> str:
+    """Genera un token temporal para el pre-auth (antes de TOTP). URL-safe, 32 bytes."""
+    return secrets.token_urlsafe(32)
+
+
+def hash_pre_auth_token(raw_token: str) -> str:
+    """Hashea un pre-auth token con SHA-256 para guardarlo en DB."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def create_pre_auth_jwt(data: dict) -> str:
+    """
+    Genera un JWT temporal para registro diferido de Google Auth.
+    Expira en 15 minutos.
+    """
+    payload = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    payload.update({"exp": expire, "iat": datetime.now(timezone.utc), "type": "pre_auth"})
+    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+
+
+def decode_pre_auth_jwt(token: str) -> dict:
+    """
+    Decodifica un JWT de registro diferido.
+    Lanza jwt.ExpiredSignatureError o jwt.InvalidTokenError si es inválido.
+    """
+    payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+    if payload.get("type") != "pre_auth":
+        raise jwt.InvalidTokenError("Token type no es pre_auth")
+    return payload
+
+
+# ── Google OAuth Validation ────────────────────────────────────────────────────
+
+def validate_google_token(id_token: str) -> dict:
+    """
+    Valida un ID Token de Google y retorna los datos del usuario.
+    
+    Lanza ValueError si el token es inválido o la signa no es de Google.
+    Retorna: {"email": "...", "name": "...", "picture": "...", ...}
+    """
+    from google.auth.transport import requests
+    from google.oauth2 import id_token as google_id_token
+    
+    try:
+        # Validar que el token viene de Google
+        idinfo = google_id_token.verify_oauth2_token(
+            id_token,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+        
+        # Verificar que no es un token expirado o de otro origen
+        if not idinfo.get("email_verified"):
+            raise ValueError("Email no verificado en Google")
+            
+        return idinfo
+    except ValueError as e:
+        raise ValueError(f"Token de Google inválido: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Error al validar token de Google: {str(e)}")
+
+
+# ── Google Nonce para prevenir replay attacks ──────────────────────────────────
+
+def generate_nonce() -> str:
+    """
+    Genera un nonce (número que se usa una sola vez) para Google OAuth.
+    Retorna un UUID4 como string.
+    """
+    return str(uuid.uuid4())
+
+
+def hash_nonce(nonce: str) -> str:
+    """Hashea un nonce con SHA-256 para guardarlo en DB."""
+    return hashlib.sha256(nonce.encode("utf-8")).hexdigest()
+
+
+def validate_google_token_with_nonce(id_token: str, expected_nonce_hash: str) -> dict:
+    """
+    Valida un ID Token de Google e incluye validación del nonce.
+    
+    El nonce es un valor criptográfico enviado en la solicitud a Google que Google
+    incluye sin modificar en el id_token. Esto previene ataques de replay y XSS.
+    
+    Args:
+        id_token: El token ID de Google
+        expected_nonce_hash: Hash SHA-256 del nonce esperado (ya hasheado en DB)
+    
+    Retorna: dict con info del usuario si el nonce es válido
+    Lanza: ValueError si el token es inválido o el nonce no coincide
+    """
+    from google.auth.transport import requests
+    from google.oauth2 import id_token as google_id_token
+    
+    try:
+        # Validar que el token viene de Google
+        idinfo = google_id_token.verify_oauth2_token(
+            id_token,
+            requests.Request(),
+            settings.GOOGLE_CLIENT_ID
+        )
+        
+        # Verificar que no es un token expirado o de otro origen
+        if not idinfo.get("email_verified"):
+            raise ValueError("Email no verificado en Google")
+        
+        # Validar el nonce
+        nonce_from_token = idinfo.get("nonce")
+        if not nonce_from_token:
+            raise ValueError("Nonce no encontrado en el token de Google")
+        
+        nonce_hash_from_token = hash_nonce(nonce_from_token)
+        if nonce_hash_from_token != expected_nonce_hash:
+            raise ValueError("Nonce no coincide o ya fue utilizado")
+            
+        return idinfo
+    except ValueError as e:
+        raise ValueError(f"Validación de Google OAuth fallida: {str(e)}")
+    except Exception as e:
+        raise ValueError(f"Error al validar token de Google: {str(e)}")
+
+
 
 

@@ -4,46 +4,59 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
-# Copiar package.json e instalar dependencias
 COPY frontend/package*.json ./
 RUN npm ci
 
-# Copiar el código fuente de React y compilar
 COPY frontend/ ./
 RUN npm run build
 
 # ==========================================
-# ETAPA 2: Build del Backend (FastAPI)
+# ETAPA 2: Backend (FastAPI) + Frontend compilado
 # ==========================================
-FROM python:3.11-slim
+FROM python:3.12-slim AS backend
 
-WORKDIR /app
-
-# Dependencias del sistema necesarias para compilar algunas libs de Python
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
+        gcc \
+        libpq-dev \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Configurar entorno de Python
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Instalar dependencias del backend
+RUN groupadd --system app && useradd --system --gid app --home /app app
+
+WORKDIR /app/backend
+
 COPY backend/requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
-# Copiar el código del backend
-COPY backend/ ./backend/
+COPY backend/ ./
 
-# Crear la carpeta donde FastAPI servirá los estáticos
 RUN mkdir -p /app/frontend/dist
-
-# TRUCO MÁGICO: Copiar el build compilado de la Etapa 1 a la imagen de Python
 COPY --from=frontend-builder /app/frontend/dist /app/frontend/dist
 
-# Exponer el puerto
+RUN chown -R app:app /app
+USER app
+
 EXPOSE 8000
 
-# Script de arranque usando Uvicorn
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--forwarded-allow-ips", "*"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=45s --retries=3 \
+    CMD curl --fail --silent --show-error http://127.0.0.1:8000/api/v1/health || exit 1
+
+# WEB_CONCURRENCY=1 por defecto: el SSH tunnel usa puertos fijos y no soporta
+# múltiples workers forkeados. Para escalar horizontalmente mover el tunnel a un
+# sidecar (autossh) y subir WEB_CONCURRENCY.
+CMD ["sh", "-c", "gunicorn app.main:app \
+    --worker-class uvicorn.workers.UvicornWorker \
+    --workers ${WEB_CONCURRENCY:-1} \
+    --bind 0.0.0.0:8000 \
+    --timeout 60 \
+    --graceful-timeout 30 \
+    --max-requests 1000 \
+    --max-requests-jitter 100 \
+    --access-logfile - \
+    --error-logfile - \
+    --forwarded-allow-ips=*"]

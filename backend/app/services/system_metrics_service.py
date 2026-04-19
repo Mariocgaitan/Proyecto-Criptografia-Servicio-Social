@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, func, literal_column, select
@@ -8,8 +9,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.log_auditoria import LogAuditoria
 from app.models.request_metric import RequestMetric
+from app.models.usuario import Usuario
+from app.core.pagination import paginate
 
 APP_STARTED_AT = datetime.now(UTC)
+
+
+def _extract_email_from_detalle(detalle: str | None) -> str | None:
+    if not detalle:
+        return None
+
+    # Formato esperado en logs de login fallido: "correo: foo@bar.com"
+    match = re.search(r"correo\s*:\s*([^\s]+@[^\s]+)", detalle, flags=re.IGNORECASE)
+    if match:
+        return match.group(1).strip().lower()
+    return None
 
 
 def _is_missing_request_metrics_table(exc: Exception) -> bool:
@@ -127,12 +141,30 @@ async def get_login_activity(db: AsyncSession, window_minutes: int = 60) -> dict
         await db.execute(
             select(
                 minute_bucket.label("minute"),
-                func.sum(case((LogAuditoria.tipo_evento == "LOGIN_EXITOSO", 1), else_=0)).label("exitosos"),
-                func.sum(case((LogAuditoria.tipo_evento == "LOGIN_FALLIDO", 1), else_=0)).label("fallidos"),
+                func.sum(
+                    case(
+                        (
+                            LogAuditoria.tipo_evento.in_(["LOGIN_EXITOSO", "LOGIN_GOOGLE_EXITOSO"]),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("exitosos"),
+                func.sum(
+                    case(
+                        (
+                            LogAuditoria.tipo_evento.in_(["LOGIN_FALLIDO", "GOOGLE_LOGIN_FALLIDO"]),
+                            1,
+                        ),
+                        else_=0,
+                    )
+                ).label("fallidos"),
             )
             .where(
                 LogAuditoria.timestamp >= start_dt,
-                LogAuditoria.tipo_evento.in_(["LOGIN_EXITOSO", "LOGIN_FALLIDO"]),
+                LogAuditoria.tipo_evento.in_(
+                    ["LOGIN_EXITOSO", "LOGIN_FALLIDO", "LOGIN_GOOGLE_EXITOSO", "GOOGLE_LOGIN_FALLIDO"]
+                ),
             )
             .group_by(minute_bucket)
             .order_by(minute_bucket.asc())
@@ -188,10 +220,21 @@ async def get_operational_summary(db: AsyncSession, window_minutes: int = 60) ->
             )
             or 0
         )
+        # Agregar métricas de latencia al resumen
+        avg_ms, p95_ms = (
+            await db.execute(
+                select(
+                    func.coalesce(func.avg(RequestMetric.duration_ms), 0.0),
+                    func.coalesce(func.percentile_cont(0.95).within_group(RequestMetric.duration_ms), 0.0),
+                ).where(RequestMetric.request_timestamp >= start_dt)
+            )
+        ).one()
     except ProgrammingError as exc:
         if _is_missing_request_metrics_table(exc):
             total_requests = 0
             total_5xx = 0
+            avg_ms = 0.0
+            p95_ms = 0.0
         else:
             raise
     error_rate_5xx = round((total_5xx / total_requests) * 100, 2) if total_requests else 0.0
@@ -203,4 +246,43 @@ async def get_operational_summary(db: AsyncSession, window_minutes: int = 60) ->
         "requests_total": total_requests,
         "errores_5xx": total_5xx,
         "error_rate_5xx": error_rate_5xx,
+        "latencia_avg_ms": round(float(avg_ms or 0.0), 2),
+        "latencia_p95_ms": round(float(p95_ms or 0.0), 2),
     }
+
+
+async def get_login_events(db: AsyncSession, page: int = 1, page_size: int = 50) -> dict:
+    base_query = (
+        select(
+            LogAuditoria.id_log,
+            LogAuditoria.timestamp,
+            LogAuditoria.tipo_evento,
+            LogAuditoria.id_matricula,
+            LogAuditoria.ip_origen,
+            LogAuditoria.detalle,
+            Usuario.correo.label("correo"),
+        )
+        .outerjoin(Usuario, Usuario.id_matricula == LogAuditoria.id_matricula)
+        .where(
+            LogAuditoria.tipo_evento.in_(
+                ["LOGIN_EXITOSO", "LOGIN_FALLIDO", "GOOGLE_LOGIN_FALLIDO", "LOGIN_GOOGLE_EXITOSO"]
+            )
+        )
+        .order_by(LogAuditoria.timestamp.desc())
+    )
+
+    result = await paginate(db, base_query, page, page_size)
+    result["data"] = [
+        {
+            "id_log": str(row.id_log),
+            "hora": row.timestamp.isoformat() if row.timestamp else None,
+            "correo": (row.correo or _extract_email_from_detalle(row.detalle) or "-").lower() if (row.correo or _extract_email_from_detalle(row.detalle)) else "-",
+            "estatus": "EXITO" if row.tipo_evento in ["LOGIN_EXITOSO", "LOGIN_GOOGLE_EXITOSO"] else "FALLIDO",
+            "tipo_evento": row.tipo_evento,
+            "metodo": "GOOGLE" if "GOOGLE" in (row.tipo_evento or "") else "PASSWORD",
+            "ip_origen": row.ip_origen,
+            "id_matricula": row.id_matricula,
+        }
+        for row in result["data"]
+    ]
+    return result

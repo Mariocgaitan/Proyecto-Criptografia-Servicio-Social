@@ -21,6 +21,9 @@ env/
 # Environment variables — NUNCA subir al repositorio
 backend/.env
 .env
+.env.production
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -46,18 +49,48 @@ backend/migrations/__pycache__/
 
 # Documentos personales (CV, notas privadas)
 CV_proyecto.md
+LLaves_empresas.md
 Llaves_empresas.md
 MATRIZ_DATOS_GRAFICAS_ADMIN.md
 
 # Archivos de sesión de herramientas de BD (DBeaver, DataGrip, etc.)
 *.session.sql
 *.sql.session
-SID Local.session.sql
+
+# Certificados SSL locales (mkcert)
+certs/
 
 # Archivos temporales / locales
 *.tmp
 *.bak
 *.local
-#Commits
+
+# Node (shadcn en raíz)
+node_modules/
+package-lock.json
+
+# Claude Code
+.claude/
+docs/
+
+# Scripts locales de dev, pero SÍ trackear los de deploy
+scripts/*
+!scripts/deploy/
+!scripts/deploy/**
+# Notas y planes personales
+notas.md
+PLAN_AUTENTICACION.md
+
 commits_20.txt
 commits_40.txt
+commits_60.txt
+commits_utf8.txt
+
+# Archivos de diagnóstico / debug temporal
+backend/check.py
+backend/traceback*.txt
+backend/alembic_error.txt
+backend/log_output.txt
+backend/out2.txt
+traceback*.txt
+alembic_error.txt

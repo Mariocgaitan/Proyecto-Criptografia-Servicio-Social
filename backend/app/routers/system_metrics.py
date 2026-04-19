@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cache_stats
 from app.core.dependencies import get_current_admin
 from app.db.session import get_db
 from app.services import system_metrics_service
@@ -51,3 +52,21 @@ async def api_resumen_sistema(
     _=Depends(get_current_admin),
 ):
     return await system_metrics_service.get_operational_summary(db, ventana_minutos)
+
+
+@router.get("/api/v1/admin/sistema/cache-stats", tags=["Admin", "Sistema"])
+async def api_cache_stats(
+    _=Depends(get_current_admin),
+):
+    """Returns Redis cache hit/miss statistics."""
+    return await cache_stats()
+
+
+@router.get("/api/v1/admin/sistema/login-eventos", tags=["Admin", "Sistema"])
+async def api_login_eventos(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await system_metrics_service.get_login_events(db, page=page, page_size=page_size)

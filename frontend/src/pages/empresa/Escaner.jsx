@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
   Activity,
@@ -32,8 +32,8 @@ import { cn } from "@/lib/utils";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
@@ -68,8 +68,8 @@ function StatCard({ label, value, tone = "default" }) {
     <Card className={cn("rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.2)]", toneMap[tone])}>
       <CardContent className="p-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">{label}</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{value}</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
+          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{value}</p>
         </div>
       </CardContent>
     </Card>
@@ -83,12 +83,12 @@ function OccupancyMeter({ current, max, percent }) {
     <div className="rounded-2xl border border-white/15 bg-black/30 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
-          <p className="mt-3 text-3xl font-bold tracking-tight text-white">{current}/{max}</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
+          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{current}/{max}</p>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
-          <p className="text-2xl font-semibold text-white">{percent}%</p>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
+          <p className="text-2xl font-normal text-white">{percent}%</p>
         </div>
       </div>
 
@@ -138,25 +138,30 @@ function ResultBanner({ result }) {
       className={cn(
         "rounded-2xl border p-4",
         currentStyle.wrapper,
-        isSuccess && "border-emerald-300/55 bg-emerald-500/20 p-6 sm:p-7 shadow-[0_0_35px_rgba(16,185,129,0.35)]"
+        isSuccess && "border-emerald-300/55 bg-emerald-500/20 p-5 shadow-[0_0_35px_rgba(16,185,129,0.35)]"
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-4">
         <Motion.div
-          className="mt-0.5"
-          animate={isSuccess ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+          animate={isSuccess ? { scale: [1, 1.1, 1] } : { scale: 1 }}
           transition={{ duration: 0.45, repeat: isSuccess ? 2 : 0 }}
         >
           {currentStyle.icon}
         </Motion.div>
-        <div>
-          {result.status === "ok" ? (
-            <p className="mb-2 inline-flex rounded-full border border-emerald-300/45 bg-emerald-300/15 px-3 py-1 text-[11px] font-black uppercase tracking-[0.2em] text-emerald-50">
-              Registro exitoso
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className={cn("text-base font-medium text-white truncate", isSuccess && "text-xl font-normal tracking-tight")}>
+              {result.name}
             </p>
-          ) : null}
-          <p className={cn("text-base font-semibold text-white", isSuccess && "text-xl sm:text-2xl font-extrabold tracking-tight")}>{result.name}</p>
-          <p className={cn("mt-1 text-sm leading-relaxed", currentStyle.text, isSuccess && "mt-2 text-base sm:text-lg text-emerald-50")}>{result.message}</p>
+            {isSuccess && result.matricula && (
+              <Badge variant="outline" className="bg-white/10 border-white/20 text-emerald-50 font-mono py-0 text-[10px]">
+                {result.matricula}
+              </Badge>
+            )}
+          </div>
+          <p className={cn("mt-0.5 text-sm font-light", currentStyle.text, isSuccess && "text-emerald-50/70")}>
+            {result.status === "ok" ? "Registro procesado correctamente" : result.message}
+          </p>
         </div>
       </div>
     </Motion.div>
@@ -170,7 +175,7 @@ function TabButton({ active, onClick, icon, children }) {
       type="button"
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+        "inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-normal transition-colors border",
         active
           ? "bg-blue-600/30 border-blue-500/40 text-white"
           : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -194,9 +199,11 @@ export default function EmpresaEscaner() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deletingInscripcionId, setDeletingInscripcionId] = useState(null);
   const [deleteModalInfo, setDeleteModalInfo] = useState(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [activeTab, setActiveTab] = useState("sensor");
   const [lastSync, setLastSync] = useState(null);
-  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [expandedAlumnoId, setExpandedAlumnoId] = useState(null);
+
   const [exportDataset, setExportDataset] = useState("inscripciones");
   const [exportScope, setExportScope] = useState("filtered");
   const [exportingCsv, setExportingCsv] = useState(false);
@@ -298,12 +305,7 @@ export default function EmpresaEscaner() {
     };
   }, [initializing, loadProyecto, proyecto, selectedProjectId]);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
-    }, SCANNER_CONFIG.bgRotationMs);
-    return () => clearInterval(intervalId);
-  }, []);
+
 
   const stopScanner = useCallback(async () => {
     if (!scannerRef.current) {
@@ -327,15 +329,16 @@ export default function EmpresaEscaner() {
     setScanning(false);
   }, []);
 
+  const isProcessingRef = useRef(false);
+
   const onScanSuccess = useCallback(async (decodedText) => {
-    if (switchingProjectRef.current) return;
+    if (switchingProjectRef.current || isProcessingRef.current) return;
 
     const now = Date.now();
     const normalizedText = (decodedText || "").trim();
     const projectIdForScan = activeProjectIdRef.current;
 
-    if (!normalizedText) return;
-    if (!projectIdForScan) return;
+    if (!normalizedText || !projectIdForScan) return;
     if (now < scanLockUntilRef.current) return;
     if (
       lastDecodedRef.current.text === normalizedText
@@ -346,8 +349,7 @@ export default function EmpresaEscaner() {
 
     scanLockUntilRef.current = now + SCANNER_CONFIG.scanCooldownMs;
     lastDecodedRef.current = { text: normalizedText, at: now };
-
-    if (result?.status === "loading") return;
+    isProcessingRef.current = true;
 
     setResult({
       status: "loading",
@@ -368,6 +370,7 @@ export default function EmpresaEscaner() {
         setResult({
           status: "ok",
           name: data.nombre_alumno || "Alumno validado",
+          matricula: data.matricula_alumno,
           message: data.mensaje,
         });
         await loadProyecto(projectIdForScan);
@@ -384,10 +387,11 @@ export default function EmpresaEscaner() {
         name: "Conectividad",
         message: "No se pudo comunicar el sensor con el servidor.",
       });
+    } finally {
+      isProcessingRef.current = false;
+      setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
     }
-
-    setTimeout(() => setResult(null), SCANNER_CONFIG.resultAutoHideMs);
-  }, [loadProyecto, result?.status]);
+  }, [loadProyecto]);
 
   const startScanner = useCallback(async () => {
     if (scannerRef.current || scannerMountingRef.current) return;
@@ -512,6 +516,7 @@ export default function EmpresaEscaner() {
     if (!alumno?.id_inscripcion) return;
 
     setDeleteModalInfo(alumno);
+    setDeleteConfirmText("");
   }, []);
 
   const confirmarEliminarInscripcion = useCallback(async () => {
@@ -622,7 +627,7 @@ export default function EmpresaEscaner() {
       <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-white relative overflow-hidden px-4 text-center">
         <div className="absolute inset-0 bg-black" />
         <AlertCircle className="relative z-10 w-9 h-9 text-blue-200/70" />
-        <p className="relative z-10 font-semibold tracking-wide uppercase text-blue-100/80 text-sm">No se encontro un proyecto activo para esta empresa</p>
+        <p className="relative z-10 font-normal tracking-wide uppercase text-blue-100/80 text-sm">No se encontro un proyecto activo para esta empresa</p>
       </div>
     );
   }
@@ -631,18 +636,11 @@ export default function EmpresaEscaner() {
     <div className="h-dvh min-h-screen relative flex flex-col overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <AnimatePresence mode="sync" initial={false}>
-          <Motion.img
-            key={currentBgIndex}
-            src={campusImages[currentBgIndex]}
-            alt="Campus"
-            className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
-            initial={{ x: "100%" }}
-            animate={{ x: "0%" }}
-            exit={{ x: "-100%" }}
-            transition={{ duration: 3, ease: "easeInOut" }}
-          />
-        </AnimatePresence>
+        <Motion.img
+          src={campusImg1}
+          alt="Campus"
+          className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
+        />
         <div className="absolute inset-0 bg-black/65" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
@@ -656,18 +654,18 @@ export default function EmpresaEscaner() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
-          <p className="text-white/70 text-xs sm:text-sm font-semibold tracking-wide uppercase">Portal Empresa</p>
+          <p className="text-white/70 text-xs sm:text-sm font-normal tracking-wide uppercase">Portal Empresa</p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
-          <Button
-            variant="ghost"
-            className="text-white/70 hover:text-white hover:bg-white/10 transition-colors rounded-xl"
+          <button
             onClick={logout}
+            className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
+            title="Cerrar Sesión"
           >
-            <LogOut className="w-4 h-4 sm:mr-2" />
-            <span className="hidden sm:inline">Cerrar Sesión</span>
-          </Button>
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm font-normal">Cerrar Sesión</span>
+          </button>
         </div>
       </Motion.nav>
 
@@ -699,14 +697,14 @@ export default function EmpresaEscaner() {
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
                   <div className="max-w-3xl">
                     <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
-                      <p className="mt-1 text-base font-semibold text-white">{proyecto.nombre_proyecto}</p>
+                      <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
+                      <p className="mt-1 text-base font-normal text-white">{proyecto.nombre_proyecto}</p>
                       <p className="mt-1 text-sm text-white/55">Ultima sincronizacion: {lastSync ? lastSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</p>
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
+                    <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
                     <select
                       value={selectedProjectId || ""}
                       onChange={onSelectProject}
@@ -778,8 +776,8 @@ export default function EmpresaEscaner() {
                   <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
                     <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
-                        <h3 className="mt-1 text-lg font-bold text-white">Alumnos registrados</h3>
+                        <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
+                        <h3 className="mt-1 text-lg font-normal text-white">Alumnos registrados</h3>
                       </div>
                       <div className="relative w-full lg:w-80">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/45" />
@@ -806,31 +804,79 @@ export default function EmpresaEscaner() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {alumnosFiltrados.map((alumno) => (
-                              <TableRow key={alumno.id_inscripcion} className="border-white/10 hover:bg-white/[0.03]">
-                                <TableCell className="px-5 py-4">
-                                  <div>
-                                    <p className="font-medium text-white">{alumno.nombre}</p>
-                                    <p className="mt-1 text-xs text-white/45">{alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "Sin fecha"}</p>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 font-mono text-white/80">{alumno.matricula}</TableCell>
-                                <TableCell className="px-4 py-4 text-white/80">{alumno.carrera}</TableCell>
-                                <TableCell className="px-4 py-4 text-white/80">{alumno.semestre}</TableCell>
-                                <TableCell className="px-4 py-4 text-white/65">{alumno.correo}</TableCell>
-                                <TableCell className="px-4 py-4 text-right">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEliminarInscripcion(alumno)}
-                                    disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-semibold text-red-100 hover:bg-red-500/20 disabled:opacity-60"
+                            {alumnosFiltrados.map((alumno) => {
+                              const isExpanded = expandedAlumnoId === alumno.id_inscripcion;
+                              return (
+                                <Fragment key={alumno.id_inscripcion}>
+                                  <TableRow 
+                                    className={cn(
+                                      "border-white/10 transition-colors cursor-pointer",
+                                      isExpanded ? "bg-white/[0.06]" : "hover:bg-white/[0.03]"
+                                    )}
+                                    onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id_inscripcion)}
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
-                                  </button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
+                                    <TableCell className="px-5 py-4">
+                                      <div>
+                                        <p className="font-medium text-white">{alumno.nombre}</p>
+                                        <p className="mt-1 text-xs text-white/45">{alumno.fecha_inscripcion ? new Date(alumno.fecha_inscripcion).toLocaleString("es-MX", { dateStyle: "medium", timeStyle: "short" }) : "Sin fecha"}</p>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="px-4 py-4 font-mono text-white/80">{alumno.matricula}</TableCell>
+                                    <TableCell className="px-4 py-4 text-white/80">{alumno.carrera}</TableCell>
+                                    <TableCell className="px-4 py-4 text-white/80">{alumno.semestre}</TableCell>
+                                    <TableCell className="px-4 py-4 text-white/65">{alumno.correo}</TableCell>
+                                    <TableCell className="px-4 py-4 text-right">
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleEliminarInscripcion(alumno);
+                                        }}
+                                        disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60 transition-all"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
+                                      </button>
+                                    </TableCell>
+                                  </TableRow>
+                                  
+                                  <AnimatePresence>
+                                    {isExpanded && (
+                                      <TableRow className="border-none hover:bg-transparent">
+                                        <TableCell colSpan={6} className="p-0 border-none bg-white/[0.02]">
+                                          <Motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                            className="overflow-hidden"
+                                          >
+                                            <div className="px-8 py-6 grid grid-cols-1 md:grid-cols-2 gap-8 border-b border-white/5">
+                                              <div className="space-y-4">
+                                                <div>
+                                                  <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium mb-2">Contacto Alternativo</p>
+                                                  <div className="flex flex-col gap-1">
+                                                    <p className="text-sm text-white font-medium">{alumno.correo_alterno || "No proporcionado"}</p>
+                                                    <p className="text-sm text-blue-400">{alumno.celular || "Sin número registrado"}</p>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                              <div>
+                                                <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] font-medium mb-2">Habilidades y Aportación</p>
+                                                <p className="text-sm text-white/70 italic leading-relaxed">
+                                                  "{alumno.descripcion_personal || "El alumno no ha proporcionado una descripción detallada todavía."}"
+                                                </p>
+                                              </div>
+                                            </div>
+                                          </Motion.div>
+                                        </TableCell>
+                                      </TableRow>
+                                    )}
+                                  </AnimatePresence>
+                                </Fragment>
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </div>
@@ -863,13 +909,13 @@ export default function EmpresaEscaner() {
                 <div className="rounded-3xl border border-white/15 bg-black/30 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md sm:p-5">
                   <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
-                      <h3 className="mt-1 text-xl font-bold text-white">Escaneo QR en sitio</h3>
+                      <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
+                      <h3 className="mt-1 text-xl font-normal text-white">Escaneo QR en sitio</h3>
                     </div>
                     <Button
                       onClick={toggleScanner}
                       className={cn(
-                        "rounded-xl px-5 font-semibold shadow-none",
+                        "rounded-xl px-5 font-normal shadow-none",
                         scanning
                           ? "border border-red-400/25 bg-red-500/15 text-red-100 hover:bg-red-500/25"
                           : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
@@ -913,10 +959,10 @@ export default function EmpresaEscaner() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>
@@ -926,37 +972,68 @@ export default function EmpresaEscaner() {
         </p>
       </Motion.footer>
 
-      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => !open && setDeleteModalInfo(null)}>
+      <Dialog open={!!deleteModalInfo} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteModalInfo(null);
+          setDeleteConfirmText("");
+        }
+      }}>
         <DialogContent className="sm:max-w-md bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
-            <DialogTitle className="text-xl font-extrabold tracking-tight text-white">Confirmar baja de registro</DialogTitle>
+            <DialogTitle className="text-xl font-normal tracking-tight text-white">Eliminar estudiante</DialogTitle>
             <DialogDescription className="text-white/70">
-              Esta acción quitará al alumno del proyecto y liberará su cupo.
+              Esta acción es irreversible. El estudiante será dado de baja del proyecto.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="rounded-xl border border-white/15 bg-black/30 p-3 text-sm text-white/80">
-            <p className="font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
-            <p className="text-xs text-white/60 mt-1">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+          <div className="space-y-4">
+            {/* Info del alumno */}
+            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+              <div className="space-y-2">
+                <div>
+                  <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Estudiante a eliminar</p>
+                  <p className="text-lg font-semibold text-white">{deleteModalInfo?.nombre || "Alumno"}</p>
+                  <p className="text-sm text-white/60">Matrícula: {deleteModalInfo?.matricula || "--"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Campo de confirmación */}
+            <div>
+              <label className="text-xs uppercase tracking-widest text-white/50 block mb-2">
+                Escribe "Eliminar" para confirmar
+              </label>
+              <input
+                type="text"
+                placeholder="Escribe aquí..."
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white placeholder-white/30 focus:border-red-500/30 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              />
+            </div>
           </div>
 
-          <div className="mt-2 flex items-center justify-end gap-2">
+          <div className="mt-6 flex items-center justify-end gap-2">
             <Button
               type="button"
               variant="ghost"
               className="border border-white/15 bg-white/5 text-white/80 hover:text-white hover:bg-white/10"
-              onClick={() => setDeleteModalInfo(null)}
+              onClick={() => {
+                setDeleteModalInfo(null);
+                setDeleteConfirmText("");
+              }}
               disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
               Cancelar
             </Button>
             <Button
               type="button"
-              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30"
+              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={confirmarEliminarInscripcion}
-              disabled={deletingInscripcionId === deleteModalInfo?.id_inscripcion}
+              disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar" || deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
-              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Confirmar baja"}
+              {deletingInscripcionId === deleteModalInfo?.id_inscripcion ? "Eliminando..." : "Eliminar estudiante"}
             </Button>
           </div>
         </DialogContent>

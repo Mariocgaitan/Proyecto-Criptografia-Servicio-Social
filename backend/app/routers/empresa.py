@@ -1,10 +1,11 @@
 """
 Router del módulo Empresa — login y escáner QR para representantes de empresa.
 """
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.limiter import limiter
 from app.db.session import get_db
 from app.services.empresa_service import (
     EscanerError,
@@ -15,6 +16,7 @@ from app.services.empresa_service import (
     proyecto_pertenece_a_empresa,
     validar_y_inscribir,
 )
+from app.services.email_service import enviar_correo_inscripcion, enviar_correo_baja
 
 router = APIRouter()
 
@@ -70,9 +72,11 @@ class QRScan(BaseModel):
 
 
 @router.post("/api/v1/empresa/escanear", tags=["Empresa"])
+@limiter.limit("30/minute")
 async def api_escanear_qr(
     request: Request,
     payload: QRScan,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -95,6 +99,14 @@ async def api_escanear_qr(
 
     try:
         resultado = await validar_y_inscribir(db, id_proyecto_objetivo, payload.qr_data)
+        if resultado.get("ok") and resultado.get("correo_alumno"):
+            background_tasks.add_task(
+                enviar_correo_inscripcion,
+                to_email=resultado["correo_alumno"],
+                nombre_alumno=resultado["nombre_alumno"],
+                nombre_proyecto=resultado["nombre_proyecto"],
+                nombre_empresa=resultado["nombre_empresa"],
+            )
     except EscanerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
 
@@ -143,6 +155,7 @@ async def api_lista_proyectos_empresa(request: Request, db: AsyncSession = Depen
 async def api_eliminar_inscripcion_empresa(
     id_inscripcion: str,
     request: Request,
+    background_tasks: BackgroundTasks,
     id_proyecto: int | None = None,
     db: AsyncSession = Depends(get_db),
 ):
@@ -162,7 +175,7 @@ async def api_eliminar_inscripcion_empresa(
         raise HTTPException(status_code=403, detail="El proyecto no pertenece a tu empresa")
 
     try:
-        return await eliminar_inscripcion_proyecto(
+        resultado = await eliminar_inscripcion_proyecto(
             db,
             id_empresa=id_empresa,
             id_proyecto=id_proyecto_objetivo,
@@ -170,5 +183,14 @@ async def api_eliminar_inscripcion_empresa(
             actor_matricula=user.id_matricula,
             ip_origen=request.client.host if request.client else None,
         )
+        if resultado.get("ok") and resultado.get("correo_alumno"):
+            background_tasks.add_task(
+                enviar_correo_baja,
+                to_email=resultado["correo_alumno"],
+                nombre_alumno=resultado["nombre_alumno"],
+                nombre_proyecto=resultado["nombre_proyecto"],
+                nombre_empresa=resultado["nombre_empresa"],
+            )
+        return resultado
     except EscanerError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)

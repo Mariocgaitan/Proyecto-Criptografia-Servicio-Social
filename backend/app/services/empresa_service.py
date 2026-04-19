@@ -9,6 +9,9 @@ import pyotp
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
+from cryptography.fernet import InvalidToken
+
+from app.core.crypto import decrypt_qr_payload
 
 from app.models.inscripcion import Inscripcion
 from app.models.log_auditoria import LogAuditoria
@@ -71,6 +74,9 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
                 "correo": alumno.correo,
                 "carrera": alumno.carrera,
                 "semestre": alumno.semestre,
+                "correo_alterno": alumno.correo_alterno,
+                "celular": alumno.celular,
+                "descripcion_personal": alumno.descripcion_personal,
                 "fecha_inscripcion": inscripcion.timestamp.isoformat() if inscripcion.timestamp else None,
             }
         )
@@ -173,14 +179,22 @@ async def validar_y_inscribir(
     Returns:
         {"ok": True/False, "mensaje": str, "nombre_alumno": str|None}
     """
-    # 1. Parsear el QR
+    # 1. Descifrar y parsear el QR
     try:
-        data = json.loads(qr_raw)
+        # El QR ahora viene cifrado con Fernet de forma segura
+        qr_decrypted = decrypt_qr_payload(qr_raw)
+        data = json.loads(qr_decrypted)
+        
         matricula = str(data["matricula"])
         totp_code = str(data["totp"])
         id_evento_qr = int(data["id_evento"])
-    except (json.JSONDecodeError, KeyError, TypeError):
-        raise EscanerError("QR inválido o con formato incorrecto", 400)
+    except (InvalidToken, json.JSONDecodeError, KeyError, TypeError):
+        raise EscanerError("Código QR inválido, corrupto o caducado", 400)
+
+    # Datos adicionales del QR
+    correo_alt = data.get("correo")
+    celular_alt = data.get("tel")
+    desc_alt = data.get("desc")
 
     # 2. Verificar que el proyecto es del mismo evento que el QR
     proyecto = await db.get(Proyecto, id_proyecto)
@@ -247,6 +261,10 @@ async def validar_y_inscribir(
         }
 
     # 8. Todo ok — inscribir
+    from app.models.empresa import Empresa
+    empresa = await db.get(Empresa, proyecto.id_empresa)
+    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+
     inscripcion = Inscripcion(
         id_matricula=matricula,
         id_proyecto=id_proyecto,
@@ -261,8 +279,18 @@ async def validar_y_inscribir(
         "ok": True,
         "mensaje": f"¡{alumno.nombre} inscrito exitosamente!",
         "nombre_alumno": alumno.nombre,
+        "matricula_alumno": alumno.id_matricula,
+        "correo_alumno": alumno.correo,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": nombre_empresa,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
+        # Datos adicionales para mostrar a la empresa
+        "datos_adicionales": {
+            "correo_alterno": correo_alt,
+            "celular": celular_alt,
+            "descripcion": desc_alt
+        }
     }
 
 
@@ -303,6 +331,12 @@ async def eliminar_inscripcion_proyecto(
         proyecto.cupo_actual -= 1
 
     alumno = inscripcion.usuario
+    correo_alumno = alumno.correo if alumno else None
+
+    from app.models.empresa import Empresa
+    empresa = await db.get(Empresa, proyecto.id_empresa)
+    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+
     db.add(
         LogAuditoria(
             tipo_evento="INSCRIPCION_ELIMINADA_EMPRESA",
@@ -322,6 +356,9 @@ async def eliminar_inscripcion_proyecto(
         "ok": True,
         "mensaje": "Inscripción eliminada correctamente",
         "nombre_alumno": alumno.nombre if alumno else None,
+        "correo_alumno": correo_alumno,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": nombre_empresa,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }

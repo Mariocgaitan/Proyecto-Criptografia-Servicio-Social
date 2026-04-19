@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence, useAnimationControls } from "framer-motion";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
+import serSocialLogo from "@/assets/ser_social_negro.jpg";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 
 // ─── Social icon button ─────────────────────────────────────────
@@ -127,7 +127,7 @@ export default function Login() {
   });
 
   return (
-    <div className="min-h-screen relative flex flex-col overflow-hidden">
+    <div className="min-h-screen relative flex flex-col overflow-hidden select-none cursor-default">
       {/* ─── Full-screen Background Image ─── */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <AnimatePresence mode="sync" initial={false}>
@@ -162,6 +162,9 @@ export default function Login() {
           <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
             <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
           </SocialIcon>
+          <SocialIcon href="https://x.com/TecdeMonterrey">
+            <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current"><g><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></g></svg>
+          </SocialIcon>
         </div>
       </motion.nav>
 
@@ -179,7 +182,7 @@ export default function Login() {
             <div className="px-5 py-3 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-xl">
               <img src={serSocialLogo} alt="Ser Social" className="h-24 sm:h-28 w-auto" />
             </div>
-            <p className="mt-3 text-white/95 text-[11px] sm:text-xs font-semibold tracking-[0.15em] uppercase text-center">
+            <p className="mt-3 text-white/95 text-[11px] sm:text-xs font-normal tracking-[0.15em] uppercase text-center">
               Feria de Servicio Social
             </p>
           </motion.div>
@@ -195,15 +198,15 @@ export default function Login() {
                   exit={{ opacity: 0, height: 0 }}
                   className="bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-xl px-4 py-3 overflow-hidden"
                 >
-                  <p className="text-red-200 text-sm font-semibold text-center">{error}</p>
+                  <p className="text-red-200 text-sm font-normal text-center">{error}</p>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            <form onSubmit={handleSubmit} noValidate className="space-y-3">
+            <form onSubmit={handleSubmit} noValidate className="space-y-3 flex flex-col items-center">
               {/* Login input */}
               <motion.div {...fadeIn(0.5)}>
-                <div className="relative">
+                <div className="relative w-full max-w-md mx-auto">
                   <div className="absolute left-0 top-0 bottom-0 w-11 flex items-center justify-center z-10">
                     <Mail className="w-4 h-4 text-slate-700/90" />
                   </div>
@@ -214,7 +217,7 @@ export default function Login() {
                     onChange={(e) => setCorreo(e.target.value)}
                     onBlur={() => setCorreo((prev) => normalizeLoginIdentifier(prev))}
                     required
-                    className="bg-white/18 border border-white/35 text-slate-900 rounded-lg h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
+                    className="w-full bg-white/18 border border-white/35 text-slate-900 rounded-full h-12 pl-11 pr-4 focus-visible:ring-2 focus-visible:ring-white/45 focus-visible:border-white/60 text-sm font-medium backdrop-blur-md [&::placeholder]:text-slate-700/90 [&::placeholder]:opacity-100"
                     placeholder="Correo o matrícula (A01234567)"
                   />
                 </div>
@@ -247,19 +250,21 @@ export default function Login() {
 
               {/* Submit button */}
               <motion.div {...fadeIn(0.7)}>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-bold text-base rounded-lg backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
-                >
-                  {isLoading ? "Ingresando..." : "Ingresar"}
-                </Button>
+                <div className="w-full max-w-md mx-auto">
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-12 bg-white/20 hover:bg-white/30 border border-white/35 text-white font-normal text-base rounded-full backdrop-blur-md shadow-lg shadow-black/25 transition-all duration-200 hover:shadow-black/35 hover:scale-[1.01] active:scale-[0.99]"
+                  >
+                    {isLoading ? "Ingresando..." : "Ingresar"}
+                  </Button>
+                </div>
               </motion.div>
             </form>
 
             {/* Help links */}
             <motion.div {...fadeIn(0.8)} className="text-center pt-2">
-              <p className="text-white/60 text-xs font-semibold uppercase tracking-wider transition-colors">
+              <p className="text-white/60 text-xs font-normal uppercase tracking-wider transition-colors">
                 <Link to="/registro" className="text-blue-300 hover:text-blue-200">Regístrate</Link>
               </p>
             </motion.div>
@@ -273,10 +278,10 @@ export default function Login() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-10 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

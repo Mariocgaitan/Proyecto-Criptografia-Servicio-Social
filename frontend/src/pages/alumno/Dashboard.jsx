@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Clock, Users, Search, SlidersHorizontal, Flame } from "lucide-react";
+import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Users, Search, SlidersHorizontal, Flame, Info } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -8,14 +8,17 @@ import { Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import { StudentProfileForm } from "@/components/alumno/StudentProfileForm";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
-import serSocialLogo from "@/assets/ser_social.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
 import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/importancia-servicio-social-tec-monterrey.jpg.webp";
-import campusImg4 from "@/assets/login_images/profesorado-promotores-formacion-programa-servicio-social-tec-monterrey.jpg";
+import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
+import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 function SocialIcon({ children, href = "#" }) {
   return (
@@ -70,23 +73,23 @@ function ProjectCard({ project, index, rankByDemand }) {
           <CardAction>
             <div className="flex items-center gap-2">
               {rankByDemand && !project.lleno && (
-                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-bold uppercase tracking-wider">
+                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-normal uppercase tracking-wider">
                   #{rankByDemand}
                 </Badge>
               )}
-              <Badge className={cn("text-[10px] font-bold uppercase tracking-wider border", demandTone)}>
+              <Badge className={cn("text-[10px] font-normal uppercase tracking-wider border", demandTone)}>
                 {demandLabel}
               </Badge>
             </div>
           </CardAction>
 
-          <CardTitle className="text-white font-bold text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
+          <CardTitle className="text-white font-normal text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
             {project.nombre_proyecto}
           </CardTitle>
           <CardDescription className="text-white/50 pt-1">
             <span className="flex items-center gap-1.5">
               <Building2 className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
-              <span className="text-blue-200/75 text-[11px] font-semibold tracking-wide uppercase truncate">
+              <span className="text-blue-200/75 text-[11px] font-normal tracking-wide uppercase truncate">
                 {project.empresa}
               </span>
             </span>
@@ -102,8 +105,8 @@ function ProjectCard({ project, index, rankByDemand }) {
 
           <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-white/45 uppercase tracking-wider font-semibold">Ocupacion</span>
-              <span className="text-[10px] text-white/70 font-mono font-bold">{pct}%</span>
+              <span className="text-[10px] text-white/45 uppercase tracking-wider font-normal">Ocupacion</span>
+              <span className="text-[10px] text-white/70 font-mono font-normal">{pct}%</span>
             </div>
             <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
               <motion.div
@@ -124,7 +127,7 @@ function ProjectCard({ project, index, rankByDemand }) {
             {project.lleno ? "Sin lugares disponibles" : `${remaining} lugar(es) disponible(s)`}
           </span>
           {!project.lleno && remaining <= 2 && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-bold text-amber-300">
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-normal text-amber-300">
               <Flame className="w-3 h-3" /> Ultimos lugares
             </span>
           )}
@@ -206,7 +209,7 @@ function ProjectGrid({ proyectos }) {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-semibold mr-1">
+            <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
               <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
             </div>
 
@@ -281,93 +284,116 @@ function ProjectGrid({ proyectos }) {
   );
 }
 
+
+// ProfileForm has been moved to its own component in src/components/alumno/StudentProfileForm.jsx
+
 // ─── QR Credential Tab Content ───────────────────────────────────
-function QRCredentialView({ evento, qrPayload, timeLeft }) {
-  const qrSize = 280;
-  const qrLogoSize = 34;
+function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onProfileUpdate, initialProfileData, isEditing, onToggleEdit }) {
+  const [qrSize, setQrSize] = useState(400);
+  const [qrLogoSize, setQrLogoSize] = useState(50);
+  const TOTAL_QR_SECONDS = 30;
+  const progressPercent = Math.max(0, Math.min(100, (timeLeft / TOTAL_QR_SECONDS) * 100));
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setQrSize(240);
+        setQrLogoSize(30);
+      } else {
+        setQrSize(400);
+        setQrLogoSize(50);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   return (
-    <div className="w-full">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="relative"
-      >
-        <div className="flex justify-center mb-6 sm:mb-8">
-          <motion.div
-            animate={timeLeft <= 5 ? { scale: [1, 1.05, 1] } : {}}
-            transition={{ duration: 0.5, repeat: timeLeft <= 5 ? Infinity : 0 }}
-          >
-            <Badge
-              variant="outline"
-              className={cn(
-                "font-mono tracking-widest text-sm px-6 py-3 border-0 shadow-lg rounded-xl",
-                timeLeft <= 5
-                  ? "bg-red-500 text-white shadow-red-500/30"
-                  : "bg-white/[0.05] text-blue-300 font-bold border border-blue-500/20 backdrop-blur-md"
-              )}
-            >
-              <Clock className="w-4 h-4 mr-2" />
-              EXPIRA EN: {timeLeft.toString().padStart(2, "0")}s
-            </Badge>
-          </motion.div>
-        </div>
+    <div className="w-full h-full font-sans flex flex-col">
+      {perfilIncompleto || isEditing ? (
+        <StudentProfileForm
+          initialData={initialProfileData}
+          onSubmit={() => {
+            onProfileUpdate();
+            onToggleEdit(false);
+          }}
+          onCancel={isEditing ? () => onToggleEdit(false) : null}
+        />
+      ) : (
+        <motion.div
+          initial={false}
+          animate={{ opacity: 1 }}
+          className="flex-1 w-full flex justify-center items-center select-none cursor-default"
+        >
+          <div className="flex flex-col items-center justify-center gap-8 text-center select-none">
+            {qrPayload ? (
+              <div className="bg-white p-6 rounded-3xl shadow-2xl flex items-center justify-center">
+                <QRCodeSVG
+                  value={qrPayload}
+                  size={qrSize}
+                  level="H"
+                  marginSize={4}
+                  imageSettings={{
+                    src: "/ser_social.svg",
+                    width: qrLogoSize,
+                    height: qrLogoSize,
+                    excavate: true,
+                  }}
+                />
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-4 text-white/30">
+                <QrCode className="w-16 h-16 stroke-[1]" />
+                <p className="text-xs font-normal tracking-widest uppercase">Generando Llave...</p>
+              </div>
+            )}
 
-        <div className="flex flex-col items-center gap-8 text-center">
-          {/* QR Section — 3D-ish Card */}
-          <motion.div
-            whileHover={{ rotateY: 5, rotateX: -3, scale: 1.02 }}
-            transition={{ type: "spring", stiffness: 200 }}
-            className="shrink-0 mx-auto"
-            style={{ perspective: 1000 }}
-          >
-            <div className="relative w-72 h-72 sm:w-80 sm:h-80 bg-gradient-to-br from-white/[0.06] to-white/[0.02] backdrop-blur-xl rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.4)] border border-white/10 p-6 flex flex-col items-center justify-center overflow-hidden group">
-              {/* Animated accent */}
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-indigo-500/10 group-hover:from-blue-500/20 group-hover:to-indigo-500/20 transition-all duration-500" />
-              <div className="absolute -top-20 -right-20 w-40 h-40 bg-blue-500/15 rounded-full blur-[50px] group-hover:bg-blue-400/25 transition-all" />
+            {/* Event Info */}
+            <div className="w-full max-w-2xl flex flex-col justify-center py-2">
+              <div>
+                <h3 className="text-3xl font-normal text-white mb-2 tracking-tight">{evento.nombre}</h3>
+              </div>
 
-              {qrPayload ? (
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: "spring", stiffness: 300 }}
-                  className="bg-white p-4 rounded-2xl relative z-10 shadow-2xl"
-                >
-                  <QRCodeSVG
-                    value={qrPayload}
-                    size={qrSize}
-                    level="H"
-                    marginSize={4}
-                    imageSettings={{
-                      src: "/ser_social.svg",
-                      width: qrLogoSize,
-                      height: qrLogoSize,
-                      excavate: true,
-                    }}
-                  />
-                </motion.div>
-              ) : (
-                <div className="flex flex-col items-center gap-4 text-white/30 relative z-10">
-                  <QrCode className="w-16 h-16 stroke-[1]" />
-                  <p className="text-xs font-bold tracking-widest uppercase">Generando Llave...</p>
+              <div
+                className="mt-6 flex flex-col items-center gap-3"
+              >
+                <div className="relative group">
+                  <Button
+                    variant="outline"
+                    onClick={() => onToggleEdit(true)}
+                    className="h-11 px-8 rounded-xl bg-white/5 border-white/10 text-white/70 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all gap-2 font-normal text-sm"
+                  >
+                    <User className="w-4 h-4" />
+                    Editar Información
+                  </Button>
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-30 mb-2 w-max max-w-[300px] -translate-x-1/2 rounded-xl bg-black/80 border border-white/20 backdrop-blur-md p-3 shadow-2xl opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0">
+                    <p className="text-white text-sm font-medium">Al editar se generará una nueva llave</p>
+                  </div>
                 </div>
-              )}
-            </div>
-          </motion.div>
 
-          {/* Event Info */}
-          <div className="w-full max-w-2xl flex flex-col justify-center py-2">
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.5 }}
-            >
-              <h3 className="text-3xl font-extrabold text-white mb-2 tracking-tight">{evento.nombre}</h3>
-            </motion.div>
+                <div className="w-full max-w-md mt-2">
+                  <div className="text-center text-[11px] sm:text-xs tracking-[0.18em] uppercase text-white/70 mb-2">
+                    {timeLeft.toString().padStart(2, "0")}s
+                  </div>
+                  <div className="h-2 w-full rounded-full border border-white/15 bg-white/8 overflow-hidden">
+                    <motion.div
+                      initial={false}
+                      animate={{ width: `${progressPercent}%` }}
+                      transition={{ duration: 1.02, ease: "linear" }}
+                      className={cn(
+                        "h-full rounded-full",
+                        timeLeft <= 5 ? "bg-tec-denim/80" : "bg-tec-primary"
+                      )}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }
@@ -387,8 +413,8 @@ function EnrolledView({ inscripcion, eventoNombre }) {
       <div className="relative z-10">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h3 className="text-2xl font-extrabold text-emerald-300">{eventoNombre}</h3>
-            <p className="text-emerald-500 font-black tracking-widest text-[10px] uppercase mt-1">
+            <h3 className="text-2xl font-normal text-emerald-300">{eventoNombre}</h3>
+            <p className="text-emerald-500 font-normal tracking-widest text-[10px] uppercase mt-1">
               Inscripción Completada Exitosamente
             </p>
           </div>
@@ -403,13 +429,13 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="bg-black/20 p-5 rounded-2xl border border-emerald-500/10">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Empresa Anfitriona</p>
-            <p className="font-bold text-emerald-100 flex items-center gap-2 text-lg">
+            <p className="text-[10px] text-emerald-500 uppercase font-normal tracking-widest mb-2">Empresa Anfitriona</p>
+            <p className="font-normal text-emerald-100 flex items-center gap-2 text-lg">
               <Building2 className="w-5 h-5 text-emerald-400" /> {inscripcion.empresa}
             </p>
           </div>
           <div className="bg-black/20 p-5 rounded-2xl border border-emerald-500/10">
-            <p className="text-[10px] text-emerald-500 uppercase font-black tracking-widest mb-2">Proyecto Asignado</p>
+            <p className="text-[10px] text-emerald-500 uppercase font-normal tracking-widest mb-2">Proyecto Asignado</p>
             <p className="font-medium text-emerald-200/80 leading-snug text-base">{inscripcion.nombre_proyecto}</p>
           </div>
         </div>
@@ -420,9 +446,15 @@ function EnrolledView({ inscripcion, eventoNombre }) {
 
 // ─── Event Card (orchestrator) ───────────────────────────────────
 const EventCard = ({ evento, onEnrollmentDetected }) => {
-  const [qrPayload, setQrPayload] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(0);
+  // Un único objeto de estado para evitar re-renders múltiples al actualizar el QR
+  const [qrState, setQrState] = useState({
+    qrPayload: null,
+    timeLeft: 0,
+    perfilIncompleto: false,
+    initialProfileData: null,
+  });
   const [activeTab, setActiveTab] = useState("credencial");
+  const [isEditing, setIsEditing] = useState(false);
 
   const fetchQR = useCallback(async () => {
     if (evento.inscrito) return;
@@ -431,15 +463,21 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
       if (res.ok) {
         const data = await res.json();
         if (data.ya_inscrito) {
-          setQrPayload(null);
-          setTimeLeft(0);
+          // Un solo setState → un solo re-render
+          setQrState({ qrPayload: null, timeLeft: 0, perfilIncompleto: false, initialProfileData: null });
           onEnrollmentDetected?.();
+        } else if (data.perfil_incompleto) {
+          setQrState(prev => ({ ...prev, perfilIncompleto: true, initialProfileData: data.datos_actuales, qrPayload: null, timeLeft: data.expira_en_segundos }));
         } else {
-          setQrPayload(data.qr_data);
-          setTimeLeft(data.expira_en_segundos);
+          setQrState(prev => ({
+            qrPayload: data.qr_data,
+            timeLeft: data.expira_en_segundos,
+            perfilIncompleto: false,
+            initialProfileData: data.datos_actuales ?? prev.initialProfileData,
+          }));
         }
       }
-    } catch (err) {
+    } catch {
       setTimeout(fetchQR, 5000);
     }
   }, [evento.id_evento, evento.inscrito, onEnrollmentDetected]);
@@ -447,13 +485,16 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
   useEffect(() => {
     fetchQR();
     const interval = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 1) { fetchQR(); return 0; }
-        return prev - 1;
+      setQrState(prev => {
+        if (prev.timeLeft <= 1) { fetchQR(); return { ...prev, timeLeft: 0 }; }
+        return { ...prev, timeLeft: prev.timeLeft - 1 };
       });
     }, 1000);
     return () => clearInterval(interval);
   }, [fetchQR]);
+
+  // Desestructurar para pasar props al hijo
+  const { qrPayload, timeLeft, perfilIncompleto, initialProfileData } = qrState;
 
   // If already enrolled, show the enrolled view
   if (evento.inscrito && evento.inscripcion) {
@@ -467,7 +508,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
           type="button"
           onClick={() => setActiveTab("credencial")}
           className={cn(
-            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            "px-4 py-2 rounded-full text-sm font-normal transition-colors border",
             activeTab === "credencial"
               ? "bg-blue-600/30 border-blue-500/40 text-white"
               : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -479,7 +520,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
           type="button"
           onClick={() => setActiveTab("proyectos")}
           className={cn(
-            "px-4 py-2 rounded-full text-sm font-semibold transition-colors border",
+            "px-4 py-2 rounded-full text-sm font-normal transition-colors border",
             activeTab === "proyectos"
               ? "bg-blue-600/30 border-blue-500/40 text-white"
               : "bg-white/5 border-white/10 text-white/70 hover:text-white"
@@ -490,24 +531,41 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
       </div>
 
       <div className="w-full mt-8">
-        {activeTab === "credencial" ? (
-          <div className="w-full rounded-3xl bg-white/[0.02] border border-white/[0.06] backdrop-blur-md p-6 sm:p-8">
-            <QRCredentialView evento={evento} qrPayload={qrPayload} timeLeft={timeLeft} />
-          </div>
-        ) : (
-          <div className="w-full rounded-3xl bg-black/25 border border-white/15 backdrop-blur-md p-4 sm:p-6">
-            <div className="flex flex-wrap items-center justify-between gap-2 mb-5">
-              <div className="flex items-center gap-2">
-              </div>
-              {evento.proyectos && (
-                <Badge variant="outline" className="bg-white/5 text-cyan-200 border-cyan-400/20 text-xs font-mono">
-                  <Users className="w-3 h-3 mr-1" /> {evento.proyectos.length} proyectos
-                </Badge>
-              )}
-            </div>
-            <ProjectGrid proyectos={evento.proyectos} />
-          </div>
-        )}
+        <AnimatePresence mode="wait">
+          {activeTab === "credencial" ? (
+            <motion.div
+              key="credencial"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full p-6 sm:p-8"
+            >
+              <QRCredentialView
+                evento={evento}
+                qrPayload={qrPayload}
+                timeLeft={timeLeft}
+                perfilIncompleto={perfilIncompleto}
+                initialProfileData={initialProfileData}
+                isEditing={isEditing}
+                onToggleEdit={setIsEditing}
+                onProfileUpdate={() => fetchQR()}
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key="proyectos"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              className="w-full rounded-3xl bg-black/25 border border-white/15 backdrop-blur-md p-4 sm:p-6"
+            >
+              <div className="mb-5" />
+              <ProjectGrid proyectos={evento.proyectos} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -521,7 +579,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);
-  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+
   const navigate = useNavigate();
 
   const refreshEnrollmentStatus = useCallback(async () => {
@@ -540,16 +598,27 @@ export default function Dashboard() {
 
         const nextEventos = prev.eventos.map((evento) => {
           const latestEvento = latestByEventId.get(evento.id_evento);
-          if (!latestEvento || !latestEvento.inscrito) return evento;
+          if (!latestEvento) return evento;
+
+          if (!latestEvento.inscrito && evento.inscrito) {
+            changed = true;
+            return {
+              ...evento,
+              inscrito: false,
+              inscripcion: null
+            };
+          }
+
+          if (!latestEvento.inscrito) return evento;
 
           const nextInscripcion = latestEvento.proyecto
             ? {
-                id_proyecto: evento.inscripcion?.id_proyecto ?? null,
-                nombre_proyecto: latestEvento.proyecto.nombre,
-                empresa: latestEvento.proyecto.empresa,
-                descripcion: latestEvento.proyecto.descripcion,
-                timestamp: latestEvento.timestamp || evento.inscripcion?.timestamp || null,
-              }
+              id_proyecto: evento.inscripcion?.id_proyecto ?? null,
+              nombre_proyecto: latestEvento.proyecto.nombre,
+              empresa: latestEvento.proyecto.empresa,
+              descripcion: latestEvento.proyecto.descripcion,
+              timestamp: latestEvento.timestamp || evento.inscripcion?.timestamp || null,
+            }
             : evento.inscripcion;
 
           const wasInscrito = Boolean(evento.inscrito);
@@ -592,19 +661,10 @@ export default function Dashboard() {
       });
   }, []);
 
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentBgIndex((prev) => (prev + 1) % campusImages.length);
-    }, 20000);
 
-    return () => clearInterval(intervalId);
-  }, []);
 
   useEffect(() => {
     if (!data?.eventos?.length) return undefined;
-
-    const hasPendingEnrollment = data.eventos.some((evento) => !evento.inscrito);
-    if (!hasPendingEnrollment) return undefined;
 
     refreshEnrollmentStatus();
     const pollId = setInterval(refreshEnrollmentStatus, ENROLLMENT_POLL_MS);
@@ -629,9 +689,9 @@ export default function Dashboard() {
           className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 max-w-md text-center backdrop-blur-md"
         >
           <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Error de Sesión</h2>
+          <h2 className="text-xl font-normal text-white mb-2">Error de Sesión</h2>
           <p className="text-red-200/80 text-sm mb-6">{apiError}</p>
-          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-bold rounded-xl">
+          <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-normal rounded-xl">
             Volver al Login
           </Button>
         </motion.div>
@@ -642,18 +702,11 @@ export default function Dashboard() {
   return (
     <div className="h-dvh min-h-screen relative flex flex-col overflow-hidden">
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <AnimatePresence mode="sync" initial={false}>
-          <motion.img
-            key={currentBgIndex}
-            src={campusImages[currentBgIndex]}
-            alt="Campus"
-            className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
-            initial={{ x: "100%" }}
-            animate={{ x: "0%" }}
-            exit={{ x: "-100%" }}
-            transition={{ duration: 3, ease: "easeInOut" }}
-          />
-        </AnimatePresence>
+        <motion.img
+          src={campusImg1}
+          alt="Campus"
+          className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
+        />
         <div className="absolute inset-0 bg-black/60" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
       </div>
@@ -666,12 +719,9 @@ export default function Dashboard() {
       >
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
-          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-2.5 py-2 backdrop-blur-sm min-w-0">
-            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-              <User className="w-4 h-4 text-white" />
-            </div>
+          <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-3 py-2 backdrop-blur-sm min-w-0">
             <div className="leading-tight min-w-0">
-              <p className="text-white text-xs sm:text-sm font-semibold truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
+              <p className="text-white text-xs sm:text-sm font-normal truncate max-w-[150px] sm:max-w-none">{data?.nombre || "Alumno"}</p>
               <p className="text-white/60 text-[10px] sm:text-[11px] font-medium truncate max-w-[220px] sm:max-w-none">
                 {(data?.carrera || "N/A")} | Semestre {data?.semestre || "-"} | {data?.matricula || "N/A"}
               </p>
@@ -682,13 +732,16 @@ export default function Dashboard() {
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
           <div className="flex items-center gap-1.5 sm:gap-2">
             <SocialIcon href="https://www.facebook.com/TecCCM">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z"/></svg>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3 8h-1.35c-.538 0-.65.221-.65.778v1.222h2l-.209 2h-1.791v7h-3v-7h-2v-2h2v-2.308c0-1.769.931-2.692 3.029-2.692h1.971v3z" /></svg>
             </SocialIcon>
             <SocialIcon href="https://www.instagram.com/serviciosocial.ccm/">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" /></svg>
             </SocialIcon>
             <SocialIcon href="https://www.youtube.com/watch?v=Z2SOyRZ0qUI">
-              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z"/></svg>
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0-3.897.266-4.356 2.62-4.385 8.816.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0 3.897-.266 4.356-2.62 4.385-8.816-.029-6.185-.484-8.549-4.385-8.816zm-10.615 12.816v-8l8 3.993-8 4.007z" /></svg>
+            </SocialIcon>
+            <SocialIcon href="https://x.com/TecdeMonterrey">
+              <svg viewBox="0 0 24 24" aria-hidden="true" className="w-3.5 h-3.5 fill-current"><g><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"></path></g></svg>
             </SocialIcon>
           </div>
           <Button
@@ -702,28 +755,28 @@ export default function Dashboard() {
         </div>
       </motion.nav>
 
-      <div className="relative z-10 flex-1 min-h-0 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto overscroll-contain">
+      <div className="relative z-10 flex-1 min-h-0 px-4 py-8 sm:px-6 lg:px-8 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <motion.main
           initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="max-w-6xl mx-auto"
         >
-          <div className="mb-8 rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-            <div>
-              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1.5 rounded-full border border-white/20 bg-white/10">
-                <span className="text-white/80 text-[11px] font-semibold uppercase tracking-[0.18em]">Panel de Alumno</span>
-              </div>
-              <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">Feria de Servicio Social</h2>
-              <p className="text-white/65 mt-2 text-sm max-w-2xl leading-relaxed">
-                Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
-              </p>
-            </div>
-            <div className="flex items-center justify-center sm:justify-end">
-              <div className="px-4 py-3 rounded-2xl bg-black/45 backdrop-blur-md border border-white/20 shadow-xl">
-                <div className="px-3 py-2 rounded-xl bg-white/95 ring-1 ring-white/70 shadow-lg">
-                  <img src={serSocialLogo} alt="Ser Social" className="h-12 sm:h-14 w-auto" />
-                </div>
+          <div className="mb-6 flex justify-end">
+            <div className="relative group">
+              <button
+                type="button"
+                aria-label="Información de la feria"
+                className="w-9 h-9 rounded-full bg-black/40 border border-white/20 text-white/80 hover:text-white hover:bg-black/55 hover:border-white/35 transition-colors flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60"
+              >
+                <Info className="w-4 h-4" />
+              </button>
+
+              <div className="pointer-events-none absolute right-0 top-11 z-30 w-[300px] sm:w-[380px] rounded-xl bg-black/80 border border-white/20 backdrop-blur-md p-3 shadow-2xl opacity-0 translate-y-1 transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 group-focus-within:opacity-100 group-focus-within:translate-y-0">
+                <p className="text-white text-sm font-medium">Feria Servicio Social</p>
+                <p className="text-white/80 mt-1 text-xs sm:text-sm leading-relaxed">
+                  Explora el catálogo de proyectos y usa tu llave dinámica para inscribirte presencialmente durante la feria de servicio social.
+                </p>
               </div>
             </div>
           </div>
@@ -732,7 +785,7 @@ export default function Dashboard() {
             {!data?.eventos || data.eventos.length === 0 ? (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-black/35 backdrop-blur-md rounded-3xl border border-white/15 p-16 flex flex-col items-center justify-center text-center shadow-2xl">
                 <Calendar className="w-16 h-16 text-white/20 mb-6" />
-                <h3 className="text-xl font-bold text-white tracking-wide mb-2">Sin Asignación a Eventos</h3>
+                <h3 className="text-xl font-normal text-white tracking-wide mb-2">Sin Asignación a Eventos</h3>
                 <p className="text-white/65 max-w-sm text-sm">No estás habilitado para ningún evento de Servicio Social en curso. Consulta con tu coordinador de carrera.</p>
               </motion.div>
             ) : (
@@ -753,10 +806,10 @@ export default function Dashboard() {
         className="relative z-20 flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-t border-white/5"
       >
         <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://tec.mx/es/avisos-de-privacidad" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Aviso de Privacidad
           </a>
-          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-semibold uppercase tracking-wider hover:text-white/80 transition-colors">
+          <a href="https://letica.mx/ethos?locale=es" target="_blank" rel="noopener noreferrer" className="text-white/50 text-[11px] font-normal uppercase tracking-wider hover:text-white/80 transition-colors">
             Ethos
           </a>
         </div>

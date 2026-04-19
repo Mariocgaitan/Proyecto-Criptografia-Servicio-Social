@@ -5,6 +5,8 @@ y consulta de estado de inscripción.
 import json
 import time
 
+from app.core.crypto import encrypt_qr_payload
+
 import pyotp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,6 +17,7 @@ from app.models.inscripcion import Inscripcion
 from app.models.proyecto import Proyecto
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
+from app.core.cache import cached
 
 
 # ── Errores de negocio ────────────────────────────────────────────────────────
@@ -26,7 +29,53 @@ class AlumnoError(Exception):
         super().__init__(message)
 
 
-# ── Dashboard ─────────────────────────────────────────────────────────────────
+# Campos del modelo que se pueden actualizar via PATCH /alumno/perfil
+_PERFIL_CAMPOS_PERMITIDOS = {
+    "correo_alterno", "celular", "descripcion_personal", "carrera", "semestre"
+}
+
+async def actualizar_perfil_alumno(db: AsyncSession, id_matricula: str, datos: dict) -> dict:
+    """
+    Actualiza los campos de perfil del alumno.
+    Solo permite modificar los campos en _PERFIL_CAMPOS_PERMITIDOS.
+    """
+    result = await db.execute(select(Usuario).where(Usuario.id_matricula == id_matricula))
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise AlumnoError("Usuario no encontrado", 404)
+
+    # Solo actualizar campos permitidos que vengan en el payload
+    for campo, valor in datos.items():
+        if campo in _PERFIL_CAMPOS_PERMITIDOS and valor is not None:
+            setattr(usuario, campo, valor)
+
+    await db.commit()
+    return {"ok": True, "mensaje": "Perfil actualizado correctamente"}
+
+
+
+# ── Dashboards & helpers ──────────────────────────────────────────────────────
+
+@cached(key="alum_cat_ev", ttl=30)
+async def _get_catalogo_evento_cached(db: AsyncSession, evento_id: int) -> list[dict]:
+    proyectos_result = await db.execute(
+        select(Proyecto, Empresa)
+        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        .where(Proyecto.id_evento == evento_id)
+        .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
+    )
+    return [
+        {
+            "id_proyecto": p.id_proyecto,
+            "nombre_proyecto": p.nombre_proyecto,
+            "empresa": e.nombre_empresa,
+            "descripcion": p.descripcion,
+            "cupo_actual": p.cupo_actual,
+            "capacidad_max": p.capacidad_max,
+            "lleno": p.cupo_actual >= p.capacidad_max,
+        }
+        for p, e in proyectos_result.all()
+    ]
 
 async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
     """
@@ -89,24 +138,7 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
                 }
 
         # Proyectos disponibles para este evento (catálogo)
-        proyectos_result = await db.execute(
-            select(Proyecto, Empresa)
-            .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
-            .where(Proyecto.id_evento == evento.id_evento)
-            .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
-        )
-        evento_info["proyectos"] = [
-            {
-                "id_proyecto": p.id_proyecto,
-                "nombre_proyecto": p.nombre_proyecto,
-                "empresa": e.nombre_empresa,
-                "descripcion": p.descripcion,
-                "cupo_actual": p.cupo_actual,
-                "capacidad_max": p.capacidad_max,
-                "lleno": p.cupo_actual >= p.capacidad_max,
-            }
-            for p, e in proyectos_result.all()
-        ]
+        evento_info["proyectos"] = await _get_catalogo_evento_cached(db, evento.id_evento)
 
         eventos_data.append(evento_info)
 
@@ -132,23 +164,29 @@ async def generar_qr_payload(
 
     Returns:
         {
-          "qr_data": '{"matricula":"A0x","totp":"123456","id_evento":2}',
+          "qr_data": '{"matricula":"A0x","totp":"123456","id_evento":2,"correo":"...","tel":"...","desc":"..."}',
           "expira_en_segundos": 18,
-          "ya_inscrito": false
+          "ya_inscrito": false,
+          "perfil_incompleto": false
         }
     Raises AlumnoError (403) si el alumno no tiene ese evento registrado.
     """
-    # 1. Verificar que el alumno esté registrado para ese evento
-    ue_result = await db.execute(
-        select(UsuarioEvento).where(
-            UsuarioEvento.id_matricula == id_matricula,
+    # 1. Verificar registro del alumno EN el evento y recuperar el usuario de un jalón
+    usr_ue_res = await db.execute(
+        select(Usuario, UsuarioEvento)
+        .join(UsuarioEvento, UsuarioEvento.id_matricula == Usuario.id_matricula)
+        .where(
+            Usuario.id_matricula == id_matricula,
             UsuarioEvento.id_evento == id_evento,
         )
     )
-    if not ue_result.scalar_one_or_none():
-        raise AlumnoError("No estás registrado para este evento", 403)
+    row = usr_ue_res.first()
+    if not row:
+        raise AlumnoError("No estás registrado para este evento o tu usuario no se encontró", 403)
+    
+    usuario, _ = row
 
-    # 2. Verificar si ya está inscrito (devuelve ya_inscrito, sin error)
+    # 2. Verificar si ya está inscrito
     ins_result = await db.execute(
         select(Inscripcion).where(
             Inscripcion.id_matricula == id_matricula,
@@ -158,30 +196,54 @@ async def generar_qr_payload(
     if ins_result.scalar_one_or_none():
         return {"qr_data": None, "expira_en_segundos": 0, "ya_inscrito": True}
 
-    # 3. Obtener totp_secret del usuario
-    usr_result = await db.execute(
-        select(Usuario).where(Usuario.id_matricula == id_matricula)
-    )
-    usuario = usr_result.scalar_one_or_none()
-    if not usuario:
-        raise AlumnoError("Usuario no encontrado", 404)
-
     # 4. Generar código TOTP y calcular segundos restantes del ciclo actual
     totp = pyotp.TOTP(usuario.totp_secret)
     codigo = totp.now()
     segundos_restantes = 30 - (int(time.time()) % 30)
 
-    # 5. Construir payload del QR como string JSON (lo serializa qrcode.js)
+    # 5. Verificar si el alumno ya completó su perfil de contacto.
+    # Consideramos el perfil completo cuando al menos un dato de contacto fue capturado.
+    perfil_incompleto = not any([
+        usuario.celular,
+        usuario.correo_alterno,
+        usuario.descripcion_personal,
+    ])
+
+    if perfil_incompleto:
+        return {
+            "qr_data": None,
+            "expira_en_segundos": segundos_restantes,
+            "ya_inscrito": False,
+            "perfil_incompleto": True,
+            "datos_actuales": {
+                "carrera": usuario.carrera,
+                "semestre": usuario.semestre,
+                "correo_alterno": usuario.correo_alterno,
+                "celular": usuario.celular,
+                "descripcion_personal": usuario.descripcion_personal,
+            }
+        }
+
+    # 6. Construir payload del QR como string JSON
     payload = json.dumps({
         "matricula": id_matricula,
         "totp": codigo,
         "id_evento": id_evento,
     }, separators=(",", ":"))
 
+    # Cifrar payload antes de enviarlo (Seguridad avanzada)
+    encrypted_payload = encrypt_qr_payload(payload)
+
     return {
-        "qr_data": payload,
+        "qr_data": encrypted_payload,
         "expira_en_segundos": segundos_restantes,
         "ya_inscrito": False,
+        "perfil_incompleto": False,
+        "datos_actuales": {
+            "correo_alterno": usuario.correo_alterno,
+            "celular": usuario.celular,
+            "descripcion_personal": usuario.descripcion_personal
+        }
     }
 
 
@@ -235,4 +297,39 @@ async def obtener_estado_inscripcion(db: AsyncSession, id_matricula: str) -> dic
 
         eventos_data.append(evento_info)
 
+
     return {"matricula": id_matricula, "eventos": eventos_data}
+
+
+# ── Perfil Alumno ─────────────────────────────────────────────────────────────
+
+async def actualizar_perfil_alumno(
+    db: AsyncSession, id_matricula: str, data: dict
+) -> dict:
+    """
+    Actualiza los campos adicionales del perfil del alumno.
+    """
+    result = await db.execute(
+        select(Usuario).where(Usuario.id_matricula == id_matricula)
+    )
+    usuario = result.scalar_one_or_none()
+    if not usuario:
+        raise AlumnoError("Usuario no encontrado", 404)
+
+    # Solo actualizar los campos permitidos
+    if "correo_alterno" in data:
+        usuario.correo_alterno = data["correo_alterno"]
+    if "celular" in data:
+        usuario.celular = data["celular"]
+    if "descripcion_personal" in data:
+        usuario.descripcion_personal = data["descripcion_personal"]
+
+    await db.commit()
+    await db.refresh(usuario)
+
+    return {
+        "ok": True,
+        "correo_alterno": usuario.correo_alterno,
+        "celular": usuario.celular,
+        "descripcion_personal": usuario.descripcion_personal,
+    }

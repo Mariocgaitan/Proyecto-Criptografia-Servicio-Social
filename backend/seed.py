@@ -67,7 +67,6 @@ _CARRERAS = ["ITC", "ISC", "ICI", "IIA", "IIS", "IMT"]
 # 40 alumnos — matrícula + nombre completo + carrera + semestre (padrón oficial)
 PADRON_DATA = [
     {"id_matricula": "A03459128", "nombre_completo": "Juan Pérez García", "carrera": _CARRERAS[0], "semestre": 3},
-    {"id_matricula": "A01659147", "nombre_completo": "Luis Alan Morales Castillo", "carrera": _CARRERAS[1], "semestre": 4},
     {"id_matricula": "A01234567", "nombre_completo": "María Fernanda López Torres", "carrera": _CARRERAS[2], "semestre": 5},
     {"id_matricula": "A01345678", "nombre_completo": "Carlos Eduardo Ramírez Vega", "carrera": _CARRERAS[3], "semestre": 6},
     {"id_matricula": "A01456789", "nombre_completo": "Ana Sofía Hernández Cruz", "carrera": _CARRERAS[4], "semestre": 7},
@@ -311,7 +310,7 @@ async def seed_usuarios(evento_activo: "Evento") -> None:
 
 async def seed_admin_user() -> None:
     """Crea el usuario administrador ServicioSocialMaster si no existe."""
-    ADMIN_CORREO = "master@sid.tec.mx"
+    ADMIN_CORREO = "master@feriaserviciosocial.com"
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Usuario).where(Usuario.correo == ADMIN_CORREO))
         if result.scalar_one_or_none():
@@ -369,12 +368,12 @@ async def seed_usuarios_empresa() -> None:
 
             password = secrets.token_urlsafe(12)
             slug_e = slugify(empresa.nombre_empresa)
-            correo = f"contacto@{slug_e}.sid.mx"
+            correo = f"contacto@{slug_e}.feriaserviciosocial.com"
 
             # Evitar correos duplicados
             dup = await db.execute(select(Usuario).where(Usuario.correo == correo))
             if dup.scalar_one_or_none():
-                correo = f"empresa{empresa.id_empresa}@{slug_e}.sid.mx"
+                correo = f"empresa{empresa.id_empresa}@{slug_e}.feriaserviciosocial.com"
 
             usuario = Usuario(
                 id_matricula=f"EMP_{empresa.id_empresa:04d}",
@@ -440,9 +439,12 @@ async def truncate_all() -> None:
         "padron_alumnos",
         "eventos",
     ]
+    allowed = set(tablas)
     async with AsyncSessionLocal() as db:
         for tabla in tablas:
-            await db.execute(text(f"TRUNCATE TABLE {tabla} RESTART IDENTITY CASCADE"))
+            if tabla not in allowed:
+                raise ValueError(f"Tabla no permitida: {tabla}")
+            await db.execute(text("TRUNCATE TABLE " + tabla + " RESTART IDENTITY CASCADE"))
         await db.commit()
     print("🗑️  Todas las tablas limpiadas correctamente.\n")
 

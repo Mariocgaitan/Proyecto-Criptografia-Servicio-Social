@@ -17,9 +17,23 @@ class Usuario(Base):
     correo: Mapped[str] = mapped_column(String(200), nullable=False, unique=True)
     carrera: Mapped[str] = mapped_column(String(100), nullable=False)
     semestre: Mapped[int] = mapped_column(Integer, nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_google_login: Mapped[bool] = mapped_column(default=False, nullable=False)
     totp_secret: Mapped[str] = mapped_column(String(64), nullable=False)
     rol: Mapped[str] = mapped_column(String(20), nullable=False, server_default="alumno")
+
+    # Lockout por intentos fallidos
+    failed_login_attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # TOTP replay protection
+    last_totp_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Datos adicionales para el QR (para alumnos)
+    correo_alterno: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    celular: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    descripcion_personal: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     id_empresa: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("empresas.id_empresa", ondelete="SET NULL"), nullable=True
     )

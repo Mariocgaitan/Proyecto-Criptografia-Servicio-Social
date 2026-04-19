@@ -7,6 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.cache import cached, cache_delete, cache_delete_prefix
+from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
@@ -18,15 +20,18 @@ from app.models.usuario_evento import UsuarioEvento
 
 # ── Proyectos ─────────────────────────────────────────────────────────────────
 
-async def listar_proyectos(db: AsyncSession) -> list[dict]:
-    """Devuelve todos los proyectos con datos de empresa y evento."""
-    result = await db.execute(
+@cached(key="admin_proyectos", ttl=15)
+async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20) -> dict:
+    """Devuelve proyectos con datos de empresa y evento, paginados."""
+    base_query = (
         select(Proyecto, Empresa, Evento)
         .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
         .join(Evento, Proyecto.id_evento == Evento.id_evento)
         .order_by(Evento.id_evento, Empresa.nombre_empresa)
     )
-    rows = result.all()
+
+    result = await paginate(db, base_query, page, page_size)
+    rows = result["data"]
 
     proyecto_ids = [p.id_proyecto for p, _, _ in rows]
     inscripciones_por_proyecto: dict[int, list[dict]] = {pid: [] for pid in proyecto_ids}
@@ -54,7 +59,7 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
                 }
             )
 
-    return [
+    result["data"] = [
         {
             "id_proyecto": p.id_proyecto,
             "nombre_proyecto": p.nombre_proyecto,
@@ -78,6 +83,8 @@ async def listar_proyectos(db: AsyncSession) -> list[dict]:
         }
         for p, e, ev in rows
     ]
+
+    return result
 
 
 async def listar_empresas(db: AsyncSession) -> list[dict]:
@@ -133,6 +140,10 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
     await db.commit()
     await db.refresh(proyecto)
 
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete_prefix("admin_proyectos")
+
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
@@ -161,6 +172,10 @@ async def ampliar_cupo(db: AsyncSession, id_proyecto: int, nueva_capacidad: int)
     await db.commit()
     await db.refresh(proyecto)
 
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete_prefix("admin_proyectos")
+
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
@@ -185,7 +200,10 @@ async def eliminar_inscripcion(
 
     result = await db.execute(
         select(Inscripcion)
-        .options(selectinload(Inscripcion.usuario), selectinload(Inscripcion.proyecto))
+        .options(
+            selectinload(Inscripcion.usuario),
+            selectinload(Inscripcion.proyecto).selectinload(Proyecto.empresa)
+        )
         .where(Inscripcion.id_inscripcion == inscripcion_uuid)
     )
     inscripcion = result.scalar_one_or_none()
@@ -214,12 +232,21 @@ async def eliminar_inscripcion(
     await db.delete(inscripcion)
     await db.commit()
 
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_carrera")
+    await cache_delete_prefix("admin_proyectos")
+
     return {
         "ok": True,
         "mensaje": "Inscripción eliminada correctamente",
         "id_proyecto": proyecto.id_proyecto if proyecto else None,
         "cupo_actual": proyecto.cupo_actual if proyecto else None,
         "nombre_alumno": alumno.nombre if alumno else None,
+        "correo_alumno": alumno.correo if alumno else None,
+        "nombre_proyecto": proyecto.nombre_proyecto if proyecto else None,
+        "nombre_empresa": (proyecto.empresa.nombre_empresa if proyecto and proyecto.empresa else None)
     }
 
 
@@ -348,6 +375,12 @@ async def crear_inscripcion(
     await db.commit()
     await db.refresh(proyecto)
 
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_carrera")
+    await cache_delete_prefix("admin_proyectos")
+
     return {
         "ok": True,
         "mensaje": f"{alumno.nombre} ha sido inscrito exitosamente",
@@ -356,4 +389,7 @@ async def crear_inscripcion(
         "nombre_alumno": alumno.nombre,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
+        "correo_alumno": alumno.correo,
+        "nombre_proyecto": proyecto.nombre_proyecto,
+        "nombre_empresa": proyecto.empresa.nombre_empresa if proyecto.empresa else None,
     }

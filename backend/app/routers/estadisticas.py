@@ -43,20 +43,24 @@ async def api_proyectos_cupo(
 @router.get("/api/v1/admin/estadisticas/alumnos-por-empresa", tags=["Admin", "Estadisticas"])
 async def api_alumnos_por_empresa(
     evento_id: int | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_alumnos_por_empresa(db, evento_id)
+    return await estadisticas_service.get_alumnos_por_empresa(db, evento_id, page, page_size)
 
 
 @router.get("/api/v1/admin/estadisticas/alumnos-por-carrera", tags=["Admin", "Estadisticas"])
 async def api_alumnos_por_carrera(
     evento_id: int | None = None,
     carrera: str | None = None,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_alumnos_por_carrera(db, evento_id, carrera)
+    return await estadisticas_service.get_alumnos_por_carrera(db, evento_id, carrera, page, page_size)
 
 
 @router.get("/api/v1/admin/estadisticas/inscripciones-timeline", tags=["Admin", "Estadisticas"])
@@ -139,11 +143,12 @@ async def api_embudo_conversion(
 
 @router.get("/api/v1/admin/estadisticas/logs-recientes", tags=["Admin", "Estadisticas"])
 async def api_logs_recientes(
-    limite: int = Query(default=10, ge=1, le=50),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_logs_recientes(db, limite)
+    return await estadisticas_service.get_logs_recientes(db, page, page_size)
 
 
 @router.get("/api/v1/admin/estadisticas/alertas-proyectos", tags=["Admin", "Estadisticas"])
@@ -184,6 +189,24 @@ async def api_estadisticas_general(
         fecha_fin=fecha_fin,
         timeline_ventana=timeline_ventana,
     )
+
+
+@router.get("/api/v1/admin/estadisticas/overview", tags=["Admin", "Estadisticas"])
+async def api_estadisticas_overview(
+    evento_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_overview_contract(db, evento_id=evento_id)
+
+
+@router.get("/api/v1/admin/estadisticas/alumnos-pendientes", tags=["Admin", "Estadisticas"])
+async def api_alumnos_pendientes(
+    evento_id: int | None = None,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    return await estadisticas_service.get_alumnos_pendientes(db, evento_id=evento_id)
 
 
 @router.get("/api/v1/admin/estadisticas/particular", tags=["Admin", "Estadisticas"])

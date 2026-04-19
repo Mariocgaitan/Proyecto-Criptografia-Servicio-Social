@@ -1,0 +1,105 @@
+# Stack de producción — EC2 detrás de Cloudflare (modo Flexible: TLS termina en Cloudflare)
+# Uso: docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+
+services:
+  app:
+    image: ${APP_IMAGE:-ghcr.io/mariocgaitan/proyecto-criptografia-servicio-social:latest}
+    container_name: feria_app
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      APP_ENV: production
+      SECRETS_BACKEND: aws
+      AWS_SECRETS_PREFIX: /feria/prod/
+      AWS_REGION: us-east-1
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      # REDIS_URL se arma con el password del .env.production — evita duplicar el secret en SSM
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      SSH_PKEY_PATH: /app/.ssh/db_tunnel_db_key
+    volumes:
+      # SSH key para el túnel a la DB remota, montada read-only
+      - ${SSH_KEY_HOST_PATH:-/home/webservice/.ssh/db_tunnel_db_key}:/app/.ssh/db_tunnel_db_key:ro
+    expose:
+      - "8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "http://127.0.0.1:8000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+    networks:
+      - feria_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: feria_redis
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - "256mb"
+      - --maxmemory-policy
+      - "allkeys-lru"
+    volumes:
+      - redis_data:/data
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "$${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    networks:
+      - feria_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: feria_nginx
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    ports:
+      - "80:80"
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/healthz"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - feria_net
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  redis_data:
+
+networks:
+  feria_net:
+    driver: bridge

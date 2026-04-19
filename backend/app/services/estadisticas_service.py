@@ -6,6 +6,8 @@ from datetime import UTC, date, datetime, timedelta
 from sqlalchemy import and_, desc, distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.cache import cached
+from app.core.pagination import paginate
 from app.models.empresa import Empresa
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
@@ -36,6 +38,67 @@ async def _resolve_evento_id(db: AsyncSession, evento_id: int | None) -> int | N
     return await db.scalar(select(Evento.id_evento).order_by(desc(Evento.id_evento)).limit(1))
 
 
+async def _get_evento_snapshot(db: AsyncSession, evento_id: int | None) -> Evento | None:
+    selected_evento_id = await _resolve_evento_id(db, evento_id)
+    if selected_evento_id is None:
+        return None
+
+    return await db.get(Evento, selected_evento_id)
+
+
+@cached(key="alumnos_pendientes", ttl=30)
+async def get_alumnos_pendientes(db: AsyncSession, evento_id: int | None = None) -> dict:
+    selected_evento_id = await _resolve_evento_id(db, evento_id)
+    if selected_evento_id is None:
+        return {
+            "evento_id": None,
+            "total": 0,
+            "items": [],
+        }
+
+    rows = (
+        await db.execute(
+            select(
+                Usuario.id_matricula,
+                Usuario.nombre,
+                Usuario.correo,
+                Usuario.carrera,
+                Usuario.semestre,
+            )
+            .select_from(UsuarioEvento)
+            .join(Usuario, Usuario.id_matricula == UsuarioEvento.id_matricula)
+            .outerjoin(
+                Inscripcion,
+                and_(
+                    Inscripcion.id_evento == UsuarioEvento.id_evento,
+                    Inscripcion.id_matricula == UsuarioEvento.id_matricula,
+                ),
+            )
+            .where(
+                UsuarioEvento.id_evento == selected_evento_id,
+                Inscripcion.id_inscripcion.is_(None),
+            )
+            .order_by(Usuario.carrera.asc(), Usuario.nombre.asc())
+        )
+    ).all()
+
+    return {
+        "evento_id": selected_evento_id,
+        "total": len(rows),
+        "items": [
+            {
+                "matricula": row.id_matricula,
+                "nombre": row.nombre,
+                "correo": row.correo,
+                "carrera": row.carrera,
+                "semestre": int(row.semestre or 0),
+            }
+            for row in rows
+        ],
+    }
+
+
+@cached(key="kpis", ttl=120)
 async def get_kpis(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -108,6 +171,7 @@ async def get_kpis(
     }
 
 
+@cached(key="gen_contract", ttl=30)
 async def get_general_contract(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -124,7 +188,8 @@ async def get_general_contract(
         include_security_metrics=False,
     )
     ocupacion_eventos = await get_ocupacion_eventos(db, evento_id)
-    alumnos_por_carrera = await get_alumnos_por_carrera(db, evento_id, None)
+    alumnos_por_carrera_result = await get_alumnos_por_carrera(db, evento_id, None, page_size=100)
+    alumnos_por_carrera = alumnos_por_carrera_result.get("data", alumnos_por_carrera_result) if isinstance(alumnos_por_carrera_result, dict) else alumnos_por_carrera_result
     tendencia = await get_inscripciones_timeline(
         db,
         evento_id=evento_id,
@@ -156,6 +221,187 @@ async def get_general_contract(
     }
 
 
+@cached(key="overview_contract", ttl=30)
+async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) -> dict:
+    evento = await _get_evento_snapshot(db, evento_id)
+    if evento is None:
+        return {
+            "evento": None,
+            "resumen": {
+                "total_alumnos_registrados": 0,
+                "total_inscritos": 0,
+                "total_pendientes": 0,
+                "porcentaje_avance": 0.0,
+                "empresas_participantes": 0,
+                "proyectos_totales": 0,
+                "proyectos_con_cupo": 0,
+                "proyectos_sin_movimiento": 0,
+                "proyectos_por_llenarse": 0,
+                "capacidad_total": 0,
+                "cupos_disponibles": 0,
+            },
+            "atencion": {
+                "alumnos_pendientes": [],
+                "proyectos_sin_movimiento": [],
+                "proyectos_por_llenarse": [],
+            },
+            "series": {
+                "inscripciones_por_dia": [],
+                "carreras_con_pendientes": [],
+                "empresas_con_mas_inscritos": [],
+                "proyectos_con_mas_demanda": [],
+            },
+        }
+
+    selected_evento_id = evento.id_evento
+    kpis = await get_kpis(db, evento_id=selected_evento_id, include_security_metrics=False)
+    proyectos = await get_proyectos_cupo(db, evento_id=selected_evento_id)
+    carreras_result = await get_alumnos_por_carrera(db, evento_id=selected_evento_id, page_size=100)
+    carreras = carreras_result.get("data", []) if isinstance(carreras_result, dict) else carreras_result
+    empresas_result = await get_alumnos_por_empresa(db, evento_id=selected_evento_id, page_size=8)
+    empresas = empresas_result.get("data", []) if isinstance(empresas_result, dict) else empresas_result
+    timeline = await get_inscripciones_timeline(db, evento_id=selected_evento_id, ventana="30d")
+
+    pending_rows = (
+        await db.execute(
+            select(
+                Usuario.id_matricula,
+                Usuario.nombre,
+                Usuario.correo,
+                Usuario.carrera,
+                Usuario.semestre,
+            )
+            .select_from(UsuarioEvento)
+            .join(Usuario, Usuario.id_matricula == UsuarioEvento.id_matricula)
+            .outerjoin(
+                Inscripcion,
+                and_(
+                    Inscripcion.id_evento == UsuarioEvento.id_evento,
+                    Inscripcion.id_matricula == UsuarioEvento.id_matricula,
+                ),
+            )
+            .where(
+                UsuarioEvento.id_evento == selected_evento_id,
+                Inscripcion.id_inscripcion.is_(None),
+            )
+            .order_by(Usuario.carrera.asc(), Usuario.nombre.asc())
+        )
+    ).all()
+
+    total_registrados = int(kpis.get("total_alumnos_registrados", 0))
+    total_inscritos = int(kpis.get("total_inscritos", 0))
+    total_pendientes = max(total_registrados - total_inscritos, 0)
+    porcentaje_avance = round((total_inscritos / total_registrados) * 100, 1) if total_registrados else 0.0
+
+    proyectos_totales = len(proyectos)
+    proyectos_con_cupo = 0
+    proyectos_sin_movimiento = []
+    proyectos_por_llenarse = []
+    proyectos_con_mas_demanda = []
+    capacidad_total = 0
+    cupos_disponibles = 0
+
+    for proyecto in proyectos:
+        capacidad = int(proyecto.get("capacidad_max") or 0)
+        cupo_actual = int(proyecto.get("cupo_actual") or 0)
+        capacidad_total += capacidad
+        cupos_disponibles += max(capacidad - cupo_actual, 0)
+
+        ocupacion_pct = round((cupo_actual / capacidad) * 100, 2) if capacidad else 0.0
+        base_item = {
+            "id_proyecto": proyecto.get("id_proyecto"),
+            "proyecto": proyecto.get("proyecto"),
+            "empresa": proyecto.get("empresa"),
+            "cupo_actual": cupo_actual,
+            "capacidad_max": capacidad,
+            "ocupacion_pct": ocupacion_pct,
+            "cupos_disponibles": max(capacidad - cupo_actual, 0),
+        }
+
+        if cupo_actual < capacidad:
+            proyectos_con_cupo += 1
+        if cupo_actual == 0:
+            proyectos_sin_movimiento.append(base_item)
+        if capacidad > 0 and 0 < (capacidad - cupo_actual) <= 2:
+            proyectos_por_llenarse.append(base_item)
+        if cupo_actual > 0:
+            proyectos_con_mas_demanda.append(base_item)
+
+    proyectos_sin_movimiento.sort(key=lambda item: (item.get("empresa") or "", item.get("proyecto") or ""))
+    proyectos_por_llenarse.sort(
+        key=lambda item: (
+            int(item.get("cupos_disponibles") or 0),
+            -float(item.get("ocupacion_pct") or 0),
+            item.get("proyecto") or "",
+        )
+    )
+    proyectos_con_mas_demanda.sort(key=lambda item: (-float(item.get("ocupacion_pct") or 0), -int(item.get("cupo_actual") or 0)))
+
+    carreras_con_pendientes = [
+        {
+            "carrera": item.get("carrera"),
+            "pendientes": int(item.get("cantidad_sin_proyecto") or 0),
+            "registrados": int(item.get("cantidad") or 0),
+            "inscritos": int(item.get("cantidad_inscritos") or 0),
+        }
+        for item in carreras
+        if int(item.get("cantidad_sin_proyecto") or 0) > 0
+    ]
+    carreras_con_pendientes.sort(key=lambda item: (-item["pendientes"], -(item["registrados"]), item["carrera"] or ""))
+
+    return {
+        "evento": {
+            "id_evento": evento.id_evento,
+            "nombre": evento.nombre,
+            "periodo": evento.periodo,
+            "anio": evento.anio,
+            "activo": evento.activo,
+            "fecha_inicio": evento.fecha_inicio.isoformat() if evento.fecha_inicio else None,
+            "fecha_fin": evento.fecha_fin.isoformat() if evento.fecha_fin else None,
+        },
+        "resumen": {
+            "total_alumnos_registrados": total_registrados,
+            "total_inscritos": total_inscritos,
+            "total_pendientes": total_pendientes,
+            "porcentaje_avance": porcentaje_avance,
+            "empresas_participantes": int(kpis.get("empresas_participantes", 0)),
+            "proyectos_totales": proyectos_totales,
+            "proyectos_con_cupo": proyectos_con_cupo,
+            "proyectos_sin_movimiento": len(proyectos_sin_movimiento),
+            "proyectos_por_llenarse": len(proyectos_por_llenarse),
+            "capacidad_total": capacidad_total,
+            "cupos_disponibles": cupos_disponibles,
+        },
+        "atencion": {
+            "alumnos_pendientes": [
+                {
+                    "matricula": row.id_matricula,
+                    "nombre": row.nombre,
+                    "correo": row.correo,
+                    "carrera": row.carrera,
+                    "semestre": int(row.semestre or 0),
+                }
+                for row in pending_rows[:8]
+            ],
+            "proyectos_sin_movimiento": proyectos_sin_movimiento[:6],
+            "proyectos_por_llenarse": proyectos_por_llenarse[:6],
+        },
+        "series": {
+            "inscripciones_por_dia": timeline[-14:],
+            "carreras_con_pendientes": carreras_con_pendientes[:8],
+            "empresas_con_mas_inscritos": [
+                {
+                    "empresa": item.get("empresa"),
+                    "cantidad_inscritos": int(item.get("cantidad_inscritos") or 0),
+                }
+                for item in empresas[:8]
+            ],
+            "proyectos_con_mas_demanda": proyectos_con_mas_demanda[:8],
+        },
+    }
+
+
+@cached(key="part_contract", ttl=30)
 async def get_particular_contract(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -178,7 +424,8 @@ async def get_particular_contract(
     if proyecto_id is not None:
         proyectos_cupo = [item for item in proyectos_cupo if int(item.get("id_proyecto", 0)) == proyecto_id]
 
-    alumnos_empresa = await get_alumnos_por_empresa(db, evento_id)
+    alumnos_empresa_result = await get_alumnos_por_empresa(db, evento_id, page_size=100)
+    alumnos_empresa = alumnos_empresa_result.get("data", alumnos_empresa_result) if isinstance(alumnos_empresa_result, dict) else alumnos_empresa_result
     ratio = await get_ratio_inscritos(db, evento_id=evento_id, empresa_id=empresa_id, carrera=carrera)
     if proyecto_id is not None:
         ratio = [item for item in ratio if int(item.get("id_proyecto", 0)) == proyecto_id]
@@ -218,6 +465,7 @@ async def get_particular_contract(
     }
 
 
+@cached(key="ocupacion_eventos", ttl=120)
 async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     filters = [Evento.id_evento == evento_id] if evento_id else []
     rows = (
@@ -257,6 +505,7 @@ async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) 
     return output
 
 
+@cached(key="proys_cupo", ttl=45)
 async def get_proyectos_cupo(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -308,6 +557,7 @@ async def get_proyectos_cupo(
     ]
 
 
+@cached(key="alerts_proys", ttl=60)
 async def get_alertas_proyectos(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -391,39 +641,48 @@ async def get_alertas_proyectos(
     }
 
 
-async def get_alumnos_por_empresa(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
+@cached(key="alumnos_por_empresa", ttl=120)
+async def get_alumnos_por_empresa(
+    db: AsyncSession,
+    evento_id: int | None = None,
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
     filters = [Inscripcion.id_evento == evento_id] if evento_id is not None else []
 
-    rows = (
-        await db.execute(
-            select(
-                Empresa.id_empresa,
-                Empresa.nombre_empresa,
-                func.count(Inscripcion.id_inscripcion).label("cantidad"),
-            )
-            .join(Proyecto, Proyecto.id_empresa == Empresa.id_empresa)
-            .join(Inscripcion, Inscripcion.id_proyecto == Proyecto.id_proyecto)
-            .where(*filters)
-            .group_by(Empresa.id_empresa, Empresa.nombre_empresa)
-            .order_by(desc("cantidad"), Empresa.nombre_empresa.asc())
+    base_query = (
+        select(
+            Empresa.id_empresa,
+            Empresa.nombre_empresa,
+            func.count(Inscripcion.id_inscripcion).label("cantidad"),
         )
-    ).all()
+        .join(Proyecto, Proyecto.id_empresa == Empresa.id_empresa)
+        .join(Inscripcion, Inscripcion.id_proyecto == Proyecto.id_proyecto)
+        .where(*filters)
+        .group_by(Empresa.id_empresa, Empresa.nombre_empresa)
+        .order_by(desc("cantidad"), Empresa.nombre_empresa.asc())
+    )
 
-    return [
+    result = await paginate(db, base_query, page, page_size)
+    result["data"] = [
         {
             "id_empresa": row.id_empresa,
             "empresa": row.nombre_empresa,
             "cantidad_inscritos": int(row.cantidad or 0),
         }
-        for row in rows
+        for row in result["data"]
     ]
+    return result
 
 
+@cached(key="alumnos_por_carrera", ttl=120)
 async def get_alumnos_por_carrera(
     db: AsyncSession,
     evento_id: int | None = None,
     carrera: str | None = None,
-) -> list[dict]:
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
     reg_filters = []
     ins_filters = []
     if evento_id is not None:
@@ -508,7 +767,21 @@ async def get_alumnos_por_carrera(
             }
         )
 
-    return sorted(carrera_map.values(), key=lambda item: item["cantidad"], reverse=True)
+    carreras = sorted(carrera_map.values(), key=lambda item: item["cantidad"], reverse=True)
+
+    page = max(1, page)
+    page_size = max(1, min(page_size, 100))
+    total = len(carreras)
+    pages = max(1, -(-total // page_size))
+    offset = (page - 1) * page_size
+
+    return {
+        "data": carreras[offset : offset + page_size],
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "pages": pages,
+    }
 
 
 def _resolve_timeline_window(ventana: str | None, horas: int | None = None) -> tuple[str, int, int]:
@@ -553,6 +826,7 @@ def _bucket_floor(ts: datetime, step_minutes: int) -> datetime:
     return ts_utc.replace(hour=hour, minute=minute)
 
 
+@cached(key="ins_time", ttl=60)
 async def get_inscripciones_timeline(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -671,6 +945,7 @@ async def get_inscripciones_timeline(
 
     return response
 
+@cached(key="rein_sc", ttl=60)
 async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = None) -> list[dict]:
     # Total eventos en los que el alumno se ha registrado.
     ev_rows = (
@@ -721,6 +996,7 @@ async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = No
     ]
 
 
+@cached(key="ratio_ins", ttl=60)
 async def get_ratio_inscritos(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -794,6 +1070,7 @@ async def get_ratio_inscritos(
     return result
 
 
+@cached(key="emb_conv", ttl=60)
 async def get_embudo_conversion(
     db: AsyncSession,
     evento_id: int | None = None,
@@ -889,26 +1166,23 @@ async def get_embudo_conversion(
 
 async def get_logs_recientes(
     db: AsyncSession,
-    limite: int = 10,
-) -> list[dict]:
-    limite = max(1, min(limite, 50))
-
-    rows = (
-        await db.execute(
-            select(
-                LogAuditoria.id_log,
-                LogAuditoria.timestamp,
-                LogAuditoria.tipo_evento,
-                LogAuditoria.id_matricula,
-                LogAuditoria.ip_origen,
-                LogAuditoria.detalle,
-            )
-            .order_by(LogAuditoria.timestamp.desc())
-            .limit(limite)
+    page: int = 1,
+    page_size: int = 20,
+) -> dict:
+    base_query = (
+        select(
+            LogAuditoria.id_log,
+            LogAuditoria.timestamp,
+            LogAuditoria.tipo_evento,
+            LogAuditoria.id_matricula,
+            LogAuditoria.ip_origen,
+            LogAuditoria.detalle,
         )
-    ).all()
+        .order_by(LogAuditoria.timestamp.desc())
+    )
 
-    return [
+    result = await paginate(db, base_query, page, page_size)
+    result["data"] = [
         {
             "id_log": str(row.id_log),
             "timestamp": row.timestamp.isoformat() if row.timestamp else None,
@@ -917,8 +1191,9 @@ async def get_logs_recientes(
             "ip_origen": row.ip_origen,
             "detalle": row.detalle,
         }
-        for row in rows
+        for row in result["data"]
     ]
+    return result
 
 
 async def _resumen_evento(db: AsyncSession, evento_id: int) -> dict:
@@ -1032,6 +1307,7 @@ async def _resumen_eventos_bulk(db: AsyncSession, evento_ids: list[int]) -> dict
     return resumen
 
 
+@cached(key="comp_ev", ttl=60)
 async def get_comparativa_eventos(
     db: AsyncSession,
     evento_actual_id: int | None = None,

@@ -102,6 +102,9 @@ async def _rows_inscripciones(
                 "correo": usuario.correo,
                 "carrera": usuario.carrera,
                 "semestre": usuario.semestre,
+                "correo_alterno": usuario.correo_alterno or "",
+                "celular": usuario.celular or "",
+                "descripcion_personal": usuario.descripcion_personal or "",
                 "fecha_inscripcion": ins.timestamp.isoformat() if ins.timestamp else "",
             }
         )
@@ -317,6 +320,9 @@ async def export_dataset_csv(
             "correo",
             "carrera",
             "semestre",
+            "correo_alterno",
+            "celular",
+            "descripcion_personal",
             "fecha_inscripcion",
         ]
     elif dataset == "proyectos":
