@@ -16,12 +16,12 @@ from app.core.secrets import SECRET_KEYS
 def fake_ssm_page() -> dict:
     return {
         "Parameters": [
-            {"Name": "/sid/prod/JWT_SECRET_KEY", "Value": "jwt-value"},
-            {"Name": "/sid/prod/QR_ENCRYPTION_KEY", "Value": "qr-value"},
-            {"Name": "/sid/prod/DATABASE_URL", "Value": "db-value"},
-            {"Name": "/sid/prod/SMTP_PASSWORD", "Value": "smtp-value"},
-            {"Name": "/sid/prod/GOOGLE_CLIENT_ID", "Value": "google-value"},
-            {"Name": "/sid/prod/REDIS_URL", "Value": "redis-value"},
+            {"Name": "/feria/prod/JWT_SECRET_KEY", "Value": "jwt-value"},
+            {"Name": "/feria/prod/QR_ENCRYPTION_KEY", "Value": "qr-value"},
+            {"Name": "/feria/prod/DATABASE_URL", "Value": "db-value"},
+            {"Name": "/feria/prod/SMTP_PASSWORD", "Value": "smtp-value"},
+            {"Name": "/feria/prod/GOOGLE_CLIENT_ID", "Value": "google-value"},
+            {"Name": "/feria/prod/REDIS_URL", "Value": "redis-value"},
         ]
     }
 
@@ -39,7 +39,7 @@ def test_aws_provider_strips_prefix_and_returns_value(fake_ssm_page):
 
     fake_client = _make_fake_client(fake_ssm_page)
     with patch("boto3.client", return_value=fake_client) as boto_client:
-        provider = AwsParameterStoreProvider(prefix="/sid/prod", region="us-east-1")
+        provider = AwsParameterStoreProvider(prefix="/feria/prod", region="us-east-1")
         assert provider.get("JWT_SECRET_KEY") == "jwt-value"
         assert provider.get("DATABASE_URL") == "db-value"
         assert provider.get("REDIS_URL") == "redis-value"
@@ -51,7 +51,7 @@ def test_aws_provider_caches_after_first_call(fake_ssm_page):
 
     fake_client = _make_fake_client(fake_ssm_page)
     with patch("boto3.client", return_value=fake_client):
-        provider = AwsParameterStoreProvider(prefix="/sid/prod", region="us-east-1")
+        provider = AwsParameterStoreProvider(prefix="/feria/prod", region="us-east-1")
         provider.get("JWT_SECRET_KEY")
         provider.get("QR_ENCRYPTION_KEY")
         provider.get("DATABASE_URL")
@@ -65,7 +65,7 @@ def test_aws_provider_returns_none_for_unknown_key(fake_ssm_page):
 
     fake_client = _make_fake_client(fake_ssm_page)
     with patch("boto3.client", return_value=fake_client):
-        provider = AwsParameterStoreProvider(prefix="/sid/prod", region="us-east-1")
+        provider = AwsParameterStoreProvider(prefix="/feria/prod", region="us-east-1")
         assert provider.get("NOPE") is None
 
 
@@ -74,7 +74,7 @@ def test_aws_provider_handles_trailing_slash_in_prefix(fake_ssm_page):
 
     fake_client = _make_fake_client(fake_ssm_page)
     with patch("boto3.client", return_value=fake_client):
-        provider = AwsParameterStoreProvider(prefix="/sid/prod/", region="us-east-1")
+        provider = AwsParameterStoreProvider(prefix="/feria/prod/", region="us-east-1")
         assert provider.get("JWT_SECRET_KEY") == "jwt-value"
 
 
@@ -82,7 +82,7 @@ def test_build_provider_selects_aws_backend(monkeypatch):
     from app.core import secrets as secrets_module
 
     monkeypatch.setenv("SECRETS_BACKEND", "aws")
-    monkeypatch.setenv("AWS_SECRETS_PREFIX", "/sid/prod")
+    monkeypatch.setenv("AWS_SECRETS_PREFIX", "/feria/prod")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
 
     # boto3.client is patched so construction does not touch real AWS;
@@ -106,7 +106,7 @@ def test_load_secrets_populates_os_environ_from_aws(monkeypatch, fake_ssm_page):
     from app.core import secrets as secrets_module
 
     monkeypatch.setenv("SECRETS_BACKEND", "aws")
-    monkeypatch.setenv("AWS_SECRETS_PREFIX", "/sid/prod")
+    monkeypatch.setenv("AWS_SECRETS_PREFIX", "/feria/prod")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
     for key in SECRET_KEYS:
         monkeypatch.delenv(key, raising=False)

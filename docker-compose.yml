@@ -1,17 +1,17 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: sid_postgres
+    container_name: feria_postgres
     environment:
-      POSTGRES_DB: sid_db
-      POSTGRES_USER: sid_user
-      POSTGRES_PASSWORD: sid_password_local
+      POSTGRES_DB: feria_db
+      POSTGRES_USER: feria_user
+      POSTGRES_PASSWORD: feria_password_local
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sid_user -d sid_db"]
+      test: ["CMD-SHELL", "pg_isready -U feria_user -d feria_db"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -19,7 +19,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: sid_redis
+    container_name: feria_redis
     command: redis-server --requirepass ${REDIS_PASSWORD:-redis_password_local}
     ports:
       - "6379:6379"

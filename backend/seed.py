@@ -310,7 +310,7 @@ async def seed_usuarios(evento_activo: "Evento") -> None:
 
 async def seed_admin_user() -> None:
     """Crea el usuario administrador ServicioSocialMaster si no existe."""
-    ADMIN_CORREO = "master@sid.tec.mx"
+    ADMIN_CORREO = "master@feriaserviciosocial.com"
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Usuario).where(Usuario.correo == ADMIN_CORREO))
         if result.scalar_one_or_none():
@@ -368,12 +368,12 @@ async def seed_usuarios_empresa() -> None:
 
             password = secrets.token_urlsafe(12)
             slug_e = slugify(empresa.nombre_empresa)
-            correo = f"contacto@{slug_e}.sid.mx"
+            correo = f"contacto@{slug_e}.feriaserviciosocial.com"
 
             # Evitar correos duplicados
             dup = await db.execute(select(Usuario).where(Usuario.correo == correo))
             if dup.scalar_one_or_none():
-                correo = f"empresa{empresa.id_empresa}@{slug_e}.sid.mx"
+                correo = f"empresa{empresa.id_empresa}@{slug_e}.feriaserviciosocial.com"
 
             usuario = Usuario(
                 id_matricula=f"EMP_{empresa.id_empresa:04d}",

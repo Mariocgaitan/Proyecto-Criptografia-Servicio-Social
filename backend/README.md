@@ -1,6 +1,6 @@
-# SID Backend — Sistema de Inscripción Dinámica
+# Feria Servicio Social — Backend
 
-API REST con FastAPI para el sistema de pre-registro e inscripción con QR dinámico.
+API REST con FastAPI para la Feria de Servicio Social: pre-registro e inscripción con QR dinámico.
 
 ---
 
@@ -88,7 +88,7 @@ uv run python test_db_ssh.py
 
 | Variable | Descripción | Valor por defecto |
 |---|---|---|
-| `DATABASE_URL` | URL de conexión a PostgreSQL (asyncpg) | `localhost:5432/sid_db` |
+| `DATABASE_URL` | URL de conexión a PostgreSQL (asyncpg) | `localhost:5432/feria_db` |
 | `USE_SSH_TUNNEL` | Habilita el túnel SSH | `false` |
 | `SSH_HOST` | IP o hostname del servidor SSH | — |
 | `SSH_PORT` | Puerto SSH | `22` |

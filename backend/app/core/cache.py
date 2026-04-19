@@ -25,7 +25,7 @@ from app.core.redis import get_redis
 
 logger = structlog.get_logger(__name__)
 
-PREFIX = "sid:"
+PREFIX = "feria:"
 HITS_KEY = f"{PREFIX}cache:hits"
 MISSES_KEY = f"{PREFIX}cache:misses"
 

@@ -1,5 +1,5 @@
 """
-Shared pytest fixtures for the SID backend test suite.
+Shared pytest fixtures for the Feria Servicio Social backend test suite.
 
 Environment variables are set BEFORE any app imports to satisfy
 pydantic-settings validation in app.core.config.Settings.

@@ -25,7 +25,7 @@ from app.routers import auth, alumno, admin, empresa, estadisticas, system_metri
 
 # ── Logging & Sentry ──────────────────────────────────────────────────────────
 setup_logging()
-logger = structlog.get_logger("sid.main")
+logger = structlog.get_logger("feria.main")
 
 if settings.SENTRY_DSN:
     sentry_sdk.init(
@@ -71,8 +71,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="SID — Sistema de Inscripción Dinámica",
-    description="API para el sistema de pre-registro e inscripción con QR dinámico",
+    title="Feria Servicio Social",
+    description="API para la Feria de Servicio Social — pre-registro e inscripción con QR dinámico",
     version="0.5.0",
     lifespan=lifespan,
     docs_url="/docs" if settings.DEBUG else None,
