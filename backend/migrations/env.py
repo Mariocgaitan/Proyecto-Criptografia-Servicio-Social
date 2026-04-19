@@ -41,17 +41,31 @@ async def run_async_migrations() -> None:
     await engine.dispose()
 
 
+def _local_port_in_use(port: int) -> bool:
+    import socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        return sock.connect_ex(("127.0.0.1", port)) == 0
+
+
 def run_migrations_online() -> None:
     from app.core.config import settings
     from app.db.ssh_manager import ssh_tunnel_manager
 
-    if settings.USE_SSH_TUNNEL:
+    # In prod we run alembic via `docker compose exec app ...`, so the app
+    # process already owns the tunnel. Reuse it instead of colliding on ports.
+    reuse_existing_tunnel = (
+        settings.USE_SSH_TUNNEL and _local_port_in_use(settings.LOCAL_BIND_PORT)
+    )
+    started_here = False
+
+    if settings.USE_SSH_TUNNEL and not reuse_existing_tunnel:
         ssh_tunnel_manager.start()
+        started_here = True
 
     try:
         asyncio.run(run_async_migrations())
     finally:
-        if settings.USE_SSH_TUNNEL:
+        if started_here:
             ssh_tunnel_manager.stop()
 
 
