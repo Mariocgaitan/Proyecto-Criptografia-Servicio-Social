@@ -79,7 +79,6 @@ for key in "${SECRETS_TO_UPLOAD[@]}"; do
         --value "$value" \
         --type SecureString \
         --overwrite \
-        --no-cli-pager \
         >/dev/null
     echo "  ✔ $param_name"
     uploaded=$((uploaded + 1))
