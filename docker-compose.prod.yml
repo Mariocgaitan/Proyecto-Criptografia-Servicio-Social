@@ -84,6 +84,11 @@ services:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
       # Cloudflare Origin CA certs (no versionados — ver .gitignore).
       - ./nginx/certs:/etc/nginx/certs:ro
+      # Página custom de mantenimiento.
+      - ./nginx/html:/etc/nginx/html:ro
+      # Flag file del kill-switch. El dir se monta RW para que los scripts del
+      # host puedan tocar/borrar maintenance.on sin recrear el container.
+      - ./nginx/state:/etc/nginx/state
     ports:
       - "80:80"
       - "443:443"
