@@ -20,12 +20,13 @@
 
 set -euo pipefail
 
-ENV_FILE="${1:-}"
+ENV_FILE="${1:-backend/.env.production.local}"
 PARAM_PREFIX="${PARAM_PREFIX:-/feria/prod}"
 AWS_REGION="${AWS_REGION:-us-east-1}"
 
-if [ -z "$ENV_FILE" ] || [ ! -f "$ENV_FILE" ]; then
-    echo "Uso: $0 <path-al-env-file>" >&2
+if [ ! -f "$ENV_FILE" ]; then
+    echo "Archivo no encontrado: $ENV_FILE" >&2
+    echo "Uso: $0 [ruta/al/.env.production.local]" >&2
     exit 1
 fi
 
@@ -58,7 +59,9 @@ SECRETS_TO_UPLOAD=(
 log() { echo -e "\033[1;34m==>\033[0m $*"; }
 
 # shellcheck disable=SC1090
-set -a; source "$ENV_FILE"; set +a
+set -a
+source "$ENV_FILE"
+set +a
 
 uploaded=0
 skipped=0
@@ -66,7 +69,7 @@ for key in "${SECRETS_TO_UPLOAD[@]}"; do
     value="${!key:-}"
     if [ -z "$value" ]; then
         echo "  - $key: vacío en $ENV_FILE, skip"
-        skipped=$((skipped+1))
+        skipped=$((skipped + 1))
         continue
     fi
     param_name="${PARAM_PREFIX}/${key}"
@@ -76,10 +79,9 @@ for key in "${SECRETS_TO_UPLOAD[@]}"; do
         --value "$value" \
         --type SecureString \
         --overwrite \
-        --no-cli-pager \
         >/dev/null
     echo "  ✔ $param_name"
-    uploaded=$((uploaded+1))
+    uploaded=$((uploaded + 1))
 done
 
 log "Subidos: $uploaded  |  Skipped: $skipped"
