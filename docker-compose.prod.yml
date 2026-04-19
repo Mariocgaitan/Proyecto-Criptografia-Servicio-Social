@@ -13,6 +13,9 @@ services:
       SECRETS_BACKEND: aws
       AWS_SECRETS_PREFIX: /feria/prod/
       AWS_REGION: us-east-1
+      # Lightsail no soporta IAM roles — credenciales vía access keys en .env.production
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
       # REDIS_URL se arma con el password del .env.production — evita duplicar el secret en SSM
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
