@@ -8,7 +8,7 @@ from app.main import app
 async def test_health_returns_200():
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        resp = await client.get("/health")
+        resp = await client.get("/api/v1/health")
     assert resp.status_code in (200, 503)
     data = resp.json()
     assert data["status"] in ("ok", "degraded", "down")

@@ -34,15 +34,8 @@ jobs:
           pip install -r requirements.txt
           pip install pytest pytest-asyncio httpx fakeredis aiosqlite
 
-      - env:
-          APP_ENV: test
-          SECRETS_BACKEND: env
-          JWT_SECRET_KEY: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-          QR_ENCRYPTION_KEY: "ci-qr-key-ci-qr-key-ci-qr-key-123"
-          DATABASE_URL: "sqlite+aiosqlite:///./test.db"
-          REDIS_URL: "redis://localhost:6379/0"
-          ALLOWED_ORIGINS: '["http://localhost:5173"]'
-        run: pytest -q
+      # conftest.py setea todas las env vars necesarias con valores válidos
+      - run: pytest -q
 
   build-and-push:
     name: Build and push image
