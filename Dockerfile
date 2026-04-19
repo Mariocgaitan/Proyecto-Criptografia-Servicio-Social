@@ -4,6 +4,11 @@
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app/frontend
 
+# Vite inline las VITE_* en build time; si faltan, el bundle queda con el
+# fallback "TU_GOOGLE_CLIENT_ID" y el login con Google rompe.
+ARG VITE_GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=${VITE_GOOGLE_CLIENT_ID}
+
 COPY frontend/package*.json ./
 RUN npm ci
 
