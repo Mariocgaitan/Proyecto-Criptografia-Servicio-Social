@@ -104,12 +104,14 @@ jobs:
               up -d --remove-orphans
 
             echo "==> Esperando a que 'app' esté healthy"
+            # 'status' es read-only en zsh, usamos otro nombre.
+            app_health="starting"
             for i in $(seq 1 30); do
-              status=$(docker inspect --format='{{.State.Health.Status}}' feria_app 2>/dev/null || echo "starting")
-              if [ "$status" = "healthy" ]; then break; fi
+              app_health=$(docker inspect --format='{{.State.Health.Status}}' feria_app 2>/dev/null || echo "starting")
+              if [ "$app_health" = "healthy" ]; then break; fi
               sleep 5
             done
-            [ "$status" = "healthy" ] || { echo "app no arrancó healthy"; docker compose -f docker-compose.prod.yml logs --tail=100 app; exit 1; }
+            [ "$app_health" = "healthy" ] || { echo "app no arrancó healthy"; docker compose -f docker-compose.prod.yml logs --tail=100 app; exit 1; }
 
             echo "==> Migraciones Alembic"
             docker compose -f docker-compose.prod.yml --env-file .env.production \
