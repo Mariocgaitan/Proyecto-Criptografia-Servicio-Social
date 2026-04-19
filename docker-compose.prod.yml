@@ -82,8 +82,11 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      # Cloudflare Origin CA certs (no versionados — ver .gitignore).
+      - ./nginx/certs:/etc/nginx/certs:ro
     ports:
       - "80:80"
+      - "443:443"
     depends_on:
       app:
         condition: service_healthy
