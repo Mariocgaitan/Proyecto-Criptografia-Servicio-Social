@@ -39,10 +39,10 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     QR_ENCRYPTION_KEY: str
 
-    JWT_ALGORITHM: str
-    ACCESS_TOKEN_EXPIRE_MINUTES: int
-    REFRESH_TOKEN_EXPIRE_HOURS: int
-    PRE_AUTH_TOKEN_EXPIRE_MINUTES: int  # El temp_token expira en 10 minutos
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_HOURS: int = 168
+    PRE_AUTH_TOKEN_EXPIRE_MINUTES: int = 10  # temp_token para flujos de 2FA
 
     # Google OAuth
     GOOGLE_CLIENT_ID: str
@@ -61,22 +61,22 @@ class Settings(BaseSettings):
 
     # Role switch para pruebas locales: permite simular un rol distinto para
     # un correo especifico sin persistir cambios en la BD.
-    TEST_ROLE_SWITCH_ENABLED: bool
-    TEST_ROLE_SWITCH_EMAIL: str
-    TEST_ROLE_SWITCH_ROLE: str
+    TEST_ROLE_SWITCH_ENABLED: bool = False
+    TEST_ROLE_SWITCH_EMAIL: str = ""
+    TEST_ROLE_SWITCH_ROLE: str = ""
 
     # CORS — orígenes permitidos explícitos (producción). En desarrollo se
     # acepta automáticamente cualquier IP de red privada + localhost.
     ALLOWED_ORIGINS: Annotated[list[str], NoDecode]
 
-    # HTTPS local (mkcert)
-    USE_HTTPS: bool
-    SSL_CERTFILE: str
-    SSL_KEYFILE: str
+    # HTTPS local (mkcert) — en prod el TLS termina en Cloudflare, no en la app.
+    USE_HTTPS: bool = False
+    SSL_CERTFILE: str = ""
+    SSL_KEYFILE: str = ""
 
     # Login lockout
-    MAX_FAILED_LOGIN_ATTEMPTS: int
-    LOCKOUT_DURATION_MINUTES: int
+    MAX_FAILED_LOGIN_ATTEMPTS: int = 5
+    LOCKOUT_DURATION_MINUTES: int = 15
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
