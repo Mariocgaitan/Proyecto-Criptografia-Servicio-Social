@@ -89,10 +89,11 @@ jobs:
           command_timeout: 10m
           script: |
             set -euo pipefail
-            # Forzar bash — evita que zsh interprete "$IMAGE_NAME:latest" como modificador :l
+            # zsh trata "$VAR:l" como modificador; las llaves + tr evitan ambos problemas.
             cd "${APP_DIR}"
 
-            IMAGE_LATEST="${REGISTRY}/${IMAGE_NAME}:latest"
+            IMAGE_NAME_LC=$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')
+            IMAGE_LATEST="${REGISTRY}/${IMAGE_NAME_LC}:latest"
 
             echo "==> Pull de imagen: $IMAGE_LATEST"
             docker pull "$IMAGE_LATEST"
