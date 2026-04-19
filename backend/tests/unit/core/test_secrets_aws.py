@@ -9,8 +9,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from app.core.secrets import SECRET_KEYS
-
 
 @pytest.fixture
 def fake_ssm_page() -> dict:
@@ -108,7 +106,7 @@ def test_load_secrets_populates_os_environ_from_aws(monkeypatch, fake_ssm_page):
     monkeypatch.setenv("SECRETS_BACKEND", "aws")
     monkeypatch.setenv("AWS_SECRETS_PREFIX", "/feria/prod")
     monkeypatch.setenv("AWS_REGION", "us-east-1")
-    for key in SECRET_KEYS:
+    for key in ("JWT_SECRET_KEY", "DATABASE_URL", "REDIS_URL", "SENTRY_DSN"):
         monkeypatch.delenv(key, raising=False)
 
     fake_client = _make_fake_client(fake_ssm_page)
@@ -119,12 +117,6 @@ def test_load_secrets_populates_os_environ_from_aws(monkeypatch, fake_ssm_page):
     assert os.environ["JWT_SECRET_KEY"] == "jwt-value"
     assert os.environ["DATABASE_URL"] == "db-value"
     assert os.environ["REDIS_URL"] == "redis-value"
-    # Keys present in SECRET_KEYS but absent from Parameter Store must
-    # not be injected into the environment (harmless placeholder behavior).
+    # Keys absent from Parameter Store must not be injected into the
+    # environment (Pydantic can then fall back to defaults or fail fast).
     assert "SENTRY_DSN" not in os.environ
-
-
-def test_redis_url_is_in_secret_keys():
-    # Guardrail: REDIS_URL must be fetched from the provider because it
-    # carries a password in production.
-    assert "REDIS_URL" in SECRET_KEYS

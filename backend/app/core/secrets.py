@@ -7,9 +7,8 @@ secrets come from, so the rest of the backend never needs to change when we
 migrate.
 
 Usage: `load_secrets()` is called once at startup, before `Settings()` is
-instantiated. It fetches every name in `SECRET_KEYS` from the configured
-provider and injects it into `os.environ`, so pydantic-settings picks it up
-transparently.
+instantiated. It fetches every value exposed by the configured provider and
+injects it into `os.environ`, so pydantic-settings picks it up transparently.
 
 To add a new backend: implement `SecretsProvider.get` and register it in
 `_build_provider`.
@@ -21,21 +20,9 @@ import os
 from typing import Protocol
 
 
-# Names of settings that are secrets and must be sourced from the provider.
-# Non-secret config (ports, flags, URLs without credentials) stays in .env.
-SECRET_KEYS: tuple[str, ...] = (
-    "JWT_SECRET_KEY",
-    "QR_ENCRYPTION_KEY",
-    "SMTP_PASSWORD",
-    "DATABASE_URL",
-    "GOOGLE_CLIENT_ID",
-    "REDIS_URL",
-    "SENTRY_DSN",
-)
-
-
 class SecretsProvider(Protocol):
     def get(self, name: str) -> str | None: ...
+    def all(self) -> dict[str, str]: ...
 
 
 class EnvSecretsProvider:
@@ -43,6 +30,9 @@ class EnvSecretsProvider:
 
     def get(self, name: str) -> str | None:
         return os.environ.get(name)
+
+    def all(self) -> dict[str, str]:
+        return dict(os.environ)
 
 
 class AwsParameterStoreProvider:
@@ -75,6 +65,11 @@ class AwsParameterStoreProvider:
             self._load()
         return self._cache.get(name)
 
+    def all(self) -> dict[str, str]:
+        if not self._loaded:
+            self._load()
+        return dict(self._cache)
+
 
 def _build_provider() -> SecretsProvider:
     backend = os.environ.get("SECRETS_BACKEND", "env").lower()
@@ -89,17 +84,14 @@ def _build_provider() -> SecretsProvider:
 
 
 def load_secrets() -> None:
-    """Fetch every known secret from the provider and export it to os.environ.
+    """Fetch every value from the provider and export it to os.environ.
 
-    Idempotent: if a secret is already set in the environment and the provider
-    is env-based, this is a no-op. For remote providers, values fetched here
-    override whatever may have been in .env.
+    For remote providers, values fetched here override whatever may have been
+    in .env. The env provider is a no-op since os.environ is already populated.
     """
     provider = _build_provider()
     # The env provider already reads from os.environ, so skip the round-trip.
     if isinstance(provider, EnvSecretsProvider):
         return
-    for name in SECRET_KEYS:
-        value = provider.get(name)
-        if value is not None:
-            os.environ[name] = value
+    for name, value in provider.all().items():
+        os.environ[name] = value
