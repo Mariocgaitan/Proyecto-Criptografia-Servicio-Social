@@ -92,6 +92,10 @@ jobs:
             # zsh trata "$VAR:l" como modificador; las llaves + tr evitan ambos problemas.
             cd "${APP_DIR}"
 
+            echo "==> git pull (compose/nginx/scripts viven en el repo del VPS)"
+            git fetch --quiet origin main
+            git reset --hard origin/main
+
             IMAGE_NAME_LC=$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')
             IMAGE_LATEST="${REGISTRY}/${IMAGE_NAME_LC}:latest"
 
