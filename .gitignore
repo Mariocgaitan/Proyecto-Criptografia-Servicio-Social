@@ -21,6 +21,9 @@ env/
 # Environment variables — NUNCA subir al repositorio
 backend/.env
 .env
+.env.production
+.env.local
+.env.*.local
 
 # IDE
 .vscode/
@@ -53,7 +56,6 @@ MATRIZ_DATOS_GRAFICAS_ADMIN.md
 # Archivos de sesión de herramientas de BD (DBeaver, DataGrip, etc.)
 *.session.sql
 *.sql.session
-SID Local.session.sql
 
 # Certificados SSL locales (mkcert)
 certs/
@@ -69,8 +71,12 @@ package-lock.json
 
 # Claude Code
 .claude/
-scripts/
 docs/
+
+# Scripts locales de dev, pero SÍ trackear los de deploy
+scripts/*
+!scripts/deploy/
+!scripts/deploy/**
 # Notas y planes personales
 notas.md
 PLAN_AUTENTICACION.md
