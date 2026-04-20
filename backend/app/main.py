@@ -11,6 +11,19 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse as _JSONResponse
 from slowapi.errors import RateLimitExceeded
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+
+class SPAStaticFiles(StaticFiles):
+    """StaticFiles with SPA fallback: serve index.html on 404 for non-asset paths."""
+
+    async def get_response(self, path, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code == 404 and "." not in path.rsplit("/", 1)[-1]:
+                return await super().get_response("index.html", scope)
+            raise
 
 from app.core.config import settings
 from app.core.limiter import limiter
@@ -221,7 +234,7 @@ app.include_router(exports.router, tags=["Export"])
 # Servir Frontend compilado (React SPA) en la raíz
 frontend_dist = os.path.join(os.path.dirname(__file__), "../../frontend/dist")
 if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+    app.mount("/", SPAStaticFiles(directory=frontend_dist, html=True), name="frontend")
 else:
     @app.get("/", include_in_schema=False)
     async def root():
