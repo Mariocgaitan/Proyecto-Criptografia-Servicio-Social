@@ -1,4 +1,3 @@
-import asyncio
 import os
 import uuid
 from datetime import UTC, datetime
@@ -16,11 +15,11 @@ from slowapi.errors import RateLimitExceeded
 from app.core.config import settings
 from app.core.limiter import limiter
 from app.core.logging import setup_logging
+from app.core.metrics_buffer import MetricSample, metrics_buffer
 from app.core.redis import connect_redis, disconnect_redis
 from app.db.ssh_manager import ssh_tunnel_manager
 from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
-from app.models.request_metric import RequestMetric
 from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports, health
 
 # ── Logging & Sentry ──────────────────────────────────────────────────────────
@@ -60,8 +59,11 @@ async def lifespan(app: FastAPI):
     # Startup validation: Redis (non-fatal)
     await connect_redis()
 
+    await metrics_buffer.start()
+
     yield
 
+    await metrics_buffer.stop()
     await disconnect_redis()
 
     if settings.USE_SSH_TUNNEL:
@@ -182,32 +184,13 @@ async def request_metrics_middleware(request: Request, call_next) -> Response:
         ended_at = datetime.now(UTC)
         duration_ms = max((ended_at - started_at).total_seconds() * 1000, 0.0)
 
-        # Fire-and-forget: don't block the response waiting for DB write
-        asyncio.create_task(_save_metric(
-            started_at, request.url.path[:255], request.method,
-            int(status_code), round(duration_ms, 3),
+        metrics_buffer.push(MetricSample(
+            timestamp=started_at,
+            endpoint=request.url.path[:255],
+            method=request.method,
+            status_code=int(status_code),
+            duration_ms=round(duration_ms, 3),
         ))
-
-
-async def _save_metric(
-    timestamp: datetime, endpoint: str, method: str,
-    status_code: int, duration_ms: float,
-) -> None:
-    """Persist a request metric in background — never blocks the response."""
-    try:
-        async with AsyncSessionLocal() as session:
-            session.add(
-                RequestMetric(
-                    request_timestamp=timestamp,
-                    endpoint=endpoint,
-                    method=method,
-                    status_code=status_code,
-                    duration_ms=duration_ms,
-                )
-            )
-            await session.commit()
-    except Exception:
-        pass
 
 
 # ── Rate Limiter ───────────────────────────────────────────────────────────────
