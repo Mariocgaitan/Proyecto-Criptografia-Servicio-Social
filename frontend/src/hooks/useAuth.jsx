@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import { apiUrl } from "@/lib/api";
 
 const AuthContext = createContext();
@@ -19,6 +20,7 @@ export const prefetchNonce = () => {
 export const clearNoncePrefetch = () => { _noncePrefetch = null; };
 
 export const AuthProvider = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,9 +57,18 @@ export const AuthProvider = ({ children }) => {
   };
 
   useEffect(() => {
+    const isPublicAuthRoute = ["/", "/login", "/registro"].includes(location.pathname);
+
+    if (isPublicAuthRoute) {
+      // Evita ruido de 401 en consola cuando el usuario aun no inicia sesion.
+      prefetchNonce();
+      setLoading(false);
+      return;
+    }
+
     prefetchNonce(); // Start nonce fetch in parallel with /auth/me
     fetchUser();
-  }, []);
+  }, [location.pathname]);
 
   const login = async (correo, password) => {
     try {
