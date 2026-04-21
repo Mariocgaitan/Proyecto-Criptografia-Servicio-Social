@@ -470,7 +470,6 @@ export default function AuthWizard() {
                     <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
                       {googleNonce ? (
                         <GoogleLogin
-                          key={googleNonce}
                           nonce={googleNonce}
                           onSuccess={handleGoogleSuccess}
                           onError={() => setError("La autenticación con Google ha fallado.")}
@@ -478,7 +477,7 @@ export default function AuthWizard() {
                           shape="pill"
                           size="large"
                           text="continue_with"
-                          width="100%"
+                          width="360"
                         />
                       ) : (
                         <div className="flex items-center justify-center h-10 text-white/30 text-xs">

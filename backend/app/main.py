@@ -127,21 +127,25 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     if settings.DEBUG:
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com; "
+            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://static.cloudflareinsights.com; "
+            "script-src-elem 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://unpkg.com https://accounts.google.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
+            "style-src-elem 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://fonts.googleapis.com https://accounts.google.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https://*.googleusercontent.com; "
-            "connect-src 'self' http://localhost:8000 https://accounts.google.com; "
+            "connect-src 'self' http://localhost:8000 https://accounts.google.com https://static.cloudflareinsights.com; "
             "frame-src 'self' https://accounts.google.com;"
         )
     else:
         csp = (
             "default-src 'self'; "
-            "script-src 'self' https://accounts.google.com; "
-            "style-src 'self' https://fonts.googleapis.com https://accounts.google.com; "
+            "script-src 'self' https://accounts.google.com https://static.cloudflareinsights.com; "
+            "script-src-elem 'self' https://accounts.google.com https://static.cloudflareinsights.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; "
+            "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; "
             "font-src 'self' https://fonts.gstatic.com; "
             "img-src 'self' data: https://*.googleusercontent.com; "
-            "connect-src 'self' https://accounts.google.com; "
+            "connect-src 'self' https://accounts.google.com https://static.cloudflareinsights.com; "
             "frame-src 'self' https://accounts.google.com;"
         )
     response.headers["Content-Security-Policy"] = csp
