@@ -27,6 +27,14 @@ from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
 
 
+# Profes sin matrícula institucional A01*: se les asigna una matrícula default
+# para que el flujo de Google login los resuelva contra el padrón como alumnos.
+PROFESOR_MATRICULAS: dict[str, str] = {
+    "alfonso.deabiega@tec.mx": "A09000001",
+    "ivan.ongay.valverde@tec.mx": "A09000002",
+}
+
+
 # ── Errores de negocio ────────────────────────────────────────────────────────
 
 class LoginError(Exception):
@@ -493,9 +501,15 @@ async def verify_totp_and_get_token(
         padron_semestre = None
         padron_matricula = None
         if effective_role == "alumno":
-            match = re.match(r"^(a0\d{7})@tec\.mx$", correo.lower())
-            if match:
-                matricula_candidata = match.group(1).upper()
+            correo_lower = correo.lower()
+            matricula_candidata: str | None = None
+            if correo_lower in PROFESOR_MATRICULAS:
+                matricula_candidata = PROFESOR_MATRICULAS[correo_lower]
+            else:
+                match = re.match(r"^(a0\d{7})@tec\.mx$", correo_lower)
+                if match:
+                    matricula_candidata = match.group(1).upper()
+            if matricula_candidata:
                 try:
                     padron_result = await db.execute(
                         select(PadronAlumno).where(PadronAlumno.id_matricula == matricula_candidata)
