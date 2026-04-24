@@ -19,6 +19,11 @@ export async function fetchWithAuth(path, options = {}) {
 
   let response = await fetch(url, opts);
 
+  if (response.status === 503) {
+    window.location.href = "/";
+    return response;
+  }
+
   if (response.status === 401) {
     // Deduplicate concurrent refresh attempts
     if (!_refreshing) {
