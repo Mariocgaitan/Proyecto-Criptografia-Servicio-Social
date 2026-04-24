@@ -39,6 +39,10 @@ export const AuthProvider = ({ children }) => {
       const res = await fetchWithTimeout(apiUrl("/api/v1/auth/me"), {
         credentials: "include",
       });
+      if (res.status === 503) {
+        window.location.href = "/";
+        return null;
+      }
       if (res.ok) {
         const data = await res.json();
         setUser(data);
