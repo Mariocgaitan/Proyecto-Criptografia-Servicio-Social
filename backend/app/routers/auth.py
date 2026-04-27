@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Cookie, Depends, Request
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -14,6 +15,7 @@ from app.schemas.auth import (
     RoleRedirectResponse,
     CompleteProfileRequest,
 )
+from app.schemas.usuario import RegistroRequest, RegistroResponse, EventoDisponibleResponse
 from app.services.auth_service import (
     LoginError,
     login_alumno,
@@ -137,8 +139,6 @@ async def api_complete_profile(
     request: Request,
     db: AsyncSession = Depends(get_db)
 ):
-    from fastapi import HTTPException
-    from sqlalchemy import select
     from app.core.dependencies import get_current_user
     from app.models.evento import Evento
     from app.models.usuario_evento import UsuarioEvento
@@ -150,20 +150,24 @@ async def api_complete_profile(
     if datos.semestre is not None:
         user.semestre = datos.semestre
 
-
     result = await db.execute(
         select(Evento).where(Evento.periodo == datos.periodo).order_by(Evento.id_evento.desc())
     )
     evento = result.scalars().first()
-    
-    if evento:
-        check = await db.execute(select(UsuarioEvento).where(
-            UsuarioEvento.id_matricula == user.id_matricula,
-            UsuarioEvento.id_evento == evento.id_evento
-        ))
-        if not check.scalar_one_or_none():
-            db.add(UsuarioEvento(id_matricula=user.id_matricula, id_evento=evento.id_evento))
-            
+
+    if not evento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No existe un evento activo para el periodo '{datos.periodo}'. Contacta a tu coordinador.",
+        )
+
+    check = await db.execute(select(UsuarioEvento).where(
+        UsuarioEvento.id_matricula == user.id_matricula,
+        UsuarioEvento.id_evento == evento.id_evento
+    ))
+    if not check.scalar_one_or_none():
+        db.add(UsuarioEvento(id_matricula=user.id_matricula, id_evento=evento.id_evento))
+
     await db.commit()
     return {"message": "Perfil actualizado exitosamente"}
 
@@ -253,3 +257,123 @@ async def api_verify_totp(
         return response
     except LoginError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
+
+
+# ── Registro manual ───────────────────────────────────────────────────────────
+
+@router.get("/api/v1/auth/eventos", tags=["Autenticación"], summary="Eventos disponibles para registro")
+async def api_eventos_disponibles(db: AsyncSession = Depends(get_db)):
+    from app.models.evento import Evento
+
+    result = await db.execute(
+        select(Evento).where(Evento.activo.is_(True)).order_by(Evento.anio, Evento.id_evento)
+    )
+    eventos = result.scalars().all()
+
+    _periodo_label = {
+        "FEB_JUN": "Febrero–Junio",
+        "AGO_DIC": "Agosto–Diciembre",
+        "INVIERNO": "Invierno",
+        "VERANO": "Verano",
+    }
+
+    return [
+        {
+            "id_evento": e.id_evento,
+            "nombre": e.nombre,
+            "periodo": e.periodo,
+            "anio": e.anio,
+            "semestre": _periodo_label.get(e.periodo, e.periodo),
+        }
+        for e in eventos
+    ]
+
+
+@router.get("/api/v1/auth/carreras", tags=["Autenticación"], summary="Carreras disponibles en el padrón")
+async def api_carreras_disponibles(db: AsyncSession = Depends(get_db)):
+    from sqlalchemy import distinct
+    from app.models.padron_alumno import PadronAlumno
+
+    result = await db.execute(
+        select(distinct(PadronAlumno.carrera))
+        .where(PadronAlumno.carrera.isnot(None))
+        .order_by(PadronAlumno.carrera)
+    )
+    carreras = [row[0] for row in result.all() if row[0]]
+    return carreras
+
+
+@router.post(
+    "/api/v1/auth/registro",
+    response_model=RegistroResponse,
+    status_code=status.HTTP_201_CREATED,
+    tags=["Autenticación"],
+    summary="Registro manual de alumno",
+)
+@limiter.limit("5/minute")
+async def api_registro(
+    request: Request,
+    datos: RegistroRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    import pyotp
+    from app.core.security import hash_password
+    from app.models.evento import Evento
+    from app.models.padron_alumno import PadronAlumno
+    from app.models.usuario import Usuario
+    from app.models.usuario_evento import UsuarioEvento
+
+    matricula = datos.matricula.upper()
+    correo = f"{matricula.lower()}@tec.mx"
+
+    # Verificar que la matrícula y el correo no existan ya
+    dup_mat = await db.execute(select(Usuario).where(Usuario.id_matricula == matricula))
+    if dup_mat.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="La matrícula ya está registrada.")
+
+    dup_correo = await db.execute(select(Usuario).where(Usuario.correo == correo))
+    if dup_correo.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="El correo institucional ya está en uso.")
+
+    # Si la matrícula está en el padrón, usar esos datos como fuente de verdad
+    padron_res = await db.execute(
+        select(PadronAlumno).where(PadronAlumno.id_matricula == matricula)
+    )
+    padron = padron_res.scalar_one_or_none()
+
+    nombre_final = padron.nombre_completo if padron else datos.nombre
+    carrera_final = (padron.carrera or datos.carrera) if padron else datos.carrera
+    semestre_final = (padron.semestre or datos.semestre) if padron else datos.semestre
+
+    # Validar que los eventos seleccionados existan
+    eventos_res = await db.execute(
+        select(Evento).where(Evento.id_evento.in_(datos.eventos_seleccionados))
+    )
+    eventos = eventos_res.scalars().all()
+    if not eventos:
+        raise HTTPException(status_code=400, detail="Ninguno de los eventos seleccionados existe.")
+
+    usuario = Usuario(
+        id_matricula=matricula,
+        nombre=nombre_final,
+        correo=correo,
+        carrera=carrera_final,
+        semestre=semestre_final,
+        password_hash=hash_password(datos.password),
+        is_google_login=False,
+        totp_secret=pyotp.random_base32(),
+        rol="alumno",
+    )
+    db.add(usuario)
+    await db.flush()
+
+    for evento in eventos:
+        db.add(UsuarioEvento(id_matricula=matricula, id_evento=evento.id_evento))
+
+    await db.commit()
+
+    return RegistroResponse(
+        message="Registro exitoso. Inicia sesión con tu matrícula y contraseña.",
+        matricula=matricula,
+        eventos_registrados=len(eventos),
+    )
