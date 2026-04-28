@@ -86,11 +86,14 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GHCR_USERNAME: ${{ github.actor }}
+          GHCR_TOKEN: ${{ secrets.GHCR_PAT }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: APP_DIR,REGISTRY,IMAGE_NAME
+          envs: APP_DIR,REGISTRY,IMAGE_NAME,GHCR_USERNAME,GHCR_TOKEN
           command_timeout: 10m
           script: |
             set -euo pipefail
@@ -103,6 +106,9 @@ jobs:
 
             IMAGE_NAME_LC=$(echo "${IMAGE_NAME}" | tr '[:upper:]' '[:lower:]')
             IMAGE_LATEST="${REGISTRY}/${IMAGE_NAME_LC}:latest"
+
+            echo "==> Login a ghcr.io"
+            echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USERNAME}" --password-stdin
 
             echo "==> Pull de imagen: $IMAGE_LATEST"
             docker pull "$IMAGE_LATEST"
