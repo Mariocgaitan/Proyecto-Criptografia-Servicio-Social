@@ -649,6 +649,8 @@ async def verify_totp_and_get_token(
 
     # En modo pruebas, habilita eventos para el alumno forzado sin requerir padrón/registro.
     await _ensure_test_alumno_eventos(db, usuario, effective_role)
+    # Si el alumno está en el padrón y no tiene evento, asignar el activo automáticamente.
+    await _ensure_padron_alumno_eventos(db, usuario, effective_role)
 
     await db.commit()
     
@@ -679,6 +681,31 @@ async def _ensure_test_alumno_eventos(db: AsyncSession, usuario: Usuario, effect
     eventos_activos = list(result.scalars().all())
 
     for evento in eventos_activos:
+        db.add(UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento))
+
+
+async def _ensure_padron_alumno_eventos(db: AsyncSession, usuario: Usuario, effective_role: str) -> None:
+    """Asigna el evento activo al alumno del padrón si aún no tiene ninguna asignación."""
+    if effective_role != "alumno":
+        return
+
+    ya_tiene = await db.execute(
+        select(UsuarioEvento.id).where(UsuarioEvento.id_matricula == usuario.id_matricula).limit(1)
+    )
+    if ya_tiene.scalar_one_or_none() is not None:
+        return
+
+    en_padron = await db.execute(
+        select(PadronAlumno.id_matricula).where(PadronAlumno.id_matricula == usuario.id_matricula)
+    )
+    if not en_padron.scalar_one_or_none():
+        return
+
+    evento_res = await db.execute(
+        select(Evento).where(Evento.activo.is_(True)).order_by(Evento.id_evento).limit(1)
+    )
+    evento = evento_res.scalars().first()
+    if evento:
         db.add(UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento))
 
 
