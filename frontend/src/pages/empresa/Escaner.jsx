@@ -6,9 +6,11 @@ import {
   CheckCircle2,
   Download,
   LogOut,
+  Moon,
   QrCode,
   ScanLine,
   Search,
+  Sun,
   Trash2,
   Users,
 } from "lucide-react";
@@ -30,12 +32,6 @@ import {
 import { apiUrl, downloadCsvExport } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import tecLogo from "@/assets/tec_logo.png";
-import campusImg1 from "@/assets/login_images/ser_social_header.png";
-import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
-import campusImg4 from "@/assets/login_images/ser_social3.jpg";
-
-const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
 const SCANNER_CONFIG = {
   bgRotationMs: 20000,
@@ -56,21 +52,12 @@ const CAMERA_ERRORS = {
   generic: "No se pudo iniciar la camara. Verifica permisos y vuelve a intentar.",
 };
 
-function StatCard({ label, value, tone = "default" }) {
-  const toneMap = {
-    default: "border-white/15 bg-black/30 text-white",
-    accent: "border-blue-400/20 bg-blue-500/10 text-white",
-    success: "border-emerald-500/20 bg-emerald-500/10 text-white",
-    warn: "border-amber-500/20 bg-amber-500/10 text-white",
-  };
-
+function StatCard({ label, value }) {
   return (
-    <Card className={cn("rounded-2xl border shadow-[0_8px_30px_rgba(0,0,0,0.2)]", toneMap[tone])}>
+    <Card className="rounded-2xl border border-white/15 bg-black/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
       <CardContent className="p-4">
-        <div>
-          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
-          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{value}</p>
-        </div>
+        <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
+        <p className="mt-3 text-3xl font-normal tracking-tight text-white">{value}</p>
       </CardContent>
     </Card>
   );
@@ -109,25 +96,11 @@ function ResultBanner({ result }) {
 
   const isSuccess = result.status === "ok";
 
-  const styles = {
-    ok: {
-      wrapper: "border-emerald-500/25 bg-emerald-500/10",
-      icon: <CheckCircle2 className="h-8 w-8 text-emerald-300" />,
-      text: "text-emerald-100",
-    },
-    error: {
-      wrapper: "border-red-500/25 bg-red-500/10",
-      icon: <AlertCircle className="h-8 w-8 text-red-300" />,
-      text: "text-red-100",
-    },
-    loading: {
-      wrapper: "border-amber-500/25 bg-amber-500/10",
-      icon: <QrCode className="h-8 w-8 text-amber-300 animate-pulse" />,
-      text: "text-amber-100",
-    },
+  const icons = {
+    ok: <CheckCircle2 className="h-8 w-8 text-white/70" />,
+    error: <AlertCircle className="h-8 w-8 text-white/70" />,
+    loading: <QrCode className="h-8 w-8 text-white/70 animate-pulse" />,
   };
-
-  const currentStyle = styles[result.status] || styles.loading;
 
   return (
     <Motion.div
@@ -135,31 +108,27 @@ function ResultBanner({ result }) {
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -8, scale: 0.98 }}
       transition={{ duration: 0.25 }}
-      className={cn(
-        "rounded-2xl border p-4",
-        currentStyle.wrapper,
-        isSuccess && "border-emerald-300/55 bg-emerald-500/20 p-5 shadow-[0_0_35px_rgba(16,185,129,0.35)]"
-      )}
+      className="rounded-2xl border border-white/15 bg-black/30 p-4"
     >
       <div className="flex items-center gap-4">
         <Motion.div
           animate={isSuccess ? { scale: [1, 1.1, 1] } : { scale: 1 }}
           transition={{ duration: 0.45, repeat: isSuccess ? 2 : 0 }}
         >
-          {currentStyle.icon}
+          {icons[result.status] || icons.loading}
         </Motion.div>
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className={cn("text-base font-medium text-white truncate", isSuccess && "text-xl font-normal tracking-tight")}>
+            <p className={cn("text-base font-normal text-white truncate", isSuccess && "text-xl tracking-tight")}>
               {result.name}
             </p>
             {isSuccess && result.matricula && (
-              <Badge variant="outline" className="bg-white/10 border-white/20 text-emerald-50 font-mono py-0 text-[10px]">
+              <Badge variant="outline" className="bg-white/10 border-white/20 text-white/70 font-mono py-0 text-[10px]">
                 {result.matricula}
               </Badge>
             )}
           </div>
-          <p className={cn("mt-0.5 text-sm font-light", currentStyle.text, isSuccess && "text-emerald-50/70")}>
+          <p className="mt-0.5 text-sm font-light text-white/55">
             {result.status === "ok" ? "Registro procesado correctamente" : result.message}
           </p>
         </div>
@@ -189,6 +158,12 @@ function TabButton({ active, onClick, icon, children }) {
 
 export default function EmpresaEscaner() {
   const { logout } = useAuth();
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("empresa-theme") !== "light");
+  const toggleTheme = () => setIsDark(prev => {
+    const next = !prev;
+    localStorage.setItem("empresa-theme", next ? "dark" : "light");
+    return next;
+  });
   const [proyecto, setProyecto] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [proyectosEmpresa, setProyectosEmpresa] = useState([]);
@@ -633,18 +608,11 @@ export default function EmpresaEscaner() {
   }
 
   return (
-    <div className="h-dvh min-h-screen relative flex flex-col overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <Motion.img
-          src={campusImg1}
-          alt="Campus"
-          className="w-full h-full object-cover absolute inset-0 blur-[4px] scale-105"
-        />
-        <div className="absolute inset-0 bg-black/65" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
-      </div>
-
+    <div
+      data-admin-theme={isDark ? "dark" : "light"}
+      className="h-dvh min-h-screen relative flex flex-col overflow-hidden"
+      style={{ backgroundColor: isDark ? "#0b1120" : "#f1f5f9" }}
+    >
       {/* Nav */}
       <Motion.nav
         initial={{ y: -70, opacity: 0 }}
@@ -653,11 +621,18 @@ export default function EmpresaEscaner() {
         className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
+          <img src={tecLogo} alt="Tecnológico de Monterrey" className={`h-12 sm:h-14 w-auto drop-shadow-md ${isDark ? "brightness-0 invert" : "brightness-0"}`} />
           <p className="text-white/70 text-xs sm:text-sm font-normal tracking-wide uppercase">Portal Empresa</p>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+          <button
+            onClick={toggleTheme}
+            className="inline-flex items-center justify-center p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-white/15 transition-colors"
+            title={isDark ? "Modo claro" : "Modo oscuro"}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <button
             onClick={logout}
             className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
@@ -686,7 +661,7 @@ export default function EmpresaEscaner() {
                     className={cn(
                       "rounded-full hover:bg-transparent",
                       proyecto.evento_activo
-                        ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+                        ? "border-white/10 bg-white/5 text-white/70"
                         : "border-white/10 bg-white/[0.04] text-white/55"
                     )}
                   >
@@ -746,7 +721,7 @@ export default function EmpresaEscaner() {
                       <Button
                         onClick={handleExportCsv}
                         disabled={exportingCsv}
-                        className="h-10 rounded-xl border border-blue-400/35 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"
+                        className="h-10 rounded-xl border border-white/10 bg-white/5 text-white/80 hover:bg-white/10"
                       >
                         <Download className="mr-2 h-4 w-4" />
                         {exportingCsv ? "Exportando..." : "Exportar CSV"}
@@ -833,7 +808,7 @@ export default function EmpresaEscaner() {
                                           handleEliminarInscripcion(alumno);
                                         }}
                                         disabled={deletingInscripcionId === alumno.id_inscripcion}
-                                        className="inline-flex items-center gap-1.5 rounded-lg border border-red-400/30 bg-red-500/10 px-2.5 py-1.5 text-xs font-normal text-red-100 hover:bg-red-500/20 disabled:opacity-60 transition-all"
+                                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-normal text-white/70 hover:bg-white/10 disabled:opacity-60 transition-all"
                                       >
                                         <Trash2 className="h-3.5 w-3.5" />
                                         {deletingInscripcionId === alumno.id_inscripcion ? "Eliminando..." : "Eliminar"}
@@ -899,8 +874,8 @@ export default function EmpresaEscaner() {
 
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <StatCard label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
-                    <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} tone="success" />
-                    <StatCard label="Capacidad total" value={proyecto.capacidad_max} tone="accent" />
+                    <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} />
+                    <StatCard label="Capacidad total" value={proyecto.capacidad_max} />
                   </div>
                 </div>
               </div>
@@ -917,29 +892,32 @@ export default function EmpresaEscaner() {
                       className={cn(
                         "rounded-xl px-5 font-normal shadow-none",
                         scanning
-                          ? "border border-red-400/25 bg-red-500/15 text-red-100 hover:bg-red-500/25"
-                          : "bg-emerald-400 text-slate-950 hover:bg-emerald-300"
+                          ? "border border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                          : "border border-white/10 bg-white/10 text-white/80 hover:bg-white/15"
                       )}
                     >
                       <ScanLine className="mr-2 h-4 w-4" />
-                      {scanning ? "Pausar sensor" : "Activar sensor"}
+                      {scanning ? "Pausar sensor" : "Activar Camara"}
                     </Button>
                   </div>
 
                   <div className="relative min-h-[420px] sm:min-h-[520px] lg:min-h-[620px] xl:min-h-[70vh] overflow-hidden rounded-2xl border border-white/15 bg-black/40 p-3 sm:p-4">
-                    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.12),transparent_42%)]" />
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 sm:p-8">
-                      <div className="flex h-[84%] w-[94%] sm:h-[80%] sm:w-[86%] items-center justify-center rounded-[24px] sm:rounded-[28px] border border-dashed border-blue-300/35">
-                        <div className="h-[92%] w-[92%] rounded-[22px] border border-white/10" />
+                      <div className="flex h-[84%] w-[94%] sm:h-[80%] sm:w-[86%] items-center justify-center rounded-[24px] sm:rounded-[28px] border border-dashed border-white/15">
+                        <div className="h-[92%] w-[92%] rounded-[22px] border border-white/8" />
                       </div>
                     </div>
                     <div id="reader" className="relative z-10 h-full overflow-hidden rounded-xl [&_video]:h-full [&_video]:w-full [&_video]:rounded-xl [&_video]:object-cover" />
 
-                    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center p-4">
-                      <div className="w-full max-w-3xl">
-                        <AnimatePresence mode="wait">{result ? <ResultBanner result={result} /> : null}</AnimatePresence>
-                      </div>
-                    </div>
+                    <AnimatePresence mode="wait">
+                      {result ? (
+                        <div className="absolute inset-0 z-20 flex items-center justify-center p-6">
+                          <div className="w-full max-w-lg">
+                            <ResultBanner result={result} />
+                          </div>
+                        </div>
+                      ) : null}
+                    </AnimatePresence>
                   </div>
 
                   <p className="mt-4 text-center text-xs uppercase tracking-[0.18em] text-white/45">Mantener la credencial dentro del marco para validacion inmediata</p>
@@ -988,7 +966,7 @@ export default function EmpresaEscaner() {
 
           <div className="space-y-4">
             {/* Info del alumno */}
-            <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">
+            <div className="rounded-lg border border-white/10 bg-white/5 p-4">
               <div className="space-y-2">
                 <div>
                   <p className="text-xs uppercase tracking-widest text-white/50 mb-1">Estudiante a eliminar</p>
@@ -1029,7 +1007,7 @@ export default function EmpresaEscaner() {
             </Button>
             <Button
               type="button"
-              className="border border-red-400/35 bg-red-500/20 text-red-100 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="border border-white/10 bg-white/5 text-white/80 hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={confirmarEliminarInscripcion}
               disabled={deleteConfirmText.trim().toLowerCase() !== "eliminar" || deletingInscripcionId === deleteModalInfo?.id_inscripcion}
             >
