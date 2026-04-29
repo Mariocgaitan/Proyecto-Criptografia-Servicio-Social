@@ -16,8 +16,6 @@ import {
   CalendarDays,
   Download,
   RefreshCw,
-  TriangleAlert,
-  Users,
 } from "lucide-react";
 
 import { apiUrl } from "@/lib/api";
@@ -56,28 +54,12 @@ function formatPct(value) {
   return `${Number(value || 0).toFixed(1)}%`;
 }
 
-function KpiCard({ label, value, helper, tone = "blue", icon: Icon }) {
-  const toneMap = {
-    blue: "border-blue-400/20 bg-blue-500/10 text-blue-100",
-    emerald: "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
-    amber: "border-amber-400/20 bg-amber-500/10 text-amber-100",
-    slate: "border-white/15 bg-white/5 text-white",
-  };
-
+function KpiCard({ label, value, helper }) {
   return (
     <div className="rounded-2xl border border-white/15 bg-black/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">{label}</p>
-          <p className="mt-2 text-3xl font-normal tracking-tight text-white">{value}</p>
-          <p className="mt-2 text-sm text-white/60">{helper}</p>
-        </div>
-        {Icon ? (
-          <div className={`flex h-11 w-11 items-center justify-center rounded-xl border ${toneMap[tone] || toneMap.slate}`}>
-            <Icon className="h-5 w-5" />
-          </div>
-        ) : null}
-      </div>
+      <p className="text-[11px] uppercase tracking-[0.18em] text-white/55">{label}</p>
+      <p className="mt-2 text-3xl font-normal tracking-tight text-white">{value}</p>
+      <p className="mt-2 text-sm text-white/60">{helper}</p>
     </div>
   );
 }
@@ -147,23 +129,29 @@ function RankingList({ items, valueKey, labelKey, helperKey, emptyText, formatte
   const maxValue = Math.max(...items.map((item) => Number(item[valueKey] || 0)), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1">
       {items.map((item, index) => {
         const value = Number(item[valueKey] || 0);
         const width = Math.max((value / maxValue) * 100, value > 0 ? 8 : 0);
+        const opacity = Math.max(1 - index * 0.1, 0.35);
         return (
-          <div key={`${item[labelKey]}-${index}`} className="space-y-1.5">
-            <div className="flex items-center justify-between gap-3 text-sm text-white">
-              <span className="truncate">{item[labelKey]}</span>
-              <span className="text-white/70">{formatter ? formatter(value, item) : value}</span>
+          <div key={`${item[labelKey]}-${index}`} className="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-white/5">
+            <span className="w-5 text-center text-xs font-medium text-white/35 tabular-nums">
+              {index + 1}
+            </span>
+            <div className="min-w-0 flex-1 space-y-1">
+              <div className="flex items-center justify-between gap-3 text-sm text-white">
+                <span className="truncate">{item[labelKey]}</span>
+                <span className="shrink-0 text-white/65">{formatter ? formatter(value, item) : value}</span>
+              </div>
+              {helperKey ? <p className="text-xs text-white/40">{item[helperKey]}</p> : null}
+              <div className="h-1 overflow-hidden rounded-full bg-white/8">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{ width: `${width}%`, backgroundColor: `rgba(96, 165, 250, ${opacity})` }}
+                />
+              </div>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400"
-                style={{ width: `${width}%` }}
-              />
-            </div>
-            {helperKey ? <p className="text-xs text-white/45">{item[helperKey]}</p> : null}
           </div>
         );
       })}
@@ -283,9 +271,9 @@ export default function AdminOverviewPanel({ onOpenProjects, onOpenStats }) {
               </button>
             </div>
 
-            <div className="mt-4 h-3 overflow-hidden rounded-full bg-white/10">
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 transition-all duration-500"
+                className="h-full rounded-full bg-blue-400 transition-all duration-500"
                 style={{ width: `${progressWidth}%` }}
               />
             </div>
@@ -308,29 +296,21 @@ export default function AdminOverviewPanel({ onOpenProjects, onOpenStats }) {
               label="Registrados"
               value={resumen.total_alumnos_registrados ?? 0}
               helper="Alumnos que sí entraron al proceso del evento"
-              tone="blue"
-              icon={Users}
             />
             <KpiCard
               label="Con Proyecto"
               value={resumen.total_inscritos ?? 0}
               helper="Ya colocados en un proyecto"
-              tone="emerald"
-              icon={BriefcaseBusiness}
             />
             <KpiCard
               label="Pendientes"
               value={resumen.total_pendientes ?? 0}
               helper="Requieren seguimiento o contacto"
-              tone="amber"
-              icon={TriangleAlert}
             />
             <KpiCard
               label="Proyectos Disponibles"
               value={resumen.proyectos_con_cupo ?? 0}
               helper={`${resumen.proyectos_totales ?? 0} proyectos en total`}
-              tone="slate"
-              icon={Building2}
             />
           </div>
         </div>
@@ -367,7 +347,7 @@ export default function AdminOverviewPanel({ onOpenProjects, onOpenStats }) {
                   type="button"
                   onClick={handleExportPendingCsv}
                   disabled={exportingPendingCsv || Number(resumen.total_pendientes || 0) === 0}
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-blue-400/30 bg-blue-500/15 px-3 py-2 text-xs text-blue-100 hover:bg-blue-500/25 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/80 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   <Download className="h-3.5 w-3.5" /> {exportingPendingCsv ? "Exportando..." : "Descargar CSV pendientes"}
                 </button>
