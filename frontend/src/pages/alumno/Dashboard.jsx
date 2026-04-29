@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Users, Search, SlidersHorizontal, Flame, Info } from "lucide-react";
+import { LogOut, QrCode, CheckCircle2, User, Building2, Calendar, HardHat, AlertTriangle, Users, Search, SlidersHorizontal, Info } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -55,17 +55,18 @@ function getProjectMetrics(project) {
 
 // ─── Project Card (catalog style) ────────────────────────────────
 function ProjectCard({ project, index, rankByDemand }) {
-  const { pct, remaining, demandLabel, demandTone } = getProjectMetrics(project);
+  const { pct, remaining, demandLabel } = getProjectMetrics(project);
   const barColor = project.lleno ? "bg-red-500" : pct >= 70 ? "bg-amber-500" : "bg-emerald-500";
 
   return (
     <motion.div
+      className="h-full"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.35 }}
     >
       <Card className={cn(
-        "relative overflow-hidden pt-0 bg-black/30 border-white/15 text-white hover:bg-black/35 hover:border-blue-400/35 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.2)]",
+        "relative overflow-hidden pt-0 bg-black/30 border-white/15 text-white hover:bg-black/35 hover:border-blue-400/35 transition-all duration-300 shadow-[0_8px_30px_rgba(0,0,0,0.2)] flex flex-col h-full",
         project.lleno && "opacity-40 grayscale pointer-events-none"
       )}>
 
@@ -73,37 +74,30 @@ function ProjectCard({ project, index, rankByDemand }) {
           <CardAction>
             <div className="flex items-center gap-2">
               {rankByDemand && !project.lleno && (
-                <Badge className="bg-white/10 border-white/20 text-white/85 text-[10px] font-normal uppercase tracking-wider">
-                  #{rankByDemand}
-                </Badge>
+                <span className="text-[10px] font-normal text-white/40 tabular-nums">#{rankByDemand}</span>
               )}
-              <Badge className={cn("text-[10px] font-normal uppercase tracking-wider border", demandTone)}>
+              <span className="text-[10px] font-normal uppercase tracking-wider text-white/40">
                 {demandLabel}
-              </Badge>
+              </span>
             </div>
           </CardAction>
 
-          <CardTitle className="text-white font-normal text-[17px] leading-tight group-hover:text-blue-200 transition-colors">
+          <CardTitle className="text-white font-normal text-[17px] leading-tight">
             {project.nombre_proyecto}
           </CardTitle>
-          <CardDescription className="text-white/50 pt-1">
-            <span className="flex items-center gap-1.5">
-              <Building2 className="w-3.5 h-3.5 text-blue-300 flex-shrink-0" />
-              <span className="text-blue-200/75 text-[11px] font-normal tracking-wide uppercase truncate">
-                {project.empresa}
-              </span>
+          <CardDescription className="pt-1">
+            <span className="text-white/50 text-[11px] font-normal tracking-wide uppercase truncate">
+              {project.empresa}
             </span>
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4 pb-4">
-          {project.descripcion && (
-            <p className="text-white/45 text-xs leading-relaxed line-clamp-2 group-hover:text-white/60 transition-colors">
-              {project.descripcion}
-            </p>
-          )}
+        <CardContent className="space-y-4 pb-4 flex-1 flex flex-col">
+          <p className="text-white/55 text-[13px] leading-relaxed line-clamp-2 min-h-[2.5rem]">
+            {project.descripcion || ""}
+          </p>
 
-          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
+          <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 mt-auto">
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] text-white/45 uppercase tracking-wider font-normal">Ocupacion</span>
               <span className="text-[10px] text-white/70 font-mono font-normal">{pct}%</span>
@@ -122,15 +116,10 @@ function ProjectCard({ project, index, rankByDemand }) {
           </div>
         </CardContent>
 
-        <CardFooter className="border-white/10 bg-white/[0.03] py-3 flex items-center justify-between">
-          <span className="text-[11px] text-white/55 font-medium">
+        <CardFooter className="border-white/10 bg-white/[0.03] py-3">
+          <span className="text-[11px] text-white/50">
             {project.lleno ? "Sin lugares disponibles" : `${remaining} lugar(es) disponible(s)`}
           </span>
-          {!project.lleno && remaining <= 2 && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wider font-normal text-amber-300">
-              <Flame className="w-3 h-3" /> Ultimos lugares
-            </span>
-          )}
         </CardFooter>
       </Card>
     </motion.div>
@@ -269,7 +258,7 @@ function ProjectGrid({ proyectos }) {
           No encontramos proyectos con esos filtros. Prueba otra combinacion.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 items-stretch">
           {filteredProjects.map((p, i) => (
             <ProjectCard
               key={p.id_proyecto}

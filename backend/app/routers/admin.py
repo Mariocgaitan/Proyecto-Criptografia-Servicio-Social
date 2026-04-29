@@ -8,6 +8,8 @@ Endpoints:
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
 """
+from datetime import datetime
+
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -36,6 +38,14 @@ class CapacidadUpdate(BaseModel):
 class InscripcionCreate(BaseModel):
     id_matricula: str
     id_proyecto: int
+
+
+class EventoCreate(BaseModel):
+    nombre: str
+    periodo: str  # INVIERNO | FEB_JUN | VERANO | AGO_DIC
+    anio: int
+    fecha_inicio: datetime | None = None
+    fecha_fin: datetime | None = None
 
 
 # ── API Endpoints ──────────────────────────────────────────────────────────────
@@ -150,3 +160,13 @@ async def api_listar_eventos(
     _=Depends(get_current_admin),
 ):
     return await admin_service.listar_eventos(db)
+
+
+@router.post("/api/v1/admin/eventos", status_code=status.HTTP_201_CREATED, tags=["Admin"])
+async def api_crear_evento(
+    datos: EventoCreate,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    """Crea un nuevo periodo y lo activa (desactiva el anterior)."""
+    return await admin_service.crear_evento(db, datos)

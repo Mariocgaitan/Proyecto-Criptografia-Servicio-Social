@@ -492,30 +492,30 @@ export default function EstadisticasPanel({ eventos = [] }) {
             type="button"
             onClick={() => handleExport("inscripciones", "inscripciones")}
             disabled={!!exportingKey}
-            className="rounded-xl border border-blue-400/30 bg-blue-500/15 p-3 text-left hover:bg-blue-500/25 disabled:opacity-60"
+            className="rounded-xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 disabled:opacity-60"
           >
-            <div className="inline-flex items-center gap-1 text-blue-100 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "inscripciones" ? "Exportando..." : "CSV Inscripciones"}</div>
-            <p className="mt-1 text-xs text-white/70">Seguimiento diario de quien se inscribio, cuando y en que proyecto.</p>
+            <div className="inline-flex items-center gap-1 text-white/80 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "inscripciones" ? "Exportando..." : "CSV Inscripciones"}</div>
+            <p className="mt-1 text-xs text-white/50">Seguimiento diario de quien se inscribio, cuando y en que proyecto.</p>
           </button>
 
           <button
             type="button"
             onClick={() => handleExport("proyectos", "proyectos")}
             disabled={!!exportingKey}
-            className="rounded-xl border border-emerald-400/30 bg-emerald-500/15 p-3 text-left hover:bg-emerald-500/25 disabled:opacity-60"
+            className="rounded-xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 disabled:opacity-60"
           >
-            <div className="inline-flex items-center gap-1 text-emerald-100 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "proyectos" ? "Exportando..." : "CSV Proyectos"}</div>
-            <p className="mt-1 text-xs text-white/70">Capacidad, cupo y estado de todos los proyectos del alcance filtrado.</p>
+            <div className="inline-flex items-center gap-1 text-white/80 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "proyectos" ? "Exportando..." : "CSV Proyectos"}</div>
+            <p className="mt-1 text-xs text-white/50">Capacidad, cupo y estado de todos los proyectos del alcance filtrado.</p>
           </button>
 
           <button
             type="button"
             onClick={() => handleExport("usuarios_padron", "usuarios")}
             disabled={!!exportingKey}
-            className="rounded-xl border border-amber-400/30 bg-amber-500/15 p-3 text-left hover:bg-amber-500/25 disabled:opacity-60"
+            className="rounded-xl border border-white/10 bg-white/5 p-3 text-left hover:bg-white/10 disabled:opacity-60"
           >
-            <div className="inline-flex items-center gap-1 text-amber-100 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "usuarios_padron" ? "Exportando..." : "CSV Usuarios/Padron"}</div>
-            <p className="mt-1 text-xs text-white/70">Base para cruces de alumnos autorizados, registrados y pendientes de asignacion.</p>
+            <div className="inline-flex items-center gap-1 text-white/80 text-xs"><Download className="h-3.5 w-3.5" /> {exportingKey === "usuarios_padron" ? "Exportando..." : "CSV Usuarios/Padron"}</div>
+            <p className="mt-1 text-xs text-white/50">Base para cruces de alumnos autorizados, registrados y pendientes de asignacion.</p>
           </button>
         </div>
       </div>

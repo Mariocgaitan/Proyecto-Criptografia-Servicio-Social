@@ -123,3 +123,74 @@ body,
     }
   }
 }
+
+/* ── Admin panel light theme ──────────────────────────────────────── */
+[data-admin-theme="light"] {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Header */
+[data-admin-theme="light"] header {
+  background-color: rgba(255, 255, 255, 0.92) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(12px);
+}
+
+/* Cards / surface containers with black bg */
+[data-admin-theme="light"] [class*="bg-black"] {
+  background-color: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Low-opacity white items → soft slate */
+[data-admin-theme="light"] [class*="bg-white/5"],
+[data-admin-theme="light"] [class*="bg-white/8"] {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+[data-admin-theme="light"] [class*="bg-white/10"] {
+  background-color: rgba(15, 23, 42, 0.07) !important;
+}
+[data-admin-theme="light"] [class*="bg-white/15"] {
+  background-color: rgba(15, 23, 42, 0.10) !important;
+}
+[data-admin-theme="light"] [class*="bg-white/20"],
+[data-admin-theme="light"] [class*="bg-white/25"] {
+  background-color: rgba(15, 23, 42, 0.13) !important;
+}
+
+/* Borders */
+[data-admin-theme="light"] [class*="border-white"] {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Text: white → dark slate */
+[data-admin-theme="light"] [class*="text-white"]:not([class*="text-white/3"]):not([class*="text-white/4"]) {
+  color: #0f172a !important;
+}
+[data-admin-theme="light"] [class*="text-white/3"],
+[data-admin-theme="light"] [class*="text-white/4"],
+[data-admin-theme="light"] [class*="text-white/5"],
+[data-admin-theme="light"] [class*="text-white/6"] {
+  color: rgba(15, 23, 42, 0.5) !important;
+}
+[data-admin-theme="light"] [class*="text-white/7"],
+[data-admin-theme="light"] [class*="text-white/8"] {
+  color: rgba(15, 23, 42, 0.7) !important;
+}
+
+/* Inputs */
+[data-admin-theme="light"] input,
+[data-admin-theme="light"] select,
+[data-admin-theme="light"] textarea {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+  border-color: rgba(15, 23, 42, 0.15) !important;
+  color: #0f172a !important;
+}
+
+/* Recharts axis text */
+[data-admin-theme="light"] .recharts-cartesian-axis-tick text {
+  fill: #475569 !important;
+}
+[data-admin-theme="light"] .recharts-cartesian-grid line {
+  stroke: rgba(15, 23, 42, 0.1) !important;
+}

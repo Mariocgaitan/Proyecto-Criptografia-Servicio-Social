@@ -4,8 +4,7 @@ import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  Trash2,
-  List
+  Trash2, List, Sun, Moon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,12 +17,6 @@ import EstadisticasPanel from "./EstadisticasPanel";
 import AdminOverviewPanel from "./AdminOverviewPanel";
 import SystemDashboardPanel from "./SystemDashboardPanel";
 import tecLogo from "@/assets/tec_logo.png";
-import campusImg1 from "@/assets/login_images/ser_social_header.png";
-import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
-import campusImg4 from "@/assets/login_images/ser_social3.jpg";
-
-const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 
 const normalizeSearchText = (value) =>
   (value || "")
@@ -224,6 +217,7 @@ function OccupancyBar({ current, max }) {
 // ═══════════════════════════════════════════════════════════════════
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const [isDark, setIsDark] = useState(() => localStorage.getItem("admin-theme") !== "light");
   const [proyectos, setProyectos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -444,6 +438,14 @@ export default function AdminDashboard() {
       setIsCrearEmpresaOpen(false); fetchData();
       setFormEmpresa({ id_asociado: "", nombre: "", razon: "", desc: "", calle: "" });
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const toggleTheme = () => {
+    setIsDark(prev => {
+      const next = !prev;
+      localStorage.setItem("admin-theme", next ? "dark" : "light");
+      return next;
+    });
   };
 
   const handleCrearEvento = async (e) => {
@@ -1017,27 +1019,29 @@ export default function AdminDashboard() {
 
   // ─── RENDER ──────────────────────────────────────────────────
   return (
-    <div className="relative min-h-screen flex flex-col overflow-hidden" style={{ fontFamily: "'Geist Variable', sans-serif" }}>
-      <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-        <img
-          src={campusImg1}
-          alt="Campus"
-          className="w-full h-full object-cover fixed inset-0 blur-[4px] scale-105"
-        />
-        <div className="fixed inset-0 bg-black/70" />
-        <div className="fixed inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08)_0%,rgba(0,0,0,0)_45%)]" />
-      </div>
+    <div
+      data-admin-theme={isDark ? "dark" : "light"}
+      className="relative min-h-screen flex flex-col overflow-hidden"
+      style={{ fontFamily: "'Geist Variable', sans-serif", backgroundColor: isDark ? "#0b1120" : "#f1f5f9" }}
+    >
 
       <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-3 min-w-0">
-          <img src={tecLogo} alt="Tecnológico de Monterrey" className="h-9 sm:h-11 w-auto brightness-0 invert drop-shadow-md" />
+          <img src={tecLogo} alt="Tecnológico de Monterrey" className={`h-12 sm:h-14 w-auto drop-shadow-md ${isDark ? "brightness-0 invert" : "brightness-0"}`} />
           <div>
             <p className="text-white/70 text-xs sm:text-sm font-normal tracking-wide uppercase">Portal Administracion</p>
-            <p className="text-white/45 text-[11px] sm:text-xs">Sistema de Servicio Social</p>
+            <p className="text-white/45 text-[11px] sm:text-xs">Feria Servicio Social</p>
           </div>
         </div>
 
         <div className="inline-flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="inline-flex items-center justify-center p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-white/15 transition-colors"
+            title={isDark ? "Modo claro" : "Modo oscuro"}
+          >
+            {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+          </button>
           <button
             onClick={logout}
             className="inline-flex items-center gap-2 p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-red-500/10 transition-colors"
@@ -1129,7 +1133,7 @@ export default function AdminDashboard() {
                     <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         onClick={() => setIsAgregarAlumnoOpen(true)}
-                        className="w-full sm:w-auto border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
+                        className="w-full sm:w-auto border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-all"
                       >
                         <Users className="w-4 h-4 mr-2" /> Asignar alumno
                       </Button>
@@ -1170,7 +1174,7 @@ export default function AdminDashboard() {
                             setExpandedEmpresas([]);
                             setExpandedProyectos([]);
                           }}
-                          className="px-3 py-1.5 rounded-full text-xs border transition-colors bg-red-500/10 border-red-400/25 text-red-100 hover:bg-red-500/20"
+                          className="px-3 py-1.5 rounded-full text-xs border transition-colors bg-white/5 border-white/10 text-white/70 hover:bg-white/10"
                         >
                           Reset filtros
                         </button>
@@ -1195,7 +1199,7 @@ export default function AdminDashboard() {
                             className="h-9 pl-9 bg-white/10 border-white/20 text-white placeholder:text-white/45"
                           />
                         </div>
-                        <Button type="submit" className="h-9 px-3 border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 text-xs">
+                        <Button type="submit" className="h-9 px-3 border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 text-xs">
                           Buscar
                         </Button>
                       </form>
@@ -1238,9 +1242,6 @@ export default function AdminDashboard() {
                           className="w-full flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/[0.03]"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
-                              <Building2 className="w-4 h-4" />
-                            </div>
                             <div className="text-left">
                               <p className="font-normal text-sm text-white">{empresaName}</p>
                               <p className="text-xs text-white/55">{proys.length} proyecto{proys.length !== 1 ? 's' : ''}</p>
@@ -1288,9 +1289,9 @@ export default function AdminDashboard() {
                                           <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
                                             <div className="w-full md:w-40"><OccupancyBar current={p.cupo_actual} max={p.capacidad_max} /></div>
                                             {p.cupo_actual >= p.capacidad_max ? (
-                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-red-300 bg-red-500/10 border border-red-500/25"><span className="w-1.5 h-1.5 bg-red-500 rounded-full" /> Lleno</span>
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-white/70 bg-white/5 border border-white/10"><span className="w-1.5 h-1.5 bg-white/40 rounded-full" /> Lleno</span>
                                             ) : (
-                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-emerald-300 bg-emerald-500/10 border border-emerald-500/25"><span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> Disponible</span>
+                                              <span className="inline-flex items-center gap-1 text-[11px] font-normal px-2.5 py-1 rounded-full w-24 justify-center text-white/70 bg-white/5 border border-white/10"><span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> Disponible</span>
                                             )}
                                             <div className="flex gap-1.5">
                                               <button
@@ -1300,7 +1301,7 @@ export default function AdminDashboard() {
                                                   setCupoModalInfo({ id: p.id_proyecto, nombre: p.nombre_proyecto, actual: p.cupo_actual, max: p.capacidad_max });
                                                   setNuevaCapacidad(p.capacidad_max + 1);
                                                 }}
-                                                className="text-xs font-normal text-blue-200 bg-blue-500/15 border border-blue-400/30 px-2.5 py-1 rounded-lg"
+                                                className="text-xs font-normal text-white/70 bg-white/5 border border-white/10 px-2.5 py-1 rounded-lg hover:bg-white/10 transition-colors"
                                               >
                                                 Aumentar cupo
                                               </button>
@@ -1418,14 +1419,14 @@ export default function AdminDashboard() {
                         setActiveSection("proyectos");
                         setIsCrearProyectoOpen(true);
                       }}
-                      className="border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
                     >
                       <Plus className="w-4 h-4 mr-2" /> Registrar Proyecto
                     </Button>
 
                     <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                       <DialogTrigger asChild>
-                        <div role="button" className="border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                        <div role="button" className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
                           <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
                         </div>
                       </DialogTrigger>
@@ -1449,7 +1450,7 @@ export default function AdminDashboard() {
                             <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">Descripción de Giro Corporativo</Label>
                             <Input className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.desc} onChange={e => setFormEmpresa({ ...formEmpresa, desc: e.target.value })} />
                           </div>
-                          <Button type="submit" disabled={isSubmitting} className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal mt-4">Matricular Entidad</Button>
+                          <Button type="submit" disabled={isSubmitting} className="w-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal mt-4">Matricular Entidad</Button>
                         </form>
                       </DialogContent>
                     </Dialog>
@@ -1463,19 +1464,14 @@ export default function AdminDashboard() {
                       <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
                         <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-9 h-9 rounded-lg flex items-center justify-center bg-blue-500/15 text-blue-300 border border-blue-400/25">
-                                <Building2 className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-normal text-sm text-white truncate">{emp.nombre_empresa}</p>
-                                <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
-                              </div>
+                            <div className="min-w-0">
+                              <p className="font-normal text-sm text-white truncate">{emp.nombre_empresa}</p>
+                              <p className="text-xs text-white/55 truncate">{emp.descripcion || "Organización receptora con convenio vigente."}</p>
                             </div>
                             <div className="flex flex-wrap items-center gap-2 sm:justify-end">
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">#{emp.id_asociado}</span>
                               {emp.razon_social ? (
-                                <span className="text-[10px] font-normal uppercase tracking-wider px-2 py-0.5 rounded-md text-blue-200 bg-blue-500/15 border border-blue-400/25">{emp.razon_social}</span>
+                                <span className="text-[10px] font-normal uppercase tracking-wider px-2 py-0.5 rounded-md text-white/60 bg-white/5 border border-white/10">{emp.razon_social}</span>
                               ) : null}
                             </div>
                           </div>
@@ -1499,7 +1495,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-end">
                     <Dialog open={isCrearEventoOpen} onOpenChange={setIsCrearEventoOpen}>
                       <DialogTrigger asChild>
-                        <div role="button" className="border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                        <div role="button" className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
                           <Calendar className="w-4 h-4 mr-2" /> Aperturar Periodo
                         </div>
                       </DialogTrigger>
@@ -1525,7 +1521,7 @@ export default function AdminDashboard() {
                               <Input type="number" required className="bg-white/10 border-white/15 text-white text-center font-normal" value={formEvento.anio} onChange={e => setFormEvento({ ...formEvento, anio: e.target.value })} />
                             </div>
                           </div>
-                          <Button type="submit" disabled={isSubmitting} className="w-full border border-violet-400/30 bg-violet-500/15 hover:bg-violet-500/25 text-violet-100 font-normal mt-4">Emitir Apertura Global</Button>
+                          <Button type="submit" disabled={isSubmitting} className="w-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal mt-4">Emitir Apertura Global</Button>
                         </form>
                       </DialogContent>
                     </Dialog>
@@ -1539,22 +1535,17 @@ export default function AdminDashboard() {
                       <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
                         <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${ev.activo ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/25' : 'bg-white/10 text-white/55 border border-white/10'}`}>
-                                <Calendar className="w-4 h-4" />
-                              </div>
-                              <div>
-                                <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
-                                <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio} - {ev.semestre}</p>
-                              </div>
+                            <div>
+                              <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
+                              <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio}</p>
                             </div>
                             <div className="flex items-center justify-start sm:justify-end">
                               {ev.activo ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-300 bg-emerald-500/10 border border-emerald-500/25">
-                                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" /> En Curso
+                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/70 bg-white/5 border border-white/10">
+                                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> En Curso
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/55 bg-white/10 border border-white/10">
+                                <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/40 bg-white/5 border border-white/10">
                                   Archivado
                                 </span>
                               )}
@@ -1590,7 +1581,7 @@ export default function AdminDashboard() {
               <Input type="number" min={(cupoModalInfo?.max || 0) + 1} value={nuevaCapacidad} onChange={e => setNuevaCapacidad(e.target.value)} className="bg-blue-500/10 border-blue-400/30 text-blue-100 focus-visible:ring-blue-500 text-lg font-normal" />
             </div>
           </div>
-          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-blue-400/30 bg-blue-500/15 hover:bg-blue-500/25 text-blue-100 font-normal">Salvar Ajuste</Button>
+          <Button onClick={handleGuardarCupo} disabled={isSubmitting} className="w-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal">Salvar Ajuste</Button>
         </DialogContent>
       </Dialog>
 
@@ -1805,7 +1796,7 @@ export default function AdminDashboard() {
             <Button
               type="submit"
               disabled={!selectedAlumnoMatricula || !selectedProyectoForAlumno || isSubmitting}
-              className="w-full border border-emerald-400/30 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-100 font-normal"
+              className="w-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal"
             >
               {isSubmitting ? "Agregando..." : "Agregar alumno"}
             </Button>

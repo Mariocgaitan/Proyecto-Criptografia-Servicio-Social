@@ -111,6 +111,35 @@ async def listar_eventos(db: AsyncSession) -> list[dict]:
     ]
 
 
+async def crear_evento(db: AsyncSession, datos) -> dict:
+    """Crea un nuevo evento y lo activa, desactivando el anterior."""
+    # Desactivar evento actual
+    result = await db.execute(select(Evento).where(Evento.activo == True))
+    for ev in result.scalars().all():
+        ev.activo = False
+
+    nuevo = Evento(
+        nombre=datos.nombre,
+        periodo=datos.periodo,
+        anio=datos.anio,
+        activo=True,
+        fecha_inicio=datos.fecha_inicio,
+        fecha_fin=datos.fecha_fin,
+    )
+    db.add(nuevo)
+    await db.commit()
+    await db.refresh(nuevo)
+    await cache_delete_prefix("admin_")
+    await cache_delete("ocupacion_eventos")
+    return {
+        "id_evento": nuevo.id_evento,
+        "nombre": nuevo.nombre,
+        "periodo": nuevo.periodo,
+        "anio": nuevo.anio,
+        "activo": nuevo.activo,
+    }
+
+
 async def crear_proyecto(db: AsyncSession, datos) -> dict:
     """
     Crea un nuevo proyecto para una empresa y evento.
