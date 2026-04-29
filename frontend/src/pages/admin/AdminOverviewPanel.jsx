@@ -89,9 +89,9 @@ function SectionCard({ title, subtitle, actionLabel, onAction, children, classNa
 
 function AttentionList({ title, count, tone, items, emptyText, renderItem }) {
   const toneMap = {
-    red: "border-red-400/30 bg-red-500/10 text-red-100",
-    amber: "border-amber-400/30 bg-amber-500/10 text-amber-100",
-    blue: "border-blue-400/30 bg-blue-500/10 text-blue-100",
+    red: "border-white/10 bg-white/5 text-white/70",
+    amber: "border-white/10 bg-white/5 text-white/70",
+    blue: "border-white/10 bg-white/5 text-white/70",
   };
 
   return (
@@ -335,7 +335,7 @@ export default function AdminOverviewPanel({ onOpenProjects, onOpenStats }) {
                   <p className="text-sm text-white">Alumnos pendientes</p>
                   <p className="text-xs text-white/50">Reporte consolidado para seguimiento masivo</p>
                 </div>
-                <span className="rounded-full border border-red-400/30 bg-red-500/10 px-2.5 py-1 text-xs font-normal text-red-100">
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-normal text-white/70">
                   {resumen.total_pendientes ?? 0}
                 </span>
               </div>
