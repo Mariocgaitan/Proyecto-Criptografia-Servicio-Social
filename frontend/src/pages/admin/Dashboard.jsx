@@ -247,6 +247,13 @@ export default function AdminDashboard() {
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
   const [isAgregarAlumnoOpen, setIsAgregarAlumnoOpen] = useState(false);
+  const [isCredencialesOpen, setIsCredencialesOpen] = useState(false);
+  const [isCsvUploadOpen, setIsCsvUploadOpen] = useState(false);
+  const [usuariosEmpresa, setUsuariosEmpresa] = useState([]);
+  const [credencialGenerada, setCredencialGenerada] = useState(null);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvEventoId, setCsvEventoId] = useState("");
+  const [csvResult, setCsvResult] = useState(null);
   const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
   const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
@@ -460,6 +467,74 @@ export default function AdminDashboard() {
       setIsCrearEventoOpen(false); fetchData();
       setFormEvento({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleOpenCredenciales = async () => {
+    setIsCredencialesOpen(true);
+    setErrorText("");
+    setCredencialGenerada(null);
+    try {
+      const res = await fetch(apiUrl("/api/v1/admin/usuarios-empresa"), { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      setUsuariosEmpresa(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setErrorText(err.message || "Error al cargar usuarios empresa");
+    }
+  };
+
+  const handleResetPassword = async (idMatricula) => {
+    setIsSubmitting(true);
+    setErrorText("");
+    setCredencialGenerada(null);
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/usuarios-empresa/${idMatricula}/reset-password`), {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      setCredencialGenerada(data);
+    } catch (err) {
+      setErrorText(err.message || "Error al resetear contraseña");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadCsv = async (e) => {
+    e.preventDefault();
+    if (!csvFile || !csvEventoId) {
+      setErrorText("Selecciona un archivo CSV y un evento");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorText("");
+    setCsvResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", csvFile);
+
+      const res = await fetch(apiUrl(`/api/v1/admin/upload-csv?id_evento=${csvEventoId}`), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+
+      setCsvResult(data);
+      setCsvFile(null);
+      setCsvEventoId("");
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "Error al procesar CSV");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGuardarCupo = async () => {
@@ -1454,6 +1529,20 @@ export default function AdminDashboard() {
                         </form>
                       </DialogContent>
                     </Dialog>
+
+                    <Button
+                      onClick={handleOpenCredenciales}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                    >
+                      <Users className="w-4 h-4 mr-2" /> Ver Credenciales de Empresas
+                    </Button>
+
+                    <Button
+                      onClick={() => setIsCsvUploadOpen(true)}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Cargar CSV
+                    </Button>
                   </div>
 
                   <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
@@ -1862,6 +1951,131 @@ export default function AdminDashboard() {
           </div>
         </div>
       ) : null}
+
+      {/* Modal Ver Credenciales */}
+      <Dialog open={isCredencialesOpen} onOpenChange={setIsCredencialesOpen}>
+        <DialogContent className="sm:max-w-2xl bg-slate-950/92 border border-white/15 text-white backdrop-blur-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Credenciales de Empresas</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Haz clic en "Generar Nueva Contraseña" para ver y resetear las credenciales de acceso
+            </DialogDescription>
+          </DialogHeader>
+
+          {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+          {credencialGenerada && (
+            <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-xs uppercase tracking-widest text-white/50">Nueva contraseña generada</p>
+              <p className="text-sm text-white/70"><strong>Empresa:</strong> {credencialGenerada.nombre_empresa}</p>
+              <p className="text-sm text-white/70"><strong>Correo:</strong> {credencialGenerada.correo}</p>
+              <p className="text-lg font-mono font-semibold text-green-100">{credencialGenerada.password}</p>
+              <p className="text-xs text-white/50">⚠️ Copia esta contraseña ahora. No se volverá a mostrar.</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {usuariosEmpresa.map((usuario) => (
+              <div key={usuario.id_matricula} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                <div>
+                  <p className="text-sm font-semibold text-white">{usuario.nombre_empresa || usuario.nombre}</p>
+                  <p className="text-xs text-white/60">{usuario.correo}</p>
+                </div>
+                <Button
+                  onClick={() => handleResetPassword(usuario.id_matricula)}
+                  disabled={isSubmitting}
+                  size="sm"
+                  className="border border-blue-400/30 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"
+                >
+                  Generar Nueva Contraseña
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Cargar CSV */}
+      <Dialog open={isCsvUploadOpen} onOpenChange={(open) => {
+        setIsCsvUploadOpen(open);
+        if (!open) {
+          setCsvFile(null);
+          setCsvEventoId("");
+          setCsvResult(null);
+          setErrorText("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Cargar CSV de Empresas y Proyectos</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Sube un archivo CSV con el formato especificado
+            </DialogDescription>
+          </DialogHeader>
+
+          {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+          {csvResult && (
+            <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-sm font-semibold text-green-100">✅ CSV procesado correctamente</p>
+              <p className="text-xs text-white/70">Empresas creadas: {csvResult.empresas_creadas}</p>
+              <p className="text-xs text-white/70">Proyectos creados: {csvResult.proyectos_creados}</p>
+              {csvResult.total_errores > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-red-200">⚠️ {csvResult.total_errores} errores:</p>
+                  <ul className="text-xs text-white/60 list-disc list-inside max-h-32 overflow-y-auto">
+                    {csvResult.errores.map((err, idx) => <li key={idx}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleUploadCsv} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Formato esperado</Label>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-3 text-xs font-mono text-white/70">
+                nombre_empresa,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
+                <br />
+                Cemex,https://...,Proyecto A,Descripción,50
+                <br />
+                Femsa,,Proyecto B,Otra desc,30
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Evento</Label>
+              <Select value={csvEventoId} onValueChange={setCsvEventoId} required>
+                <SelectTrigger className="bg-white/10 border-white/15 text-white">
+                  <SelectValue placeholder="Selecciona un evento" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/15">
+                  {eventos.map((ev) => (
+                    <SelectItem key={ev.id_evento} value={String(ev.id_evento)} className="text-white">
+                      {ev.nombre} ({ev.periodo} {ev.anio})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Archivo CSV</Label  >
+              <Input
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files[0])}
+                required
+                className="bg-white/10 border-white/15 text-white file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-100"
+              />
+            </div>
+
+            <Button type="submit" disabled={isSubmitting || !csvFile || !csvEventoId} className="w-full border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal">
+              {isSubmitting ? "Procesando..." : "Cargar CSV"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
