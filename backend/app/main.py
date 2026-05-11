@@ -139,8 +139,8 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
     else:
         csp = (
             "default-src 'self'; "
-            "script-src 'self' https://accounts.google.com https://static.cloudflareinsights.com; "
-            "script-src-elem 'self' https://accounts.google.com https://static.cloudflareinsights.com; "
+            "script-src 'self' 'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM=' https://accounts.google.com https://static.cloudflareinsights.com; "
+            "script-src-elem 'self' 'sha256-ZswfTY7H35rbv8WC7NXBoiC7WNu86vSzCDChNWwZZDM=' https://accounts.google.com https://static.cloudflareinsights.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; "
             "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com; "
             "font-src 'self' https://fonts.gstatic.com; "
