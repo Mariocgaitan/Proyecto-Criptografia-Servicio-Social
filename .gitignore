@@ -97,3 +97,5 @@ backend/log_output.txt
 backend/out2.txt
 traceback*.txt
 alembic_error.txt
+FLUJO_SERVICIO.md
+FLujo.md
