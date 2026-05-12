@@ -84,14 +84,13 @@ export const Tabs = ({
 export const FadeInDiv = ({
   className,
   tabs,
-  hovering
 }) => {
   const isActive = (tab) => {
     return tab.value === tabs[0].value;
   };
   return (
     <div className="relative w-full">
-      {tabs.map((tab, idx) => (
+      {tabs.map((tab) => (
         <motion.div
           key={tab.value}
           layoutId={tab.value}
