@@ -15,6 +15,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.dependencies import get_current_admin
+from app.core.limiter import limiter
 from app.services.email_service import enviar_correo_baja, enviar_correo_inscripcion
 from app.db.session import get_db
 from app.services import admin_service
@@ -170,3 +171,37 @@ async def api_crear_evento(
 ):
     """Crea un nuevo periodo y lo activa (desactiva el anterior)."""
     return await admin_service.crear_evento(db, datos)
+
+
+# ── Credenciales ───────────────────────────────────────────────────────────────
+
+@router.get("/api/v1/admin/credenciales", tags=["Admin"])
+async def api_listar_credenciales(
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    """Lista usuarios admin/empresa para el panel de credenciales."""
+    return await admin_service.listar_credenciales(db)
+
+
+@router.post(
+    "/api/v1/admin/credenciales/{id_matricula}/reset-password",
+    tags=["Admin"],
+)
+@limiter.limit("10/minute")
+async def api_reset_password(
+    id_matricula: str,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    current_admin=Depends(get_current_admin),
+):
+    """
+    Genera una contraseña nueva para el usuario indicado y la devuelve UNA SOLA VEZ.
+    Revoca todos los refresh tokens del usuario para forzar re-login.
+    """
+    return await admin_service.reset_password_usuario(
+        db,
+        id_matricula=id_matricula,
+        actor_matricula=current_admin.id_matricula,
+        ip_origen=request.client.host if request.client else None,
+    )

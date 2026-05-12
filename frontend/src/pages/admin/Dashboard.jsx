@@ -16,6 +16,7 @@ import { apiUrl, downloadCsvExport } from "@/lib/api";
 import EstadisticasPanel from "./EstadisticasPanel";
 import AdminOverviewPanel from "./AdminOverviewPanel";
 import SystemDashboardPanel from "./SystemDashboardPanel";
+import CredencialesPanel from "./CredencialesPanel";
 import tecLogo from "@/assets/tec_logo.png";
 
 const normalizeSearchText = (value) =>
@@ -1011,6 +1012,10 @@ export default function AdminDashboard() {
       title: "Gestión de Empresas y Eventos",
       description: "Socios formadores, periodos académicos y registro operativo",
     },
+    credenciales: {
+      title: "Credenciales",
+      description: "Administra contraseñas de cuentas admin y empresa",
+    },
     sistema: {
       title: "Sistema",
       description: "Observabilidad técnica para soporte, desarrollo y diagnóstico interno",
@@ -1071,6 +1076,7 @@ export default function AdminDashboard() {
                 <button onClick={() => handleSectionChange("estadisticas")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "estadisticas" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Estadísticas</button>
                 <button onClick={() => handleSectionChange("proyectos")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "proyectos" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Proyectos ({proyectos.length})</button>
                 <button onClick={() => handleSectionChange("gestion")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "gestion" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Gestión</button>
+                <button onClick={() => handleSectionChange("credenciales")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "credenciales" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Credenciales</button>
                 {canAccessSystemDashboard ? (
                   <button onClick={() => handleSectionChange("sistema")} className={`whitespace-nowrap text-[11px] font-normal uppercase tracking-wider px-3 py-1.5 rounded-full border transition-colors ${activeSection === "sistema" ? "bg-blue-600/25 border-blue-400/35 text-white" : "bg-white/5 border-white/15 text-white/70 hover:text-white"}`}>Sistema</button>
                 ) : null}
@@ -1106,6 +1112,19 @@ export default function AdminDashboard() {
                   className="space-y-8"
                 >
                   <SystemDashboardPanel />
+                </motion.div>
+              )}
+
+              {activeSection === "credenciales" && (
+                <motion.div
+                  key="credenciales"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.25 }}
+                  className="space-y-6"
+                >
+                  <CredencialesPanel />
                 </motion.div>
               )}
 
