@@ -277,8 +277,8 @@ export default function AuthWizard() {
       case 1:
         return (
           <form id="auth-wizard-form" onSubmit={handleStep1Submit} className="space-y-5 w-full">
-            <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">
+            <div className="text-center mb-6 sm:mb-10">
+              <h2 className="text-3xl sm:text-5xl font-normal text-white mb-3 sm:mb-4 tracking-tight">
                 Inicia sesión
               </h2>
               <p className="text-white/60 text-base">Ingresa tu correo o matrícula para continuar.</p>
@@ -305,8 +305,8 @@ export default function AuthWizard() {
       case 2:
         return (
           <form id="auth-wizard-form" onSubmit={handleStep2Submit} className="space-y-5 w-full">
-            <div className="text-center mb-10">
-              <h2 className="text-4xl sm:text-5xl font-normal text-white mb-4 tracking-tight">Ingresa tu contraseña</h2>
+            <div className="text-center mb-6 sm:mb-10">
+              <h2 className="text-2xl sm:text-5xl font-normal text-white mb-3 sm:mb-4 tracking-tight">Ingresa tu contraseña</h2>
               <div className="inline-flex items-center bg-black/20 px-4 py-2 rounded-full border border-white/10 mt-1">
                 <span className="text-white/80 text-sm font-mono">{authData.email}</span>
               </div>
@@ -388,14 +388,14 @@ export default function AuthWizard() {
       </nav>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-4 py-8 sm:py-10 overflow-y-auto no-visible-scrollbar">
+      <div className="flex-1 flex flex-col items-center justify-center relative z-10 px-3 sm:px-4 py-4 sm:py-10 overflow-y-auto no-visible-scrollbar">
 
         {/* Form area: Glassmorphism container */}
-        <div className="w-full max-w-[560px] p-6 sm:p-10 relative z-10 my-auto flex flex-col justify-center min-h-[600px] sm:min-h-[560px] bg-black/40 backdrop-blur-md border border-white/10 rounded-[2rem] shadow-2xl">
+        <div className="w-full max-w-[560px] p-5 sm:p-10 relative z-10 my-auto flex flex-col justify-center min-h-0 sm:min-h-[560px] bg-black/40 backdrop-blur-md border border-white/10 rounded-3xl sm:rounded-[2rem] shadow-2xl">
 
 
-          <div className="flex flex-col items-center justify-center mb-8 w-full">
-            <div className="h-20 sm:h-24 w-[200px] sm:w-[240px] rounded-3xl overflow-hidden shadow-2xl bg-black flex items-center justify-center relative">
+          <div className="flex flex-col items-center justify-center mb-5 sm:mb-8 w-full">
+            <div className="h-16 sm:h-24 w-[160px] sm:w-[240px] rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl bg-black flex items-center justify-center relative">
               <img src={serSocialLogo} alt="Ser Social" className="absolute inset-0 w-full h-full object-cover scale-[1.25] sm:scale-[1.3]" />
             </div>
           </div>
