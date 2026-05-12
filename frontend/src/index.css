@@ -103,6 +103,13 @@ body,
   min-height: 100dvh;
 }
 
+/* input-otp: fix giant visible character on WebKit/iOS.
+   The library sets font-size=container-height but only hides text via
+   color:transparent — WebKit also needs -webkit-text-fill-color set. */
+[data-input-otp] {
+  -webkit-text-fill-color: transparent !important;
+}
+
 /* Aceternity UI - Hide scrollbar for tabs */
 .no-visible-scrollbar {
   scrollbar-width: none;

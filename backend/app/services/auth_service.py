@@ -1,8 +1,9 @@
 """
 Servicio de autenticación — lógica de negocio para login, refresh y logout.
 """
-from datetime import datetime, timedelta, timezone
+
 import re
+from datetime import datetime, timedelta, timezone
 
 import pyotp
 from sqlalchemy import delete, select
@@ -11,12 +12,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.role_switch import resolve_effective_role
 from app.core.security import (
+    generate_nonce,
     generate_refresh_token,
-    hash_password,
+    hash_nonce,
     hash_refresh_token,
     verify_password,
-    generate_nonce,
-    hash_nonce,
 )
 from app.models.evento import Evento
 from app.models.google_nonce import GoogleNonce
@@ -25,7 +25,6 @@ from app.models.padron_alumno import PadronAlumno
 from app.models.refresh_token import RefreshToken
 from app.models.usuario import Usuario
 from app.models.usuario_evento import UsuarioEvento
-
 
 # Profes sin matrícula institucional A01*: se les asigna una matrícula default
 # para que el flujo de Google login los resuelva contra el padrón como alumnos.
@@ -36,6 +35,7 @@ PROFESOR_MATRICULAS: dict[str, str] = {
 
 
 # ── Errores de negocio ────────────────────────────────────────────────────────
+
 
 class LoginError(Exception):
     def __init__(self, message: str = "Credenciales inválidas", status_code: int = 401):
@@ -54,24 +54,27 @@ def _normalizar_identificador_login(identificador: str) -> str:
 
 # ── Google OAuth Nonce Management ────────────────────────────────────────────
 
+
 async def generate_and_store_nonce(db: AsyncSession) -> str:
     """
     Genera un nonce (UUID4) y lo almacena hasheado en la DB con TTL de 5 minutos.
     El nonce debe ser incluido en el request a Google y será validado en el id_token.
-    
+
     Retorna: El nonce en plaintext (para enviar al frontend)
     """
     nonce = generate_nonce()
     nonce_h = hash_nonce(nonce)
     expires_at = datetime.now(timezone.utc) + timedelta(minutes=5)
-    
-    db.add(GoogleNonce(
-        nonce_hash=nonce_h,
-        expira_en=expires_at,
-        usado=False,
-    ))
+
+    db.add(
+        GoogleNonce(
+            nonce_hash=nonce_h,
+            expira_en=expires_at,
+            usado=False,
+        )
+    )
     await db.commit()
-    
+
     return nonce
 
 
@@ -122,6 +125,7 @@ async def cleanup_expired_nonces(db: AsyncSession) -> int:
 
 # ── Auditoría ─────────────────────────────────────────────────────────────────
 
+
 async def _log(
     db: AsyncSession,
     tipo_evento: str,
@@ -142,6 +146,7 @@ async def _log(
 
 # ── Login ────────────────────────────────────────────────────────────
 
+
 async def login_alumno(
     db: AsyncSession,
     correo: str,
@@ -157,11 +162,18 @@ async def login_alumno(
     correo_normalizado = _normalizar_identificador_login(correo)
 
     # 1. Buscar usuario
-    result = await db.execute(select(Usuario).where(Usuario.correo == correo_normalizado))
+    result = await db.execute(
+        select(Usuario).where(Usuario.correo == correo_normalizado)
+    )
     usuario = result.scalar_one_or_none()
 
     if not usuario:
-        await _log(db, "LOGIN_FALLIDO", ip_origen=ip_origen, detalle=f"correo: {correo_normalizado}")
+        await _log(
+            db,
+            "LOGIN_FALLIDO",
+            ip_origen=ip_origen,
+            detalle=f"correo: {correo_normalizado}",
+        )
         await db.commit()
         raise LoginError()
 
@@ -186,7 +198,9 @@ async def login_alumno(
     if not verify_password(password, usuario.password_hash):
         usuario.failed_login_attempts += 1
         if usuario.failed_login_attempts >= settings.MAX_FAILED_LOGIN_ATTEMPTS:
-            usuario.locked_until = now + timedelta(minutes=settings.LOCKOUT_DURATION_MINUTES)
+            usuario.locked_until = now + timedelta(
+                minutes=settings.LOCKOUT_DURATION_MINUTES
+            )
             await _log(
                 db,
                 "CUENTA_BLOQUEADA",
@@ -222,26 +236,34 @@ async def login_alumno(
     # 2. Emitir Access Token (JWT)
     effective_role = resolve_effective_role(usuario.correo, usuario.rol)
 
-    access_token = create_access_token({
-        "sub": usuario.id_matricula,
-        "rol": effective_role,
-        "nombre": usuario.nombre,
-    })
+    access_token = create_access_token(
+        {
+            "sub": usuario.id_matricula,
+            "rol": effective_role,
+            "nombre": usuario.nombre,
+        }
+    )
 
     # 3. Emitir Refresh Token y guardar hash en DB
     raw_refresh = generate_refresh_token()
     token_hash = hash_refresh_token(raw_refresh)
-    expira_en = datetime.now(timezone.utc) + timedelta(hours=settings.REFRESH_TOKEN_EXPIRE_HOURS)
+    expira_en = datetime.now(timezone.utc) + timedelta(
+        hours=settings.REFRESH_TOKEN_EXPIRE_HOURS
+    )
 
-    db.add(RefreshToken(
-        token_hash=token_hash,
-        id_matricula=usuario.id_matricula,
-        expira_en=expira_en,
-        revocado=False,
-    ))
+    db.add(
+        RefreshToken(
+            token_hash=token_hash,
+            id_matricula=usuario.id_matricula,
+            expira_en=expira_en,
+            revocado=False,
+        )
+    )
 
     # 4. Log de auditoría
-    await _log(db, "LOGIN_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+    await _log(
+        db, "LOGIN_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen
+    )
 
     # En modo pruebas, si se fuerza rol alumno para un correo puntual,
     # se asignan eventos activos para habilitar el flujo completo del dashboard.
@@ -282,15 +304,19 @@ async def refresh_session(db: AsyncSession, raw_token: str) -> str:
 
     effective_role = resolve_effective_role(usuario.correo, usuario.rol)
 
-    new_access_token = create_access_token({
-        "sub": usuario.id_matricula,
-        "rol": effective_role,
-        "nombre": usuario.nombre,
-    })
+    new_access_token = create_access_token(
+        {
+            "sub": usuario.id_matricula,
+            "rol": effective_role,
+            "nombre": usuario.nombre,
+        }
+    )
     return new_access_token
 
 
-async def logout_alumno(db: AsyncSession, raw_token: str, id_matricula: str | None = None) -> None:
+async def logout_alumno(
+    db: AsyncSession, raw_token: str, id_matricula: str | None = None
+) -> None:
     """
     Revoca el Refresh Token y registra el evento de logout.
     """
@@ -309,6 +335,7 @@ async def logout_alumno(db: AsyncSession, raw_token: str, id_matricula: str | No
 
 # ── ETAPA 3: Google OAuth + Pre-Auth ─────────────────────────────────────────
 
+
 async def login_or_register_google(
     db: AsyncSession,
     id_token: str,
@@ -320,36 +347,40 @@ async def login_or_register_google(
     Retorna: (temp_token, totp_qr_code_url)
     - temp_token: Token temporal que requiere TOTP para completar auth
     - totp_qr_code_url: QR code si es primera vez configurando TOTP, None si ya existe
-    
+
     Args:
         db: Sesión de base de datos
         id_token: ID Token emitido por Google
         nonce: Nonce que se envió a Google (REQUERIDO para prevenir replay attacks)
         ip_origen: IP del cliente para auditoría
-    
+
     Raises: LoginError si el id_token es inválido o el nonce no coincide.
     """
-    from app.core.security import validate_google_token_with_nonce, generate_pre_auth_token, hash_pre_auth_token
+    from app.core.security import (
+        generate_pre_auth_token,
+        hash_pre_auth_token,
+        validate_google_token_with_nonce,
+    )
     from app.models.pre_auth_token import PreAuthToken
-    
+
     # 1. Validar nonce (OBLIGATORIO)
     if not nonce or not nonce.strip():
         await _log(
             db,
             "GOOGLE_LOGIN_FALLIDO",
             ip_origen=ip_origen,
-            detalle="Nonce no proporcionado"
+            detalle="Nonce no proporcionado",
         )
         await db.commit()
         raise LoginError("Nonce requerido para Google OAuth", 400)
-    
+
     nonce_hash = await validate_and_consume_nonce(db, nonce)
     if not nonce_hash:
         await _log(
             db,
             "GOOGLE_LOGIN_FALLIDO",
             ip_origen=ip_origen,
-            detalle="Nonce inválido, expirado o ya utilizado"
+            detalle="Nonce inválido, expirado o ya utilizado",
         )
         await db.commit()
         raise LoginError("Nonce inválido o expirado", 401)
@@ -358,13 +389,18 @@ async def login_or_register_google(
     try:
         google_info = validate_google_token_with_nonce(id_token, nonce_hash)
     except ValueError as e:
-        await _log(db, "GOOGLE_LOGIN_FALLIDO", ip_origen=ip_origen, detalle=f"Token inválido: {str(e)}")
+        await _log(
+            db,
+            "GOOGLE_LOGIN_FALLIDO",
+            ip_origen=ip_origen,
+            detalle=f"Token inválido: {str(e)}",
+        )
         await db.commit()
         raise LoginError(f"Google token inválido: {str(e)}", 401)
-    
+
     correo = google_info.get("email", "").lower()
     nombre = google_info.get("name", "Usuario de Google")
-    
+
     if not correo:
         raise LoginError("No se pudo obtener email de Google", 400)
 
@@ -377,34 +413,43 @@ async def login_or_register_google(
             detalle=f"Dominio no permitido: {correo}",
         )
         await db.commit()
-        raise LoginError("Solo se permite iniciar sesión con correos @tec.mx (excepción admin temporal)", 403)
-    
+        raise LoginError("Solo se permite iniciar sesión con correos @tec.mx", 403)
+
     # 3. Buscar usuario existente
     result = await db.execute(select(Usuario).where(Usuario.correo == correo))
     usuario = result.scalar_one_or_none()
-    
+
     # 2. Si no existe, crear nuevo usuario (registro automático diferido)
     if not usuario:
         from app.models.temp_totp_secret import TempTotpSecret
 
         totp_secret = pyotp.random_base32()
 
-        await _log(db, "REGISTRO_GOOGLE_INICIADO", ip_origen=ip_origen, detalle=f"correo: {correo}")
+        await _log(
+            db,
+            "REGISTRO_GOOGLE_INICIADO",
+            ip_origen=ip_origen,
+            detalle=f"correo: {correo}",
+        )
         totp_qr = _generate_totp_qr(correo, totp_secret)
 
         # Guardar secreto TOTP en tabla temporal (no en JWT)
         raw_temp = generate_pre_auth_token()
         temp_hash = hash_pre_auth_token(raw_temp)
-        expira_en = datetime.now(timezone.utc) + timedelta(minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES)
+        expira_en = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES
+        )
 
-        db.add(TempTotpSecret(
-            token_hash=temp_hash,
-            correo=correo,
-            nombre=nombre,
-            totp_secret=totp_secret,
-            expira_en=expira_en,
-            usado=False,
-        ))
+        db.add(
+            TempTotpSecret(
+                token_hash=temp_hash,
+                correo=correo,
+                nombre=nombre,
+                totp_secret=totp_secret,
+                expira_en=expira_en,
+                usado=False,
+            )
+        )
 
         await db.commit()
         return raw_temp, totp_qr, totp_secret
@@ -418,21 +463,30 @@ async def login_or_register_google(
             totp_secret = usuario.totp_secret
         else:
             totp_qr = None
-        
-        await _log(db, "LOGIN_GOOGLE_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
-    
+
+        await _log(
+            db,
+            "LOGIN_GOOGLE_EXITOSO",
+            id_matricula=usuario.id_matricula,
+            ip_origen=ip_origen,
+        )
+
         # 3. Generar temp_token (pre-auth)
         raw_temp = generate_pre_auth_token()
         temp_hash = hash_pre_auth_token(raw_temp)
-        expira_en = datetime.now(timezone.utc) + timedelta(minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES)
-        
-        db.add(PreAuthToken(
-            token_hash=temp_hash,
-            id_matricula=usuario.id_matricula,
-            expira_en=expira_en,
-            usado=False,
-        ))
-        
+        expira_en = datetime.now(timezone.utc) + timedelta(
+            minutes=settings.PRE_AUTH_TOKEN_EXPIRE_MINUTES
+        )
+
+        db.add(
+            PreAuthToken(
+                token_hash=temp_hash,
+                id_matricula=usuario.id_matricula,
+                expira_en=expira_en,
+                usado=False,
+            )
+        )
+
         await db.commit()
         return raw_temp, totp_qr, totp_secret
 
@@ -446,10 +500,10 @@ async def verify_totp_and_get_token(
     """
     Verifica el código TOTP usando el temp_token del pre-auth.
     Retorna: (access_token, rol, redirect_url)
-    
+
     Raises: LoginError si el temp_token es inválido o el TOTP es incorrecto.
     """
-    from app.core.security import hash_pre_auth_token, create_access_token
+    from app.core.security import create_access_token, hash_pre_auth_token
     from app.models.pre_auth_token import PreAuthToken
     from app.models.temp_totp_secret import TempTotpSecret
 
@@ -478,7 +532,9 @@ async def verify_totp_and_get_token(
         # Validar TOTP
         totp_obj = pyotp.TOTP(totp_secret)
         if not totp_obj.verify(totp_code):
-            await _log(db, "TOTP_FALLIDO", ip_origen=ip_origen, detalle=f"correo: {correo}")
+            await _log(
+                db, "TOTP_FALLIDO", ip_origen=ip_origen, detalle=f"correo: {correo}"
+            )
             await db.commit()
             raise LoginError("Código TOTP inválido", 401)
 
@@ -512,7 +568,9 @@ async def verify_totp_and_get_token(
             if matricula_candidata:
                 try:
                     padron_result = await db.execute(
-                        select(PadronAlumno).where(PadronAlumno.id_matricula == matricula_candidata)
+                        select(PadronAlumno).where(
+                            PadronAlumno.id_matricula == matricula_candidata
+                        )
                     )
                     padron_record = padron_result.scalar_one_or_none()
                     if padron_record:
@@ -523,6 +581,7 @@ async def verify_totp_and_get_token(
                 except Exception as e:
                     # Si hay error consultando el padrón, continúa con el fallback
                     import logging
+
                     logging.getLogger(__name__).warning(
                         f"Error consultando padrón para {matricula_candidata}: {e}"
                     )
@@ -542,7 +601,14 @@ async def verify_totp_and_get_token(
             id_matricula_final = padron_matricula
         else:
             import uuid
-            prefix = "ADM" if effective_role == "admin" else "EMP" if effective_role == "empresa" else "GGL"
+
+            prefix = (
+                "ADM"
+                if effective_role == "admin"
+                else "EMP"
+                if effective_role == "empresa"
+                else "GGL"
+            )
             id_matricula_final = f"{prefix}-{uuid.uuid4().hex[:8].upper()}"
 
         # Nombre: el del padrón es la fuente de verdad; si no hay, cae al de Google
@@ -569,7 +635,12 @@ async def verify_totp_and_get_token(
         )
         db.add(usuario)
         await db.flush()
-        await _log(db, "REGISTRO_GOOGLE_NUEVO", id_matricula=id_matricula_final, ip_origen=ip_origen)
+        await _log(
+            db,
+            "REGISTRO_GOOGLE_NUEVO",
+            id_matricula=id_matricula_final,
+            ip_origen=ip_origen,
+        )
 
         # Marcar token temporal como usado
         temp_totp_record.usado = True
@@ -599,7 +670,12 @@ async def verify_totp_and_get_token(
         # Validar TOTP
         totp_obj = pyotp.TOTP(usuario.totp_secret)
         if not totp_obj.verify(totp_code):
-            await _log(db, "TOTP_FALLIDO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+            await _log(
+                db,
+                "TOTP_FALLIDO",
+                id_matricula=usuario.id_matricula,
+                ip_origen=ip_origen,
+            )
             await db.commit()
             raise LoginError("Código TOTP inválido", 401)
 
@@ -608,34 +684,47 @@ async def verify_totp_and_get_token(
         if usuario.last_totp_used_at is not None:
             last_window = usuario.last_totp_used_at.timestamp() // 30
             if current_window == last_window:
-                await _log(db, "TOTP_REPLAY", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+                await _log(
+                    db,
+                    "TOTP_REPLAY",
+                    id_matricula=usuario.id_matricula,
+                    ip_origen=ip_origen,
+                )
                 await db.commit()
-                raise LoginError("Código TOTP ya utilizado, espera al siguiente código", 429)
+                raise LoginError(
+                    "Código TOTP ya utilizado, espera al siguiente código", 429
+                )
         usuario.last_totp_used_at = now
 
         # Marcar temp_token como usado
         pre_auth_record.usado = True
-    
+
     # 5. Generar tokens finales
     effective_role = resolve_effective_role(usuario.correo, usuario.rol)
 
-    access_token = create_access_token({
-        "sub": usuario.id_matricula,
-        "rol": effective_role,
-        "nombre": usuario.nombre,
-    })
-    
+    access_token = create_access_token(
+        {
+            "sub": usuario.id_matricula,
+            "rol": effective_role,
+            "nombre": usuario.nombre,
+        }
+    )
+
     raw_refresh = generate_refresh_token()
     token_hash = hash_refresh_token(raw_refresh)
-    expira_en = datetime.now(timezone.utc) + timedelta(hours=settings.REFRESH_TOKEN_EXPIRE_HOURS)
-    
-    db.add(RefreshToken(
-        token_hash=token_hash,
-        id_matricula=usuario.id_matricula,
-        expira_en=expira_en,
-        revocado=False,
-    ))
-    
+    expira_en = datetime.now(timezone.utc) + timedelta(
+        hours=settings.REFRESH_TOKEN_EXPIRE_HOURS
+    )
+
+    db.add(
+        RefreshToken(
+            token_hash=token_hash,
+            id_matricula=usuario.id_matricula,
+            expira_en=expira_en,
+            revocado=False,
+        )
+    )
+
     # 6. Determinar redirección según rol
     redirect_map = {
         "alumno": "/dashboard",
@@ -643,9 +732,11 @@ async def verify_totp_and_get_token(
         "admin": "/admin/dashboard",
     }
     redirect_url = redirect_map.get(effective_role, "/dashboard")
-    
+
     # 7. Guardar refresh token en cookie (se hace en el endpoint)
-    await _log(db, "TOTP_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen)
+    await _log(
+        db, "TOTP_EXITOSO", id_matricula=usuario.id_matricula, ip_origen=ip_origen
+    )
 
     # En modo pruebas, habilita eventos para el alumno forzado sin requerir padrón/registro.
     await _ensure_test_alumno_eventos(db, usuario, effective_role)
@@ -653,11 +744,13 @@ async def verify_totp_and_get_token(
     await _ensure_padron_alumno_eventos(db, usuario, effective_role)
 
     await db.commit()
-    
+
     return access_token, raw_refresh, effective_role, redirect_url, needs_profile
 
 
-async def _ensure_test_alumno_eventos(db: AsyncSession, usuario: Usuario, effective_role: str) -> None:
+async def _ensure_test_alumno_eventos(
+    db: AsyncSession, usuario: Usuario, effective_role: str
+) -> None:
     """Asigna eventos activos al alumno de pruebas si aún no tiene asignaciones."""
     if effective_role != "alumno" or not settings.TEST_ROLE_SWITCH_ENABLED:
         return
@@ -667,7 +760,9 @@ async def _ensure_test_alumno_eventos(db: AsyncSession, usuario: Usuario, effect
         return
 
     result = await db.execute(
-        select(UsuarioEvento.id).where(UsuarioEvento.id_matricula == usuario.id_matricula).limit(1)
+        select(UsuarioEvento.id)
+        .where(UsuarioEvento.id_matricula == usuario.id_matricula)
+        .limit(1)
     )
     if result.scalar_one_or_none() is not None:
         return
@@ -681,59 +776,70 @@ async def _ensure_test_alumno_eventos(db: AsyncSession, usuario: Usuario, effect
     eventos_activos = list(result.scalars().all())
 
     for evento in eventos_activos:
-        db.add(UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento))
+        db.add(
+            UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento)
+        )
 
 
-async def _ensure_padron_alumno_eventos(db: AsyncSession, usuario: Usuario, effective_role: str) -> None:
+async def _ensure_padron_alumno_eventos(
+    db: AsyncSession, usuario: Usuario, effective_role: str
+) -> None:
     """Asigna el evento activo al alumno del padrón si aún no tiene ninguna asignación."""
     if effective_role != "alumno":
         return
 
     ya_tiene = await db.execute(
-        select(UsuarioEvento.id).where(UsuarioEvento.id_matricula == usuario.id_matricula).limit(1)
+        select(UsuarioEvento.id)
+        .where(UsuarioEvento.id_matricula == usuario.id_matricula)
+        .limit(1)
     )
     if ya_tiene.scalar_one_or_none() is not None:
         return
 
     en_padron = await db.execute(
-        select(PadronAlumno.id_matricula).where(PadronAlumno.id_matricula == usuario.id_matricula)
+        select(PadronAlumno.id_matricula).where(
+            PadronAlumno.id_matricula == usuario.id_matricula
+        )
     )
     if not en_padron.scalar_one_or_none():
         return
 
     evento_res = await db.execute(
-        select(Evento).where(Evento.activo.is_(True)).order_by(Evento.id_evento).limit(1)
+        select(Evento)
+        .where(Evento.activo.is_(True))
+        .order_by(Evento.id_evento)
+        .limit(1)
     )
     evento = evento_res.scalars().first()
     if evento:
-        db.add(UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento))
+        db.add(
+            UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento)
+        )
 
 
 # ── Utilidades TOTP ──────────────────────────────────────────────────────────
 
+
 def _generate_totp_qr(email: str, secret: str) -> str:
     """Genera URL del código QR para vincular Authenticator."""
     totp_obj = pyotp.TOTP(secret)
-    qr_uri = totp_obj.provisioning_uri(
-        name=email,
-        issuer_name="Feria Servicio Social"
-    )
-    
+    qr_uri = totp_obj.provisioning_uri(name=email, issuer_name="Feria Servicio Social")
+
     # Usar qrcode para generar la imagen
-    import qrcode
-    import io
     import base64
-    
+    import io
+
+    import qrcode
+
     qr = qrcode.QRCode(version=1, box_size=10, border=4)
     qr.add_data(qr_uri)
     qr.make(fit=True)
-    
+
     img = qr.make_image(fill_color="black", back_color="white")
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
     buffer.seek(0)
-    
+
     # Convertir a base64 para enviar como data URL
     qr_base64 = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/png;base64,{qr_base64}"
-

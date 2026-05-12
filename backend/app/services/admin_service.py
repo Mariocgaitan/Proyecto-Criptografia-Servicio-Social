@@ -1,11 +1,15 @@
 """
 Servicio del módulo Admin — lógica de negocio para gestión de proyectos.
 """
+import secrets
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+
+from app.core.security import hash_password
+from app.models.refresh_token import RefreshToken
 
 from app.core.cache import cached, cache_delete, cache_delete_prefix
 from app.core.pagination import paginate
@@ -452,8 +456,6 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
     Resetea la contraseña de un usuario empresa y retorna la nueva contraseña en texto plano.
     Se usa cuando el admin necesita recuperar/regenerar las credenciales de acceso.
     """
-    import secrets
-    from app.core.security import hash_password
     from fastapi import HTTPException
 
     result = await db.execute(
@@ -467,7 +469,6 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
 
     usuario, empresa = row
 
-    # Generar contraseña nueva
     nueva_password = secrets.token_urlsafe(12)
     usuario.password_hash = hash_password(nueva_password)
 
@@ -487,6 +488,107 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
         "correo": usuario.correo,
         "password": nueva_password,
         "nombre_empresa": empresa.nombre_empresa if empresa else None,
+    }
+
+
+# ── Credenciales (reset de contraseñas) ───────────────────────────────────────
+
+# Roles cuyas contraseñas el admin puede resetear desde el panel.
+# Alumnos quedan fuera: ellos usan el flujo de Google login / OTP por separado.
+_RESETTABLE_ROLES = ("admin", "empresa")
+
+
+async def listar_credenciales(db: AsyncSession) -> list[dict]:
+    """Lista usuarios con rol admin/empresa para el panel de credenciales."""
+    result = await db.execute(
+        select(Usuario, Empresa)
+        .join(Empresa, Usuario.id_empresa == Empresa.id_empresa, isouter=True)
+        .where(
+            Usuario.rol.in_(_RESETTABLE_ROLES),
+            Usuario.is_google_login.is_(False),
+        )
+        .order_by(Usuario.rol, Usuario.nombre)
+    )
+    return [
+        {
+            "id_matricula": u.id_matricula,
+            "nombre": u.nombre,
+            "correo": u.correo,
+            "rol": u.rol,
+            "id_empresa": u.id_empresa,
+            "nombre_empresa": e.nombre_empresa if e else None,
+        }
+        for u, e in result.all()
+    ]
+
+
+async def reset_password_usuario(
+    db: AsyncSession,
+    id_matricula: str,
+    actor_matricula: str,
+    ip_origen: str | None,
+) -> dict:
+    """
+    Genera una contraseña nueva para el usuario indicado, la hashea y revoca
+    todos sus refresh tokens. Devuelve el password en plano (solo una vez).
+
+    Reglas:
+      - Solo se permite resetear usuarios con rol admin/empresa.
+      - El admin no puede resetear su propia cuenta (evita lockout).
+    """
+    from fastapi import HTTPException
+
+    if id_matricula == actor_matricula:
+        raise HTTPException(
+            status_code=400,
+            detail="No puedes resetear tu propia contraseña desde este panel.",
+        )
+
+    result = await db.execute(select(Usuario).where(Usuario.id_matricula == id_matricula))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    if user.rol not in _RESETTABLE_ROLES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se puede resetear contraseña de usuarios con rol '{user.rol}'.",
+        )
+
+    if user.is_google_login:
+        raise HTTPException(
+            status_code=400,
+            detail="Este usuario inicia sesión con Google y no tiene contraseña local.",
+        )
+
+    new_password = secrets.token_urlsafe(12)
+    user.password_hash = hash_password(new_password)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+
+    await db.execute(
+        update(RefreshToken)
+        .where(RefreshToken.id_matricula == id_matricula, RefreshToken.revocado.is_(False))
+        .values(revocado=True)
+    )
+
+    db.add(
+        LogAuditoria(
+            tipo_evento="PASSWORD_RESET_ADMIN",
+            id_matricula=actor_matricula,
+            ip_origen=ip_origen,
+            detalle=f"Admin {actor_matricula} reseteó contraseña de {id_matricula} (rol={user.rol})",
+        )
+    )
+
+    await db.commit()
+
+    return {
+        "ok": True,
+        "id_matricula": user.id_matricula,
+        "correo": user.correo,
+        "password": new_password,
+        "shown_once": True,
     }
 
 
