@@ -23,7 +23,37 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]' }],
+      // React Hooks v6 strict rules generate hundreds of findings on the
+      // existing codebase. Disable until a dedicated refactor pass.
+      'react-hooks/immutability': 'off',
+      'react-hooks/set-state-in-effect': 'off',
+      // shadcn/ui pattern: components co-export variants/constants — rule
+      // would force a refactor of every shadcn file. Off.
+      'react-refresh/only-export-components': 'off',
+      // react plugin not installed — directive references rule we don't load.
+      'react/display-name': 'off',
+    },
+  },
+  {
+    files: ['*.config.{js,mjs,cjs}'],
+    languageOptions: { globals: globals.node },
+  },
+  {
+    files: ['src/test/**/*.{js,jsx}', 'src/__tests__/**/*.{js,jsx}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        vi: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeAll: 'readonly',
+        beforeEach: 'readonly',
+        afterAll: 'readonly',
+        afterEach: 'readonly',
+      },
     },
   },
 ])

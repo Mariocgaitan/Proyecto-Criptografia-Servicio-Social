@@ -19,7 +19,6 @@ vi.mock("framer-motion", () => {
     {},
     {
       get: (_target, tag) =>
-        // eslint-disable-next-line react/display-name
         ({ children, ...props }) => {
           // drop framer-specific props so React doesn't warn
           const {
