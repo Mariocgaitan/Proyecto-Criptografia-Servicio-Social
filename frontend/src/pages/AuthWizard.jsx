@@ -55,6 +55,16 @@ export default function AuthWizard() {
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [googleNonce, setGoogleNonce] = useState(null);
+  const [googleBtnWidth, setGoogleBtnWidth] = useState(() => {
+    if (typeof window === "undefined") return 320;
+    return Math.min(360, window.innerWidth - 64);
+  });
+
+  useEffect(() => {
+    const onResize = () => setGoogleBtnWidth(Math.min(360, window.innerWidth - 64));
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const [authData, setAuthData] = useState({
     email: "",
@@ -467,7 +477,7 @@ export default function AuthWizard() {
                       <div className="flex-grow border-t border-white/20"></div>
                     </div>
 
-                    <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50">
+                    <div className="flex justify-center w-full rounded-full transition-colors items-center mt-2 relative z-50 overflow-hidden">
                       {googleNonce ? (
                         <GoogleLogin
                           nonce={googleNonce}
@@ -477,7 +487,7 @@ export default function AuthWizard() {
                           shape="pill"
                           size="large"
                           text="continue_with"
-                          width="360"
+                          width={googleBtnWidth}
                         />
                       ) : (
                         <div className="flex items-center justify-center h-10 text-white/30 text-xs">
