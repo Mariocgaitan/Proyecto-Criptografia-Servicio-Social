@@ -158,44 +158,40 @@ function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
   const tone = toneMap[color] || toneMap.blue;
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: index * 0.1, duration: 0.4 }}>
-      <div className="rounded-2xl border border-white/15 bg-black/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-colors duration-300 hover:bg-black/45">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-[10px] font-normal uppercase tracking-[0.2em] mb-2 text-white/55">{label}</p>
-            <p className="text-3xl font-normal tracking-tight text-white">{value}</p>
-            <p className="text-xs mt-1.5 flex items-center gap-1 text-white/55">
-              <TrendingUp className="w-3 h-3 text-emerald-500" />
-              {subtitle}
-            </p>
-          </div>
-          <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${tone}`}>
-            <Icon className="w-6 h-6" />
-          </div>
+    <div className="rounded-2xl border border-white/15 bg-black/35 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] transition-colors duration-300 hover:bg-black/45">
+      <div className="flex items-start justify-between">
+        <div>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] mb-2 text-white/55">{label}</p>
+          <p className="text-3xl font-normal tracking-tight text-white">{value}</p>
+          <p className="text-xs mt-1.5 flex items-center gap-1 text-white/55">
+            <TrendingUp className="w-3 h-3 text-emerald-500" />
+            {subtitle}
+          </p>
+        </div>
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center border ${tone}`}>
+          <Icon className="w-6 h-6" />
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ─── Chart Placeholder ───────────────────────────────────────────
 function ChartPlaceholder({ title, icon: Icon, colSpan = 1, height = "h-56" }) {
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.4 }} className={colSpan === 2 ? "md:col-span-2" : ""}>
-      <div className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-          <h3 className="font-normal text-sm text-white">{title}</h3>
-          <button className="text-[11px] uppercase tracking-wider text-blue-300 hover:text-blue-200 font-normal transition-colors">Ver todo</button>
-        </div>
-        <div className={`${height} flex flex-col items-center justify-center gap-3 px-5`}>
-          <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-white/25 bg-black/25 flex items-center justify-center">
-            <Icon className="w-7 h-7 text-white/40" />
-          </div>
-          <p className="text-sm font-medium text-white/70">Gráfica en desarrollo</p>
-          <p className="text-[11px] text-white/35">Los datos se conectarán aquí próximamente</p>
-        </div>
+    <div className={`rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden ${colSpan === 2 ? "md:col-span-2" : ""}`}>
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <h3 className="font-normal text-sm text-white">{title}</h3>
+        <button className="text-[11px] uppercase tracking-wider text-blue-300 hover:text-blue-200 font-normal transition-colors">Ver todo</button>
       </div>
-    </motion.div>
+      <div className={`${height} flex flex-col items-center justify-center gap-3 px-5`}>
+        <div className="w-14 h-14 rounded-2xl border-2 border-dashed border-white/25 bg-black/25 flex items-center justify-center">
+          <Icon className="w-7 h-7 text-white/40" />
+        </div>
+        <p className="text-sm font-medium text-white/70">Gráfica en desarrollo</p>
+        <p className="text-[11px] text-white/35">Los datos se conectarán aquí próximamente</p>
+      </div>
+    </div>
   );
 }
 
@@ -248,6 +244,13 @@ export default function AdminDashboard() {
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
   const [isAgregarAlumnoOpen, setIsAgregarAlumnoOpen] = useState(false);
+  const [isCredencialesOpen, setIsCredencialesOpen] = useState(false);
+  const [isCsvUploadOpen, setIsCsvUploadOpen] = useState(false);
+  const [usuariosEmpresa, setUsuariosEmpresa] = useState([]);
+  const [credencialGenerada, setCredencialGenerada] = useState(null);
+  const [csvFile, setCsvFile] = useState(null);
+  const [csvEventoId, setCsvEventoId] = useState("");
+  const [csvResult, setCsvResult] = useState(null);
   const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
   const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
@@ -461,6 +464,74 @@ export default function AdminDashboard() {
       setIsCrearEventoOpen(false); fetchData();
       setFormEvento({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
+  };
+
+  const handleOpenCredenciales = async () => {
+    setIsCredencialesOpen(true);
+    setErrorText("");
+    setCredencialGenerada(null);
+    try {
+      const res = await fetch(apiUrl("/api/v1/admin/usuarios-empresa"), { credentials: "include" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      setUsuariosEmpresa(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setErrorText(err.message || "Error al cargar usuarios empresa");
+    }
+  };
+
+  const handleResetPassword = async (idMatricula) => {
+    setIsSubmitting(true);
+    setErrorText("");
+    setCredencialGenerada(null);
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/usuarios-empresa/${idMatricula}/reset-password`), {
+        method: "POST",
+        credentials: "include"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+      setCredencialGenerada(data);
+    } catch (err) {
+      setErrorText(err.message || "Error al resetear contraseña");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleUploadCsv = async (e) => {
+    e.preventDefault();
+    if (!csvFile || !csvEventoId) {
+      setErrorText("Selecciona un archivo CSV y un evento");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrorText("");
+    setCsvResult(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", csvFile);
+
+      const res = await fetch(apiUrl(`/api/v1/admin/upload-csv?id_evento=${csvEventoId}`), {
+        method: "POST",
+        credentials: "include",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail);
+
+      setCsvResult(data);
+      setCsvFile(null);
+      setCsvEventoId("");
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "Error al procesar CSV");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleGuardarCupo = async () => {
@@ -1030,7 +1101,7 @@ export default function AdminDashboard() {
       style={{ fontFamily: "'Geist Variable', sans-serif", backgroundColor: isDark ? "#0b1120" : "#f1f5f9" }}
     >
 
-      <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-black/30 backdrop-blur-md border-b border-white/5">
+      <header className="relative z-20 flex flex-wrap items-center justify-between gap-3 px-4 sm:px-8 py-4 bg-slate-950/95 border-b border-white/5">
         <div className="flex items-center gap-3 min-w-0">
           <img src={tecLogo} alt="Tecnológico de Monterrey" className={`h-12 sm:h-14 w-auto drop-shadow-md ${isDark ? "brightness-0 invert" : "brightness-0"}`} />
           <div>
@@ -1061,7 +1132,7 @@ export default function AdminDashboard() {
       <div className="relative z-10 flex flex-1 min-h-0">
         <main className="flex-1 min-h-0 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="w-full">
-            <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
+            <div className="mb-6 rounded-2xl border border-white/15 bg-black/35 p-4 sm:p-5 space-y-3 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
               <div>
                 <h2 className="text-lg sm:text-xl font-normal tracking-tight text-white">
                   {sectionMeta[activeSection]?.title}
@@ -1159,7 +1230,7 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-white/15 bg-black/35 p-3 sm:p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="inline-flex items-center gap-1 text-[11px] uppercase tracking-wider text-white/55 font-normal mr-1">
                         <SlidersHorizontal className="w-3.5 h-3.5" /> Filtros
@@ -1255,7 +1326,7 @@ export default function AdminDashboard() {
                   {/* BY EMPRESA VIEW */}
                   <div className="space-y-4">
                     {Object.entries(proyectosPorEmpresa).map(([empresaName, proys]) => (
-                      <div key={empresaName} className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm overflow-hidden transition-all">
+                      <div key={empresaName} className="rounded-2xl border border-white/15 bg-black/35 shadow-[0_8px_30px_rgba(0,0,0,0.2)] overflow-hidden">
                         <button
                           onClick={() => setExpandedEmpresas((prev) => prev.includes(empresaName) ? prev.filter((name) => name !== empresaName) : [...prev, empresaName])}
                           className="w-full flex items-center justify-between px-6 py-4 transition-colors hover:bg-white/[0.03]"
@@ -1270,15 +1341,15 @@ export default function AdminDashboard() {
                             <span className="text-xs font-mono font-normal px-2 py-1 rounded-md bg-white/10 text-white/75 border border-white/10">
                               {proys.reduce((s, p) => s + (p.cupo_actual || 0), 0)}/{proys.reduce((s, p) => s + (p.capacidad_max || 0), 0)} plazas
                             </span>
-                            <motion.div animate={{ rotate: expandedEmpresas.includes(empresaName) ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                              <ChevronDown className="w-4 h-4 text-white/55" />
-                            </motion.div>
+                            <ChevronDown
+                              className="w-4 h-4 text-white/55 transition-transform duration-200"
+                              style={{ transform: expandedEmpresas.includes(empresaName) ? "rotate(180deg)" : "rotate(0deg)" }}
+                            />
                           </div>
                         </button>
-                        <AnimatePresence>
-                          {expandedEmpresas.includes(empresaName) && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.25 }}>
-                              <div className="border-t border-white/10">
+                        {expandedEmpresas.includes(empresaName) && (
+                          <div>
+                            <div className="border-t border-white/10">
                                 {proys.map((p) => {
                                   const isProyectoExpanded = expandedProyectos.includes(p.id_proyecto);
                                   const inscritos = Array.isArray(p.alumnos_inscritos) ? p.alumnos_inscritos : [];
@@ -1296,9 +1367,10 @@ export default function AdminDashboard() {
                                       >
                                         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                                           <div className="flex items-start gap-3">
-                                            <motion.div animate={{ rotate: isProyectoExpanded ? 180 : 0 }} transition={{ duration: 0.2 }} className="mt-0.5 text-white/60">
-                                              <ChevronDown className="w-4 h-4" />
-                                            </motion.div>
+                                            <ChevronDown
+                                              className="w-4 h-4 mt-0.5 text-white/60 transition-transform duration-200"
+                                              style={{ transform: isProyectoExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                                            />
                                             <div className="flex-1 min-w-0">
                                               <p className="text-sm font-normal text-white">{p.nombre_proyecto}</p>
                                               <p className="text-[11px] mt-1 text-white/60">{inscritosVisibles.length} alumno{inscritosVisibles.length !== 1 ? "s" : ""} visible{inscritosVisibles.length !== 1 ? "s" : ""}</p>
@@ -1329,10 +1401,9 @@ export default function AdminDashboard() {
                                         </div>
                                       </button>
 
-                                      <AnimatePresence>
-                                        {isProyectoExpanded && (
-                                          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                                            <div className="px-6 pb-4">
+                                      {isProyectoExpanded && (
+                                        <div>
+                                          <div className="px-6 pb-4">
                                               <div className="rounded-xl border border-white/10 bg-black/25 overflow-hidden">
                                                 <div className="px-3 py-2 border-b border-white/10 flex items-center justify-between">
                                                   <p className="text-[11px] font-normal uppercase tracking-wider text-white/60">Alumnos enrolados</p>
@@ -1390,16 +1461,14 @@ export default function AdminDashboard() {
                                                 )}
                                               </div>
                                             </div>
-                                          </motion.div>
+                                          </div>
                                         )}
-                                      </AnimatePresence>
                                     </div>
                                   );
                                 })}
                               </div>
-                            </motion.div>
+                            </div>
                           )}
-                        </AnimatePresence>
                       </div>
                     ))}
                     {!Object.keys(proyectosPorEmpresa).length && (
@@ -1473,14 +1542,28 @@ export default function AdminDashboard() {
                         </form>
                       </DialogContent>
                     </Dialog>
+
+                    <Button
+                      onClick={handleOpenCredenciales}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                    >
+                      <Users className="w-4 h-4 mr-2" /> Ver Credenciales de Empresas
+                    </Button>
+
+                    <Button
+                      onClick={() => setIsCsvUploadOpen(true)}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" /> Cargar CSV
+                    </Button>
                   </div>
 
-                  <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                  <div className="rounded-2xl border border-white/15 bg-black/35 overflow-hidden">
                     <div className="px-5 py-3 border-b border-white/10">
                       <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Empresas registradas</p>
                     </div>
-                    {filteredEmpresas?.map((emp, i) => (
-                      <motion.div key={emp.id_empresa} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
+                    {filteredEmpresas?.map((emp) => (
+                      <div key={emp.id_empresa}>
                         <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div className="min-w-0">
@@ -1495,7 +1578,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 </motion.div>
@@ -1546,12 +1629,12 @@ export default function AdminDashboard() {
                     </Dialog>
                   </div>
 
-                  <div className="rounded-2xl border border-white/15 bg-black/35 backdrop-blur-sm overflow-hidden">
+                  <div className="rounded-2xl border border-white/15 bg-black/35 overflow-hidden">
                     <div className="px-5 py-3 border-b border-white/10">
                       <p className="text-[11px] font-normal uppercase tracking-wider text-white/55">Periodos y eventos</p>
                     </div>
-                    {filteredEventos?.map((ev, i) => (
-                      <motion.div key={ev.id_evento} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.08, duration: 0.35 }}>
+                    {filteredEventos?.map((ev) => (
+                      <div key={ev.id_evento}>
                         <div className="px-5 py-4 border-b last:border-0 border-white/10 hover:bg-white/[0.03] transition-colors">
                           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -1571,7 +1654,7 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
                 </motion.div>
@@ -1824,7 +1907,7 @@ export default function AdminDashboard() {
       </Dialog>
 
       {commandOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setCommandOpen(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60" onClick={() => setCommandOpen(false)}>
           <div className="w-full max-w-2xl rounded-2xl border border-white/15 bg-black/75 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl" onClick={(event) => event.stopPropagation()}>
             <div className="p-3 border-b border-white/10 bg-gradient-to-r from-blue-500/10 via-transparent to-transparent">
               <div className="relative">
@@ -1882,7 +1965,142 @@ export default function AdminDashboard() {
         </div>
       ) : null}
 
-      <footer className="relative z-20 border-t border-white/10 bg-black/30 backdrop-blur-md px-4 sm:px-6 lg:px-8 py-4">
+      {/* Modal Ver Credenciales */}
+      <Dialog open={isCredencialesOpen} onOpenChange={setIsCredencialesOpen}>
+        <DialogContent className="sm:max-w-2xl bg-slate-950/92 border border-white/15 text-white backdrop-blur-md max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Credenciales de Empresas</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Haz clic en "Generar Nueva Contraseña" para ver y resetear las credenciales de acceso
+            </DialogDescription>
+          </DialogHeader>
+
+          {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+          {credencialGenerada && (
+            <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-xs uppercase tracking-widest text-white/50">Nueva contraseña generada</p>
+              <p className="text-sm text-white/70"><strong>Empresa:</strong> {credencialGenerada.nombre_empresa}</p>
+              <p className="text-sm text-white/70"><strong>Correo:</strong> {credencialGenerada.correo}</p>
+              <p className="text-lg font-mono font-semibold text-green-100">{credencialGenerada.password}</p>
+              <p className="text-xs text-white/50">⚠️ Copia esta contraseña ahora. No se volverá a mostrar.</p>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            {usuariosEmpresa.map((usuario) => (
+              <div key={usuario.id_matricula} className="flex items-center justify-between p-3 rounded-lg border border-white/10 bg-white/5">
+                <div>
+                  <p className="text-sm font-semibold text-white">{usuario.nombre_empresa || usuario.nombre}</p>
+                  <p className="text-xs text-white/60">{usuario.correo}</p>
+                </div>
+                <Button
+                  onClick={() => handleResetPassword(usuario.id_matricula)}
+                  disabled={isSubmitting}
+                  size="sm"
+                  className="border border-blue-400/30 bg-blue-500/20 text-blue-100 hover:bg-blue-500/30"
+                >
+                  Generar Nueva Contraseña
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Cargar CSV */}
+      <Dialog open={isCsvUploadOpen} onOpenChange={(open) => {
+        setIsCsvUploadOpen(open);
+        if (!open) {
+          setCsvFile(null);
+          setCsvEventoId("");
+          setCsvResult(null);
+          setErrorText("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg bg-slate-950/95 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-normal tracking-tight text-white">Cargar CSV de Empresas y Proyectos</DialogTitle>
+            <DialogDescription className="text-white/60">
+              Sube un archivo CSV con el formato especificado
+            </DialogDescription>
+          </DialogHeader>
+
+          {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+
+          {csvResult && (
+            <div className="space-y-2 rounded-lg border border-green-500/20 bg-green-500/5 p-4">
+              <p className="text-sm font-semibold text-green-100">CSV procesado correctamente</p>
+              <p className="text-xs text-white/70">Empresas creadas: {csvResult.empresas_creadas}</p>
+              <p className="text-xs text-white/70">Proyectos creados: {csvResult.proyectos_creados}</p>
+              {csvResult.total_errores > 0 && (
+                <div className="mt-2">
+                  <p className="text-xs text-red-200">{csvResult.total_errores} errores:</p>
+                  <ul className="text-xs text-white/60 list-disc list-inside max-h-32 overflow-y-auto">
+                    {csvResult.errores.map((err, idx) => <li key={idx}>{err}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          <form onSubmit={handleUploadCsv} className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Formato esperado</Label>
+              <pre className="bg-white/5 border border-white/10 rounded-lg p-3 text-[11px] font-mono text-white/70 overflow-x-auto whitespace-pre leading-relaxed">
+{`nombre_empresa,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
+Cemex,https://...,Proyecto A,Descripción,50
+Femsa,,Proyecto B,Otra desc,30`}
+              </pre>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Evento</Label>
+              <Select value={csvEventoId} onValueChange={setCsvEventoId} required>
+                <SelectTrigger className="bg-white/10 border-white/15 text-white">
+                  <SelectValue placeholder="Selecciona un evento" />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-white/15">
+                  {eventos.map((ev) => (
+                    <SelectItem key={ev.id_evento} value={String(ev.id_evento)} className="text-white">
+                      {ev.nombre} ({ev.periodo} {ev.anio})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white text-[11px] font-normal uppercase tracking-wider">Archivo CSV</Label>
+              <label
+                htmlFor="csv-file-input"
+                className="flex items-center gap-3 cursor-pointer rounded-lg border border-dashed border-white/20 bg-white/[0.04] hover:bg-white/[0.07] hover:border-white/30 transition-colors px-3 py-2.5"
+              >
+                <span className="inline-flex items-center rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-medium text-white">
+                  Elegir archivo
+                </span>
+                <span className="text-xs text-white/60 truncate flex-1">
+                  {csvFile ? csvFile.name : "Ningún archivo seleccionado"}
+                </span>
+              </label>
+              <input
+                id="csv-file-input"
+                type="file"
+                accept=".csv"
+                onChange={(e) => setCsvFile(e.target.files[0])}
+                required
+                className="sr-only"
+              />
+            </div>
+
+            <Button type="submit" disabled={isSubmitting || !csvFile || !csvEventoId} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-normal disabled:bg-white/10 disabled:text-white/40">
+              {isSubmitting ? "Procesando..." : "Cargar CSV"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <footer className="relative z-20 border-t border-white/10 bg-slate-950/95 px-4 sm:px-6 lg:px-8 py-4">
         <div className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px]">
           <p className="text-white/50 uppercase tracking-wider font-normal">Panel Administrativo</p>
           <p className="text-white/40">Servicio Social Tec - Ecosistema Unificado</p>

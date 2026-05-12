@@ -428,6 +428,69 @@ async def crear_inscripcion(
     }
 
 
+# ── Usuarios Empresa ──────────────────────────────────────────────────────────
+
+async def listar_usuarios_empresa(db: AsyncSession) -> list[dict]:
+    """Lista todos los usuarios de tipo empresa con datos de la empresa vinculada."""
+    result = await db.execute(
+        select(Usuario, Empresa)
+        .outerjoin(Empresa, Usuario.id_empresa == Empresa.id_empresa)
+        .where(Usuario.rol == "empresa")
+        .order_by(Empresa.nombre_empresa)
+    )
+    return [
+        {
+            "id_matricula": u.id_matricula,
+            "nombre": u.nombre,
+            "correo": u.correo,
+            "id_empresa": u.id_empresa,
+            "nombre_empresa": e.nombre_empresa if e else None,
+            "created_at": u.created_at.isoformat() if u.created_at else None,
+        }
+        for u, e in result.all()
+    ]
+
+
+async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict:
+    """
+    Resetea la contraseña de un usuario empresa y retorna la nueva contraseña en texto plano.
+    Se usa cuando el admin necesita recuperar/regenerar las credenciales de acceso.
+    """
+    from fastapi import HTTPException
+
+    result = await db.execute(
+        select(Usuario, Empresa)
+        .outerjoin(Empresa, Usuario.id_empresa == Empresa.id_empresa)
+        .where(Usuario.id_matricula == id_matricula, Usuario.rol == "empresa")
+    )
+    row = result.first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Usuario empresa no encontrado")
+
+    usuario, empresa = row
+
+    nueva_password = secrets.token_urlsafe(12)
+    usuario.password_hash = hash_password(nueva_password)
+
+    db.add(
+        LogAuditoria(
+            tipo_evento="PASSWORD_RESET_ADMIN",
+            id_matricula=usuario.id_matricula,
+            detalle=f"Admin reseteó contraseña para usuario empresa: {usuario.correo}",
+        )
+    )
+
+    await db.commit()
+
+    return {
+        "id_matricula": usuario.id_matricula,
+        "nombre": usuario.nombre,
+        "correo": usuario.correo,
+        "password": nueva_password,
+        "nombre_empresa": empresa.nombre_empresa if empresa else None,
+    }
+
+
 # ── Credenciales (reset de contraseñas) ───────────────────────────────────────
 
 # Roles cuyas contraseñas el admin puede resetear desde el panel.
@@ -503,7 +566,6 @@ async def reset_password_usuario(
     user.failed_login_attempts = 0
     user.locked_until = None
 
-    # Revocar todos los refresh tokens del usuario — fuerza re-login.
     await db.execute(
         update(RefreshToken)
         .where(RefreshToken.id_matricula == id_matricula, RefreshToken.revocado.is_(False))
@@ -527,4 +589,120 @@ async def reset_password_usuario(
         "correo": user.correo,
         "password": new_password,
         "shown_once": True,
+    }
+
+
+# ── Carga de CSV ──────────────────────────────────────────────────────────────
+
+async def procesar_csv_empresas_proyectos(
+    db: AsyncSession,
+    csv_content: str,
+    id_evento: int,
+) -> dict:
+    """
+    Procesa un CSV con empresas y proyectos.
+    Formato esperado: nombre_empresa,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
+
+    Crea empresas si no existen y siempre crea nuevos proyectos.
+    Retorna resumen de registros creados.
+    """
+    import csv
+    import io
+    from fastapi import HTTPException
+
+    # Validar que el evento existe
+    evento = await db.get(Evento, id_evento)
+    if not evento:
+        raise HTTPException(status_code=404, detail=f"Evento con id {id_evento} no encontrado")
+
+    # Parse CSV
+    reader = csv.DictReader(io.StringIO(csv_content))
+    expected_columns = {"nombre_empresa", "logo_url", "nombre_proyecto", "descripcion_proyecto", "capacidad_max"}
+
+    if not reader.fieldnames or not set(reader.fieldnames).issuperset(expected_columns):
+        raise HTTPException(
+            status_code=400,
+            detail=f"CSV debe contener las columnas: {', '.join(expected_columns)}"
+        )
+
+    empresas_creadas = 0
+    proyectos_creados = 0
+    errores = []
+
+    # Cache de empresas para no repetir queries
+    empresas_cache = {}
+
+    for idx, row in enumerate(reader, start=2):  # start=2 porque la fila 1 son headers
+        try:
+            nombre_empresa = (row.get("nombre_empresa") or "").strip()
+            logo_url = (row.get("logo_url") or "").strip() or None
+            nombre_proyecto = (row.get("nombre_proyecto") or "").strip()
+            descripcion = (row.get("descripcion_proyecto") or "").strip() or None
+            capacidad_str = (row.get("capacidad_max") or "").strip()
+
+            # Validaciones básicas
+            if not nombre_empresa:
+                errores.append(f"Fila {idx}: nombre_empresa vacío")
+                continue
+
+            if not nombre_proyecto:
+                errores.append(f"Fila {idx}: nombre_proyecto vacío")
+                continue
+
+            try:
+                capacidad_max = int(capacidad_str)
+                if capacidad_max <= 0:
+                    raise ValueError()
+            except ValueError:
+                errores.append(f"Fila {idx}: capacidad_max debe ser un número positivo (recibido: {capacidad_str})")
+                continue
+
+            # Buscar o crear empresa
+            if nombre_empresa in empresas_cache:
+                empresa = empresas_cache[nombre_empresa]
+            else:
+                result = await db.execute(
+                    select(Empresa).where(Empresa.nombre_empresa == nombre_empresa)
+                )
+                empresa = result.scalar_one_or_none()
+
+                if not empresa:
+                    empresa = Empresa(
+                        nombre_empresa=nombre_empresa,
+                        logo_url=logo_url,
+                    )
+                    db.add(empresa)
+                    await db.flush()  # Para obtener id_empresa
+                    empresas_creadas += 1
+
+                empresas_cache[nombre_empresa] = empresa
+
+            # Crear proyecto
+            proyecto = Proyecto(
+                id_empresa=empresa.id_empresa,
+                id_evento=id_evento,
+                nombre_proyecto=nombre_proyecto,
+                descripcion=descripcion,
+                capacidad_max=capacidad_max,
+                cupo_actual=0,
+            )
+            db.add(proyecto)
+            proyectos_creados += 1
+
+        except Exception as e:
+            errores.append(f"Fila {idx}: Error inesperado - {str(e)}")
+
+    await db.commit()
+
+    # Limpiar cache
+    await cache_delete("kpis")
+    await cache_delete("ocupacion_eventos")
+    await cache_delete_prefix("admin_proyectos")
+
+    return {
+        "ok": True,
+        "empresas_creadas": empresas_creadas,
+        "proyectos_creados": proyectos_creados,
+        "errores": errores,
+        "total_errores": len(errores),
     }
