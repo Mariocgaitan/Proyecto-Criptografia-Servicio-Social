@@ -45,6 +45,34 @@ const SCANNER_CONFIG = {
   duplicateQrIgnoreMs: 6000,
 };
 
+function OccupancyMeter({ current, max, percent }) {
+  const barTone = percent >= 100 ? "bg-red-500" : percent >= 75 ? "bg-amber-400" : "bg-emerald-400";
+
+  return (
+    <div className="rounded-2xl border border-white/15 bg-black/30 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
+          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{current}/{max}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
+          <p className="text-2xl font-normal text-white">{percent}%</p>
+        </div>
+      </div>
+
+      <div className="mt-5 h-2 rounded-full bg-white/10 overflow-hidden">
+        <div style={{ width: `${Math.min(percent, 100)}%` }} className={cn("h-full rounded-full transition-[width] duration-500 ease-out", barTone)} />
+      </div>
+
+      <div className="mt-4 flex items-center justify-between text-xs text-white/55">
+        <span>Disponibles: {Math.max(max - current, 0)}</span>
+        <span>{percent >= 100 ? "Cupo completo" : percent >= 75 ? "Demanda alta" : "Recepcion abierta"}</span>
+      </div>
+    </div>
+  );
+}
+
 const CAMERA_ERRORS = {
   insecureContext: "La camara en celular requiere HTTPS (o localhost). Abre esta pagina con https://.",
   permissionDenied: "Permiso de camara denegado. Habilitalo en el navegador y vuelve a intentar.",
@@ -717,6 +745,11 @@ export default function EmpresaEscaner() {
             {/* Dashboard Tab */}
             {activeTab === "dashboard" ? (
               <div className="space-y-5">
+                <OccupancyMeter
+                  current={proyecto.cupo_actual || 0}
+                  max={proyecto.capacidad_max || 0}
+                  percent={proyecto.ocupacion_porcentaje || 0}
+                />
                 <div className="space-y-5">
                   <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
                     <div className="flex flex-col gap-3 sm:gap-4 border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
