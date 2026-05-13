@@ -317,7 +317,7 @@ export default function AdminOverviewPanel({ onOpenProjects, onOpenStats }) {
       </SectionCard>
 
       {error ? (
-        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{error}</div>
+        <div className="rounded-2xl border border-red-700 bg-red-600 px-4 py-3 text-sm text-white shadow-md">{error}</div>
       ) : null}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

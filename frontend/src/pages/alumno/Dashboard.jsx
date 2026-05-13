@@ -671,11 +671,11 @@ export default function Dashboard() {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="bg-red-500/10 border border-red-500/30 rounded-3xl p-8 max-w-md text-center backdrop-blur-md"
+          className="bg-red-600 border border-red-700 rounded-3xl p-8 max-w-md text-center shadow-lg"
         >
-          <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <AlertTriangle className="w-12 h-12 text-white mx-auto mb-4" />
           <h2 className="text-xl font-normal text-white mb-2">Error de Sesión</h2>
-          <p className="text-red-200/80 text-sm mb-6">{apiError}</p>
+          <p className="text-white text-sm mb-6">{apiError}</p>
           <Button onClick={() => { logout(); navigate("/login"); }} className="w-full bg-tec-primary hover:bg-tec-denim text-white font-normal rounded-xl">
             Volver al Login
           </Button>

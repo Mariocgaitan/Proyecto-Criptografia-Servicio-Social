@@ -388,7 +388,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
         </div>
       </div>
 
-      {error && <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">{error}</div>}
+      {error && <div className="rounded-lg border border-red-700 bg-red-600 px-3 py-2 text-sm text-white shadow-md">{error}</div>}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Registrados" value={kpis.total_alumnos_registrados ?? 0} helper="Universo filtrado" />
