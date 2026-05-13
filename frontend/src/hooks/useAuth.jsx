@@ -72,6 +72,7 @@ export const AuthProvider = ({ children }) => {
 
     prefetchNonce(); // Start nonce fetch in parallel with /auth/me
     fetchUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchUser/prefetchNonce stable refs from same closure; re-running only on route change is intentional
   }, [location.pathname]);
 
   const login = async (correo, password) => {

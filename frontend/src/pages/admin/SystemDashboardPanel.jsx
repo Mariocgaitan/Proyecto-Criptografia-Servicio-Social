@@ -60,14 +60,6 @@ function formatUptime(seconds) {
   return `${secs}s`;
 }
 
-function formatBytes(bytes) {
-  if (!bytes || bytes === 0) return "0 B";
-  const k = 1024;
-  const sizes = ["B", "KB", "MB", "GB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
-}
-
 export default function SystemDashboardPanel() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -91,9 +83,6 @@ export default function SystemDashboardPanel() {
 
   // Requests per minute series
   const [rpmSeries, setRpmSeries] = useState([]);
-  
-  // Recent requests (últimos 50 para debugging)
-  const [recentRequests, setRecentRequests] = useState([]);
   
   // Audit logs (errores y warnings)
   const [errorLogs, setErrorLogs] = useState([]);

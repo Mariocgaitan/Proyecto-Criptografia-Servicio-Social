@@ -14,6 +14,7 @@ vi.mock("@react-oauth/google", () => ({
 }));
 
 // --- framer-motion ---
+/* eslint-disable no-unused-vars -- destructured props are filtered out of ...rest */
 vi.mock("framer-motion", () => {
   const motion = new Proxy(
     {},
@@ -32,6 +33,7 @@ vi.mock("framer-motion", () => {
   const AnimatePresence = ({ children }) => <>{children}</>;
   return { motion, AnimatePresence };
 });
+/* eslint-enable no-unused-vars */
 
 // --- UI components ---
 vi.mock("@/components/ui/progress-indicator", () => ({

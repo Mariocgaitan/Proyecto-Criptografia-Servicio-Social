@@ -10,7 +10,7 @@ import EmpresaEscaner from "./pages/empresa/Escaner";
 import NotFound from "./pages/NotFound";
 
 function App() {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   if (loading) {
     return <PageLoader />;

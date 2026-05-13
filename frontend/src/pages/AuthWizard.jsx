@@ -110,6 +110,7 @@ export default function AuthWizard() {
       // Limpiar el parámetro de la URL sin recargar
       window.history.replaceState({}, "", location.pathname);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pathname read for cleanup only; we only want re-run on search change
   }, [location.search]);
 
   const normalizeLoginIdentifier = (value) => {

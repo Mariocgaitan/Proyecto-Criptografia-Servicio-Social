@@ -16,9 +16,6 @@ import { cn } from "@/lib/utils";
 import { apiUrl } from "@/lib/api";
 import tecLogo from "@/assets/tec_logo.png";
 import campusImg1 from "@/assets/login_images/ser_social_header.png";
-import campusImg2 from "@/assets/login_images/estudiantado-programa-servicio-social-tec-monterrey.jpg-2279428079.webp";
-import campusImg3 from "@/assets/login_images/ser_social_monterrey.jpg";
-import campusImg4 from "@/assets/login_images/ser_social3.jpg";
 
 function SocialIcon({ children, href = "#" }) {
   return (
@@ -28,7 +25,6 @@ function SocialIcon({ children, href = "#" }) {
   );
 }
 
-const campusImages = [campusImg1, campusImg2, campusImg3, campusImg4];
 const ENROLLMENT_POLL_MS = 3000;
 
 function getProjectMetrics(project) {
@@ -564,7 +560,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
 // ─── MAIN DASHBOARD ──────────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState(null);

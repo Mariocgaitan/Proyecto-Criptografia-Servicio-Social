@@ -23,7 +23,16 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]' }],
+      // `motion` namespace used via JSX (motion.div). Without eslint-plugin-react's
+      // jsx-uses-vars, core no-unused-vars can't see JSX usage — whitelist it.
+      'no-unused-vars': [
+        'warn',
+        {
+          varsIgnorePattern: '^(motion|[A-Z_])',
+          argsIgnorePattern: '^(motion|_|[A-Z])',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
       // React Hooks v6 strict rules generate hundreds of findings on the
       // existing codebase. Disable until a dedicated refactor pass.
       'react-hooks/immutability': 'off',

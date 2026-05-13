@@ -148,7 +148,7 @@ const doesProjectMatchNonStudentFields = (proyecto, query) => {
 };
 
 // ─── KPI Stat Card ───────────────────────────────────────────────
-function StatCard({ icon: Icon, label, value, subtitle, color, index }) {
+function StatCard({ icon: Icon, label, value, subtitle, color }) {
   const toneMap = {
     orange: "text-amber-200 bg-amber-400/10 border-amber-400/20",
     blue: "text-blue-200 bg-blue-500/10 border-blue-400/20",
@@ -239,7 +239,7 @@ export default function AdminDashboard() {
   const [expandedProyectos, setExpandedProyectos] = useState([]);
 
   // Modals Info
-  const [isCrearProyectoOpen, setIsCrearProyectoOpen] = useState(false);
+  const [_isCrearProyectoOpen, setIsCrearProyectoOpen] = useState(false);
   const [isCrearEmpresaOpen, setIsCrearEmpresaOpen] = useState(false);
   const [isCrearEventoOpen, setIsCrearEventoOpen] = useState(false);
   const [cupoModalInfo, setCupoModalInfo] = useState(null);
@@ -260,7 +260,6 @@ export default function AdminDashboard() {
   const [alumnoActiveIndex, setAlumnoActiveIndex] = useState(0);
 
   // Forms
-  const [formProyecto, setFormProyecto] = useState({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
   const [formEmpresa, setFormEmpresa] = useState({ id_asociado: "", nombre: "", razon: "", desc: "", calle: "" });
   const [formEvento, setFormEvento] = useState({ nombre: "", periodo: "FEBRERO-JUNIO", anio: new Date().getFullYear(), semestre: "primavera", activo: true });
   const [nuevaCapacidad, setNuevaCapacidad] = useState(0);
@@ -351,25 +350,6 @@ export default function AdminDashboard() {
 
 
   // === HANDLERS ===
-  const handleCrearProyecto = async (e) => {
-    e.preventDefault(); setIsSubmitting(true); setErrorText("");
-    try {
-      const res = await fetch(apiUrl("/api/v1/admin/proyectos"), {
-        method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include",
-        body: JSON.stringify({
-          id_empresa: parseInt(formProyecto.id_empresa), id_evento: parseInt(formProyecto.id_evento),
-          nombre_proyecto: formProyecto.nombre, descripcion: formProyecto.desc || null,
-          capacidad_max: parseInt(formProyecto.cap_max)
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Error al crear");
-      setIsCrearProyectoOpen(false);
-      setFormProyecto({ id_empresa: "", id_evento: "", nombre: "", desc: "", cap_max: 10 });
-      fetchData();
-    } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
-  };
-
   const handleAbreModalAgregarAlumno = async (proyecto) => {
     setSelectedProyectoForAlumno(proyecto);
     setProyectoSearchTerm(`${proyecto.nombre_proyecto} ${proyecto.empresa}`);
@@ -587,19 +567,7 @@ export default function AdminDashboard() {
     }
   }, []);
 
-  // Computed stats
   const safeEventos = Array.isArray(eventos) ? eventos : [];
-  const totalAlumnos = proyectos.reduce((sum, p) => sum + (p.cupo_actual || 0), 0);
-  const totalCapacidad = proyectos.reduce((sum, p) => sum + (p.capacidad_max || 0), 0);
-  const eventosActivos = safeEventos.filter(e => e.activo).length;
-  const totalPendientes = Math.max(totalCapacidad - totalAlumnos, 0);
-  const proyectosSinMovimiento = proyectos.filter((p) => (p.cupo_actual || 0) === 0).length;
-  const proyectosPorLlenarse = proyectos.filter((p) => {
-    const cap = Number(p.capacidad_max || 0);
-    const current = Number(p.cupo_actual || 0);
-    if (!cap || current >= cap) return false;
-    return ((current / cap) * 100) >= 85;
-  }).length;
 
   // Search filtering
   const q = normalizeSearchText(searchQuery);
@@ -725,7 +693,7 @@ export default function AdminDashboard() {
     applySearchQuery(queryValue, { preserveFilters: false });
   };
 
-  const applySearchQuery = (nextQuery, options = {}) => {
+  const applySearchQuery = useCallback((nextQuery, options = {}) => {
     const { preserveFilters = false } = options;
 
     if (preserveFilters) {
@@ -740,7 +708,7 @@ export default function AdminDashboard() {
     setEmpresaFilter(ALL_COMPANIES_FILTER);
     setExpandedEmpresas([]);
     setExpandedProyectos([]);
-  };
+  }, []);
 
   useEffect(() => {
     if (!preserveFiltersOnNextSearch) return;
@@ -812,7 +780,7 @@ export default function AdminDashboard() {
     });
 
     return items.slice(0, 30);
-  }, [proyectos, commandQuery, focusProjectSearch]);
+  }, [proyectos, commandQuery, focusProjectSearch, applySearchQuery]);
 
   const projectCommandItems = useMemo(() => {
     const normalized = normalizeSearchText(commandQuery);
@@ -843,7 +811,7 @@ export default function AdminDashboard() {
           focusProjectSearch();
         },
       }));
-  }, [proyectos, commandQuery, focusProjectSearch]);
+  }, [proyectos, commandQuery, focusProjectSearch, applySearchQuery]);
 
   const companyCommandItems = useMemo(() => {
     const normalized = normalizeSearchText(commandQuery);
@@ -878,7 +846,7 @@ export default function AdminDashboard() {
           focusProjectSearch();
         },
       }));
-  }, [empresas, commandQuery, companyGroupKeys, focusProjectSearch]);
+  }, [empresas, commandQuery, companyGroupKeys, focusProjectSearch, applySearchQuery]);
 
   const commandItems = useMemo(() => {
     const baseItems = [
