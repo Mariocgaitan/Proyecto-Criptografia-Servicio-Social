@@ -101,7 +101,7 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
     rows = result.all()
 
     eventos_data = []
-    for _ue, evento in rows:
+    for ue, evento in rows:
         # ¿Está inscrito en este evento?
         ins_result = await db.execute(
             select(Inscripcion).where(
@@ -116,6 +116,10 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
             "nombre": evento.nombre,
             "periodo": evento.periodo,
             "anio": evento.anio,
+            "activo": evento.activo,
+            "iniciado": evento.iniciado,
+            "es_participante": ue.es_participante,
+            "preregistrado": ue.preregistrado,
             "inscrito": inscripcion is not None,
             "inscripcion": None,
         }
@@ -171,10 +175,11 @@ async def generar_qr_payload(
         }
     Raises AlumnoError (403) si el alumno no tiene ese evento registrado.
     """
-    # 1. Verificar registro del alumno EN el evento y recuperar el usuario de un jalón
+    # 1. Verificar registro del alumno EN el evento y recuperar usuario, UsuarioEvento y Evento
     usr_ue_res = await db.execute(
-        select(Usuario, UsuarioEvento)
+        select(Usuario, UsuarioEvento, Evento)
         .join(UsuarioEvento, UsuarioEvento.id_matricula == Usuario.id_matricula)
+        .join(Evento, Evento.id_evento == UsuarioEvento.id_evento)
         .where(
             Usuario.id_matricula == id_matricula,
             UsuarioEvento.id_evento == id_evento,
@@ -183,10 +188,32 @@ async def generar_qr_payload(
     row = usr_ue_res.first()
     if not row:
         raise AlumnoError("No estás registrado para este evento o tu usuario no se encontró", 403)
-    
-    usuario, _ = row
 
-    # 2. Verificar si ya está inscrito
+    usuario, ue, evento = row
+
+    # 2. Gate principal: el evento debe estar iniciado y el alumno debe ser participante.
+    #    Si no está iniciado aún, mostrar mensaje de espera.
+    #    Si está iniciado pero no es participante, usar preregistrado para el banner.
+    if not evento.iniciado:
+        return {
+            "qr_data": None,
+            "expira_en_segundos": 0,
+            "ya_inscrito": False,
+            "perfil_incompleto": False,
+            "estado": "no_iniciado",
+        }
+    if not ue.es_participante:
+        # Diferenciar según si llegó antes o después del cierre del pre-registro
+        estado_banner = "preregistro_exitoso" if ue.preregistrado else "preregistro_cerrado"
+        return {
+            "qr_data": None,
+            "expira_en_segundos": 0,
+            "ya_inscrito": False,
+            "perfil_incompleto": False,
+            "estado": estado_banner,
+        }
+
+    # 3. Verificar si ya está inscrito
     ins_result = await db.execute(
         select(Inscripcion).where(
             Inscripcion.id_matricula == id_matricula,
@@ -194,7 +221,7 @@ async def generar_qr_payload(
         )
     )
     if ins_result.scalar_one_or_none():
-        return {"qr_data": None, "expira_en_segundos": 0, "ya_inscrito": True}
+        return {"qr_data": None, "expira_en_segundos": 0, "ya_inscrito": True, "estado": "activo"}
 
     # 4. Generar código TOTP y calcular segundos restantes del ciclo actual
     totp = pyotp.TOTP(usuario.totp_secret)
@@ -215,6 +242,7 @@ async def generar_qr_payload(
             "expira_en_segundos": segundos_restantes,
             "ya_inscrito": False,
             "perfil_incompleto": True,
+            "estado": "activo",
             "datos_actuales": {
                 "carrera": usuario.carrera,
                 "semestre": usuario.semestre,
@@ -239,6 +267,7 @@ async def generar_qr_payload(
         "expira_en_segundos": segundos_restantes,
         "ya_inscrito": False,
         "perfil_incompleto": False,
+        "estado": "activo",
         "datos_actuales": {
             "correo_alterno": usuario.correo_alterno,
             "celular": usuario.celular,

@@ -777,7 +777,11 @@ async def _ensure_test_alumno_eventos(
 
     for evento in eventos_activos:
         db.add(
-            UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento)
+            UsuarioEvento(
+                id_matricula=usuario.id_matricula,
+                id_evento=evento.id_evento,
+                preregistrado=evento.preregistro_abierto,
+            )
         )
 
 
@@ -813,7 +817,11 @@ async def _ensure_padron_alumno_eventos(
     evento = evento_res.scalars().first()
     if evento:
         db.add(
-            UsuarioEvento(id_matricula=usuario.id_matricula, id_evento=evento.id_evento)
+            UsuarioEvento(
+                id_matricula=usuario.id_matricula,
+                id_evento=evento.id_evento,
+                preregistrado=evento.preregistro_abierto,
+            )
         )
 
 

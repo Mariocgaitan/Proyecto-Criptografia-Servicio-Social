@@ -4,7 +4,7 @@ import {
   LogOut, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  Trash2, List, Sun, Moon, Command,
+  Trash2, List, Sun, Moon, Command, AlertTriangle, QrCode, CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -256,6 +256,10 @@ export default function AdminDashboard() {
   const [csvFile, setCsvFile] = useState(null);
   const [csvEventoId, setCsvEventoId] = useState("");
   const [csvResult, setCsvResult] = useState(null);
+  const [isPreregConfirmOpen, setIsPreregConfirmOpen] = useState(false);
+  const [isIniciarConfirmOpen, setIsIniciarConfirmOpen] = useState(false);
+  const [iniciarTargetId, setIniciarTargetId] = useState(null);
+  const [preregActionLoading, setPreregActionLoading] = useState(false);
   const [selectedProyectoForAlumno, setSelectedProyectoForAlumno] = useState(null);
   const [selectedAlumnoMatricula, setSelectedAlumnoMatricula] = useState("");
   const [alumnosDisponibles, setAlumnosDisponibles] = useState([]);
@@ -451,6 +455,30 @@ export default function AdminDashboard() {
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
+  const handleOpenIniciarEvento = (idEvento) => {
+    setIniciarTargetId(idEvento);
+    setIsIniciarConfirmOpen(true);
+  };
+
+  const handleConfirmIniciarEvento = async () => {
+    if (!iniciarTargetId) return;
+    setPreregActionLoading(true);
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/eventos/${iniciarTargetId}/iniciar`), {
+        method: "POST", credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "No se pudo iniciar el evento");
+      setIsIniciarConfirmOpen(false);
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message);
+    } finally {
+      setPreregActionLoading(false);
+    }
+  };
+
   const handleOpenCredenciales = useCallback(async () => {
     setIsCredencialesOpen(true);
     setErrorText("");
@@ -481,6 +509,25 @@ export default function AdminDashboard() {
       setErrorText(err.message || "Error al resetear contraseña");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCerrarPreregistro = async () => {
+    const eventoActivo = eventos.find(e => e.activo);
+    if (!eventoActivo) return;
+    setPreregActionLoading(true);
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/eventos/${eventoActivo.id_evento}/cerrar-preregistro`), {
+        method: "POST",
+        credentials: "include",
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.detail); }
+      setIsPreregConfirmOpen(false);
+      await fetchData();
+    } catch (err) {
+      setErrorText(err.message || "Error al cerrar pre-registro");
+    } finally {
+      setPreregActionLoading(false);
     }
   };
 
@@ -1551,6 +1598,17 @@ export default function AdminDashboard() {
                     >
                       <Plus className="w-4 h-4 mr-2" /> Cargar CSV
                     </Button>
+
+                    <Button
+                      onClick={() => setIsPreregConfirmOpen(true)}
+                      className="border border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                      disabled={!eventos.find(e => e.activo && e.preregistro_abierto)}
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      {eventos.find(e => e.activo && e.preregistro_abierto) ? "Finalizar Pre-registro" : "Pre-registro cerrado"}
+                    </Button>
+
+
                   </div>
 
                   <div className="rounded-2xl border border-white/15 bg-black/35 overflow-hidden">
@@ -1636,11 +1694,28 @@ export default function AdminDashboard() {
                               <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
                               <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio}</p>
                             </div>
-                            <div className="flex items-center justify-start sm:justify-end">
-                              {ev.activo ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/70 bg-white/5 border border-white/10">
-                                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> En Curso
+                            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                              {typeof ev.registrados === "number" && (
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">
+                                  {ev.iniciado ? `${ev.participantes} part.` : `${ev.registrados} reg.`}
                                 </span>
+                              )}
+                              {ev.iniciado ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-100 bg-emerald-600/20 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full" /> Iniciado
+                                </span>
+                              ) : ev.activo ? (
+                                <>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/70 bg-white/5 border border-white/10">
+                                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> Pre-registro
+                                  </span>
+                                  <Button
+                                    onClick={() => handleOpenIniciarEvento(ev.id_evento)}
+                                    className="border border-emerald-500/40 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-50 font-normal px-3 py-1.5 rounded-lg text-[11px]"
+                                  >
+                                    Iniciar Proyecto
+                                  </Button>
+                                </>
                               ) : (
                                 <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/40 bg-white/5 border border-white/10">
                                   Archivado
@@ -2101,6 +2176,83 @@ Femsa,,Proyecto B,Otra desc,30`}
           <p className="text-white/40">Servicio Social Tec - Ecosistema Unificado</p>
         </div>
       </footer>
+
+      {/* ── Confirmar: Cerrar Pre-registro ─────────────────────────── */}
+      <Dialog open={isPreregConfirmOpen} onOpenChange={setIsPreregConfirmOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-950/95 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-normal tracking-tight text-amber-200 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" /> Finalizar Pre-registro
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-3 text-sm text-white/70">
+            <p>
+              Al finalizar el pre-registro, los alumnos que se registren <span className="text-white font-medium">después</span> de este momento
+              no podrán ver el QR de inscripciones aunque completen su perfil.
+            </p>
+            <p>
+              Los alumnos que <span className="text-white font-medium">ya se registraron</span> quedarán marcados como pre-registrados y
+              podrán ver el QR cuando lo actives.
+            </p>
+            <p className="text-amber-400/80">Esta acción no se puede deshacer desde el panel.</p>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsPreregConfirmOpen(false)}
+              className="flex-1 border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCerrarPreregistro}
+              disabled={preregActionLoading}
+              className="flex-1 bg-amber-600 hover:bg-amber-500 text-white font-normal"
+            >
+              {preregActionLoading ? "Procesando..." : "Sí, cerrar pre-registro"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirmar: Iniciar Evento ───────────────────────────────── */}
+      <Dialog open={isIniciarConfirmOpen} onOpenChange={setIsIniciarConfirmOpen}>
+        <DialogContent className="sm:max-w-md bg-slate-950/95 border border-white/15 text-white backdrop-blur-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-normal tracking-tight text-emerald-200 flex items-center gap-2">
+              <CheckCircle className="w-5 h-5" /> Iniciar Evento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mt-2 space-y-3 text-sm text-white/70">
+            <p>
+              Al iniciar el evento, solo los alumnos que hicieron <span className="text-white font-medium">pre-registro</span> recibirán
+              acceso al QR de inscripciones.
+            </p>
+            <p>
+              Los alumnos que llegaron tarde verán el mensaje <em>&ldquo;Contacta al administrador para habilitarte.&rdquo;</em>
+            </p>
+            <p className="text-emerald-400/80">
+              El pre-registro quedará cerrado automáticamente. Esta acción no se puede deshacer.
+            </p>
+          </div>
+          <div className="flex gap-3 mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsIniciarConfirmOpen(false)}
+              className="flex-1 border-white/15 bg-white/5 text-white/70 hover:bg-white/10"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleConfirmIniciarEvento}
+              disabled={preregActionLoading}
+              className="flex-1 bg-emerald-700 hover:bg-emerald-600 text-white font-normal"
+            >
+              {preregActionLoading ? "Procesando..." : "Sí, iniciar evento"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );

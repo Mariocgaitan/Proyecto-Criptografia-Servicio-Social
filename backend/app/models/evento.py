@@ -21,10 +21,18 @@ class Evento(Base):
     )
     anio: Mapped[int] = mapped_column(Integer, nullable=False)
     activo: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    iniciado: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     fecha_inicio: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    fecha_inicio_real: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fecha_fin: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Control de pre-registro
+    preregistro_abierto: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False,
+        comment="Mientras True, los alumnos que se loguean quedan como pre-registrados"
     )
 
     # Relaciones

@@ -23,7 +23,9 @@ backend/.env
 .env
 .env.production
 .env.local
+.env.remote
 .env.*.local
+.env.*
 
 # IDE
 .vscode/

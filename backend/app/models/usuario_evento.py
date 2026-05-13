@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -20,8 +20,13 @@ class UsuarioEvento(Base):
     id_evento: Mapped[int] = mapped_column(
         Integer, ForeignKey("eventos.id_evento", ondelete="CASCADE"), nullable=False
     )
+    es_participante: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    preregistrado: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False,
+        comment="True si el alumno se registro mientras preregistro_abierto estaba activo"
     )
 
     # Relaciones
