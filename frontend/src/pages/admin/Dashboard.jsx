@@ -4,7 +4,7 @@ import {
   LogOut, Building2, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
-  Trash2, List, Sun, Moon,
+  Trash2, List, Sun, Moon, Command,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -451,7 +451,7 @@ export default function AdminDashboard() {
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
-  const handleOpenCredenciales = async () => {
+  const handleOpenCredenciales = useCallback(async () => {
     setIsCredencialesOpen(true);
     setErrorText("");
     setCredencialGenerada(null);
@@ -463,7 +463,7 @@ export default function AdminDashboard() {
     } catch (err) {
       setErrorText(err.message || "Error al cargar usuarios empresa");
     }
-  };
+  }, []);
 
   const handleResetPassword = async (idMatricula) => {
     setIsSubmitting(true);
@@ -884,6 +884,22 @@ export default function AdminDashboard() {
         action: () => setActiveSection("gestion"),
       },
       {
+        id: "section-credenciales",
+        label: "Ir a Credenciales",
+        hint: "Secciones",
+        keepSearchContext: false,
+        action: () => setActiveSection("credenciales"),
+      },
+      {
+        id: "act-open-credenciales-modal",
+        label: "Abrir: Credenciales de Empresas",
+        hint: "Acciones",
+        keepSearchContext: false,
+        action: () => {
+          handleOpenCredenciales();
+        },
+      },
+      {
         id: "act-add-alumno",
         label: "Abrir: Agregar Alumno a Proyecto",
         hint: "Acciones",
@@ -967,6 +983,7 @@ export default function AdminDashboard() {
     companyCommandItems,
     studentCommandItems,
     handleQuickExport,
+    handleOpenCredenciales,
   ]);
 
   useEffect(() => {
@@ -1084,6 +1101,17 @@ export default function AdminDashboard() {
         </div>
 
         <div className="inline-flex items-center gap-2">
+          <button
+            onClick={() => setCommandOpen(true)}
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-xl border border-white/15 bg-white/10 text-white/75 hover:text-white hover:bg-white/15 transition-colors"
+            title="Abrir paleta de comandos (Ctrl+K)"
+          >
+            <Command className="w-4 h-4" />
+            <span className="hidden sm:inline text-xs font-normal">Comandos</span>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 ml-1 px-1.5 py-0.5 rounded border border-white/15 bg-black/30 text-[10px] font-mono text-white/60">
+              Ctrl K
+            </kbd>
+          </button>
           <button
             onClick={toggleTheme}
             className="inline-flex items-center justify-center p-2.5 rounded-xl border border-white/15 bg-white/10 text-white/70 hover:text-white hover:bg-white/15 transition-colors"
