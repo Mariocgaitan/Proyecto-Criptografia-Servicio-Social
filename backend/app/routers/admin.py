@@ -194,6 +194,16 @@ async def api_crear_evento(
     return await admin_service.crear_evento(db, datos)
 
 
+@router.post("/api/v1/admin/eventos/{id_evento}/iniciar", tags=["Admin"])
+async def api_iniciar_evento(
+    id_evento: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    """Inicia el evento: congela la lista actual de registrados como participantes oficiales."""
+    return await admin_service.iniciar_evento(db, id_evento)
+
+
 @router.get("/api/v1/admin/usuarios-empresa", tags=["Admin"])
 async def api_listar_usuarios_empresa(
     db: AsyncSession = Depends(get_db),

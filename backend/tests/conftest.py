@@ -216,6 +216,7 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
         periodo="FEB_JUN",
         anio=2026,
         activo=True,
+        iniciado=True,
     )
     db_session.add(evento)
     await db_session.flush()
@@ -286,6 +287,7 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
     usuario_evento = UsuarioEvento(
         id_matricula=alumno.id_matricula,
         id_evento=evento.id_evento,
+        es_participante=True,
     )
     db_session.add(usuario_evento)
 

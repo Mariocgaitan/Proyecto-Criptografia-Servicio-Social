@@ -102,7 +102,21 @@ async def listar_empresas(db: AsyncSession) -> list[dict]:
 
 async def listar_eventos(db: AsyncSession) -> list[dict]:
     """Devuelve todos los eventos."""
+    from app.models.usuario_evento import UsuarioEvento
+    from sqlalchemy import func as sa_func
+
     result = await db.execute(select(Evento).order_by(Evento.id_evento))
+    eventos = result.scalars().all()
+
+    counts_res = await db.execute(
+        select(
+            UsuarioEvento.id_evento,
+            sa_func.count(UsuarioEvento.id).filter(UsuarioEvento.es_participante.is_(True)).label("participantes"),
+            sa_func.count(UsuarioEvento.id).label("registrados"),
+        ).group_by(UsuarioEvento.id_evento)
+    )
+    counts = {row.id_evento: (row.participantes, row.registrados) for row in counts_res}
+
     return [
         {
             "id_evento": ev.id_evento,
@@ -110,9 +124,46 @@ async def listar_eventos(db: AsyncSession) -> list[dict]:
             "periodo": ev.periodo,
             "anio": ev.anio,
             "activo": ev.activo,
+            "iniciado": ev.iniciado,
+            "fecha_inicio_real": ev.fecha_inicio_real.isoformat() if ev.fecha_inicio_real else None,
+            "participantes": counts.get(ev.id_evento, (0, 0))[0],
+            "registrados": counts.get(ev.id_evento, (0, 0))[1],
         }
-        for ev in result.scalars().all()
+        for ev in eventos
     ]
+
+
+async def iniciar_evento(db: AsyncSession, id_evento: int) -> dict:
+    """Marca evento como iniciado y congela lista de participantes."""
+    from fastapi import HTTPException
+    from datetime import datetime, timezone
+    from sqlalchemy import update
+    from app.models.usuario_evento import UsuarioEvento
+
+    evento = await db.get(Evento, id_evento)
+    if not evento:
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+    if evento.iniciado:
+        raise HTTPException(status_code=409, detail="El evento ya fue iniciado")
+
+    res = await db.execute(
+        update(UsuarioEvento)
+        .where(UsuarioEvento.id_evento == id_evento)
+        .where(UsuarioEvento.es_participante.is_(False))
+        .values(es_participante=True)
+    )
+    congelados = res.rowcount or 0
+
+    evento.iniciado = True
+    evento.fecha_inicio_real = datetime.now(timezone.utc)
+    await db.commit()
+    await cache_delete_prefix("admin_")
+    return {
+        "id_evento": evento.id_evento,
+        "iniciado": True,
+        "fecha_inicio_real": evento.fecha_inicio_real.isoformat(),
+        "participantes_congelados": congelados,
+    }
 
 
 async def crear_evento(db: AsyncSession, datos) -> dict:
