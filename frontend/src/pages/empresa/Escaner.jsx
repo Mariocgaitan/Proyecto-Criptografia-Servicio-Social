@@ -684,10 +684,11 @@ export default function EmpresaEscaner() {
                       value={selectedProjectId || ""}
                       onChange={onSelectProject}
                       disabled={switchingProject || !proyectosEmpresa.length}
+                      style={{ colorScheme: "dark" }}
                       className="mt-4 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 disabled:opacity-60"
                     >
                       {proyectosEmpresa.map((item) => (
-                        <option key={item.id_proyecto} value={item.id_proyecto} className="text-slate-900">
+                        <option key={item.id_proyecto} value={item.id_proyecto} className="bg-slate-900 text-white">
                           {item.evento} - {item.nombre_proyecto}
                         </option>
                       ))}
@@ -700,22 +701,24 @@ export default function EmpresaEscaner() {
                       <select
                         value={exportDataset}
                         onChange={(e) => setExportDataset(e.target.value)}
+                        style={{ colorScheme: "dark" }}
                         className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
                         disabled={exportingCsv}
                       >
-                        <option value="inscripciones" className="text-slate-900">CSV: Inscripciones</option>
-                        <option value="proyectos" className="text-slate-900">CSV: Proyectos</option>
-                        <option value="empresas" className="text-slate-900">CSV: Empresas</option>
+                        <option value="inscripciones" className="bg-slate-900 text-white">CSV: Inscripciones</option>
+                        <option value="proyectos" className="bg-slate-900 text-white">CSV: Proyectos</option>
+                        <option value="empresas" className="bg-slate-900 text-white">CSV: Empresas</option>
                       </select>
 
                       <select
                         value={exportScope}
                         onChange={(e) => setExportScope(e.target.value)}
+                        style={{ colorScheme: "dark" }}
                         className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
                         disabled={exportingCsv}
                       >
-                        <option value="all" className="text-slate-900">Todos</option>
-                        <option value="filtered" className="text-slate-900">Filtrados</option>
+                        <option value="all" className="bg-slate-900 text-white">Todos</option>
+                        <option value="filtered" className="bg-slate-900 text-white">Filtrados</option>
                       </select>
 
                       <Button
