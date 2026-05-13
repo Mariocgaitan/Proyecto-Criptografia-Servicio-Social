@@ -322,6 +322,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
             <select
               value={filters.eventoId}
               onChange={(e) => setFilters((prev) => ({ ...prev, eventoId: e.target.value }))}
+              style={{ colorScheme: "dark" }}
               className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
             >
               <option value="" className="bg-slate-900 text-white">Evento activo / reciente</option>
@@ -339,6 +340,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
               type="date"
               value={filters.fechaInicio}
               onChange={(e) => setFilters((prev) => ({ ...prev, fechaInicio: e.target.value }))}
+              style={{ colorScheme: "dark" }}
               className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
             />
           </div>
@@ -349,6 +351,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
               type="date"
               value={filters.fechaFin}
               onChange={(e) => setFilters((prev) => ({ ...prev, fechaFin: e.target.value }))}
+              style={{ colorScheme: "dark" }}
               className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
             />
           </div>
@@ -358,6 +361,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
             <select
               value={timelineRange}
               onChange={(e) => setTimelineRange(e.target.value)}
+              style={{ colorScheme: "dark" }}
               className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
             >
               <option value="1h" className="bg-slate-900 text-white">1 hora</option>

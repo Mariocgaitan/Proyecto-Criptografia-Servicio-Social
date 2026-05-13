@@ -1300,6 +1300,7 @@ export default function AdminDashboard() {
                           id="empresa-filter-select"
                           value={empresaFilter}
                           onChange={(e) => setEmpresaFilter(e.target.value)}
+                          style={{ colorScheme: "dark" }}
                           className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
                         >
                           <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
@@ -1314,6 +1315,7 @@ export default function AdminDashboard() {
                       <select
                         value={sortMode}
                         onChange={(e) => setSortMode(e.target.value)}
+                        style={{ colorScheme: "dark" }}
                         className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
                       >
                         <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
