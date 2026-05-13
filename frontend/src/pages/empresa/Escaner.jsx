@@ -949,7 +949,10 @@ export default function EmpresaEscaner() {
                         <div className="h-[92%] w-[92%] rounded-[22px] border border-white/8" />
                       </div>
                     </div>
-                    <div id="reader" className="relative z-10 h-full overflow-hidden rounded-xl [&_video]:h-full [&_video]:w-full [&_video]:rounded-xl [&_video]:object-cover" />
+                    <div
+                      id="reader"
+                      className="relative z-10 !w-full !h-full overflow-hidden rounded-xl [&]:!min-w-0 [&]:!min-h-0 [&>div]:!w-full [&>div]:!h-full [&_video]:!h-full [&_video]:!w-full [&_video]:rounded-xl [&_video]:object-cover"
+                    />
 
                     <AnimatePresence mode="wait">
                       {result ? (

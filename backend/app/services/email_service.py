@@ -112,18 +112,22 @@ def _enviar_html(to_email: str, asunto: str, html_content: str):
     msg.set_content("Abre este correo en un cliente que soporte HTML.")
     msg.add_alternative(html_content, subtype='html')
 
-    # Adjuntar logo para mostrarlo en línea
+    # Adjuntar logo inline para que el cliente HTML lo renderice
     logo_path = PROJECT_ROOT / "frontend" / "src" / "assets" / "ser_social.png"
     if logo_path.exists():
         try:
+            html_part = msg.get_body(preferencelist=("html",))
+            if html_part is None:
+                # fallback: payload[1] tras set_content+add_alternative
+                html_part = msg.get_payload()[1]
             with open(logo_path, "rb") as f:
                 img_data = f.read()
-                msg.get_payload()[0].add_related(
-                    img_data,
-                    maintype="image",
-                    subtype="png",
-                    cid="<logo_servicio>"
-                )
+            html_part.add_related(
+                img_data,
+                maintype="image",
+                subtype="png",
+                cid="logo_servicio",
+            )
         except Exception as e:
             logger.warning(f"No se pudo cargar el logo para el correo: {e}")
 

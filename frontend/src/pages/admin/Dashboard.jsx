@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
-  LogOut, Building2, Calendar, Plus, LayoutDashboard,
+  LogOut, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
   Trash2, List, Sun, Moon, Command, AlertTriangle, QrCode, CheckCircle,
@@ -1563,9 +1563,9 @@ export default function AdminDashboard() {
 
                     <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                       <DialogTrigger asChild>
-                        <div role="button" className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
-                          <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
-                        </div>
+                        <Button className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
+                          Dar de Alta Organización
+                        </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
                         <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
@@ -1591,13 +1591,6 @@ export default function AdminDashboard() {
                         </form>
                       </DialogContent>
                     </Dialog>
-
-                    <Button
-                      onClick={handleOpenCredenciales}
-                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
-                    >
-                      <Users className="w-4 h-4 mr-2" /> Ver Credenciales de Empresas
-                    </Button>
 
                     <Button
                       onClick={() => setIsCsvUploadOpen(true)}
