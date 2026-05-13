@@ -1546,13 +1546,6 @@ export default function AdminDashboard() {
                     </Dialog>
 
                     <Button
-                      onClick={handleOpenCredenciales}
-                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
-                    >
-                      <Users className="w-4 h-4 mr-2" /> Ver Credenciales de Empresas
-                    </Button>
-
-                    <Button
                       onClick={() => setIsCsvUploadOpen(true)}
                       className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
                     >
