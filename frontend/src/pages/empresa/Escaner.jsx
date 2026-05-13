@@ -687,7 +687,12 @@ export default function EmpresaEscaner() {
                       disabled={switchingProject || !proyectosEmpresa.length}
                     >
                       <SelectTrigger className="mt-4 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white focus:ring-2 focus:ring-blue-400/30 disabled:opacity-60">
-                        <SelectValue placeholder="Selecciona proyecto" />
+                        <SelectValue placeholder="Selecciona proyecto">
+                          {(val) => {
+                            const item = proyectosEmpresa.find((p) => String(p.id_proyecto) === val);
+                            return item ? `${item.evento} - ${item.nombre_proyecto}` : "Selecciona proyecto";
+                          }}
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent className="bg-slate-900 border-white/15 text-white">
                         {proyectosEmpresa.map((item) => (
@@ -704,7 +709,7 @@ export default function EmpresaEscaner() {
                     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                       <Select value={exportDataset} onValueChange={setExportDataset} disabled={exportingCsv}>
                         <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
-                          <SelectValue />
+                          <SelectValue>{(v) => ({ inscripciones: "CSV: Inscripciones", proyectos: "CSV: Proyectos", empresas: "CSV: Empresas" }[v] || v)}</SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-white/15 text-white">
                           <SelectItem value="inscripciones" className="text-white focus:bg-white/10 focus:text-white">CSV: Inscripciones</SelectItem>
@@ -715,7 +720,7 @@ export default function EmpresaEscaner() {
 
                       <Select value={exportScope} onValueChange={setExportScope} disabled={exportingCsv}>
                         <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
-                          <SelectValue />
+                          <SelectValue>{(v) => ({ all: "Todos", filtered: "Filtrados" }[v] || v)}</SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-white/15 text-white">
                           <SelectItem value="all" className="text-white focus:bg-white/10 focus:text-white">Todos</SelectItem>

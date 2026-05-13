@@ -325,7 +325,13 @@ export default function EstadisticasPanel({ eventos = [] }) {
               onValueChange={(val) => setFilters((prev) => ({ ...prev, eventoId: val === "__all__" ? "" : val }))}
             >
               <SelectTrigger className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white">
-                <SelectValue />
+                <SelectValue>
+                  {(v) => {
+                    if (v === "__all__") return "Evento activo / reciente";
+                    const ev = safeEventos.find((e) => String(e.id_evento) === v);
+                    return ev ? `${ev.nombre} (${ev.anio})` : v;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/15 text-white">
                 <SelectItem value="__all__" className="text-white focus:bg-white/10 focus:text-white">Evento activo / reciente</SelectItem>
@@ -364,7 +370,7 @@ export default function EstadisticasPanel({ eventos = [] }) {
             <p className="mb-1 text-[11px] uppercase tracking-wider text-white/50">Ventana</p>
             <Select value={timelineRange} onValueChange={setTimelineRange}>
               <SelectTrigger className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white">
-                <SelectValue />
+                <SelectValue>{(v) => ({ "1h": "1 hora", "24h": "24 horas", "7d": "7 dias", "30d": "30 dias" }[v] || v)}</SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-slate-900 border-white/15 text-white">
                 <SelectItem value="1h" className="text-white focus:bg-white/10 focus:text-white">1 hora</SelectItem>

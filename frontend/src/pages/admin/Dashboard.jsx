@@ -1266,7 +1266,7 @@ export default function AdminDashboard() {
                         <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
                         <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
                           <SelectTrigger id="empresa-filter-select" className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
-                            <SelectValue />
+                            <SelectValue>{(v) => v === ALL_COMPANIES_FILTER ? "Empresa: Todas" : v}</SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-white/15 text-white">
                             <SelectItem value={ALL_COMPANIES_FILTER} className="text-white focus:bg-white/10 focus:text-white">Empresa: Todas</SelectItem>
@@ -1281,7 +1281,7 @@ export default function AdminDashboard() {
 
                       <Select value={sortMode} onValueChange={setSortMode}>
                         <SelectTrigger className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
-                          <SelectValue />
+                          <SelectValue>{(v) => ({ demanda: "Ordenar: Demanda", disponibilidad: "Ordenar: Ultimos lugares", alfabetico: "Ordenar: A-Z" }[v] || v)}</SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-slate-900 border-white/15 text-white">
                           <SelectItem value="demanda" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Demanda</SelectItem>
