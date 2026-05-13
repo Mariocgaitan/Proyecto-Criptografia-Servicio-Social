@@ -18,7 +18,6 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { motion as Motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -52,45 +51,6 @@ const CAMERA_ERRORS = {
   noCamera: "No se encontro una camara disponible en este dispositivo.",
   generic: "No se pudo iniciar la camara. Verifica permisos y vuelve a intentar.",
 };
-
-function StatCard({ label, value }) {
-  return (
-    <Card className="rounded-2xl border border-white/15 bg-black/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-      <CardContent className="p-3 sm:p-4">
-        <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
-        <p className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-normal tracking-tight text-white">{value}</p>
-      </CardContent>
-    </Card>
-  );
-}
-
-function OccupancyMeter({ current, max, percent }) {
-  const barTone = percent >= 100 ? "bg-red-500" : percent >= 75 ? "bg-amber-400" : "bg-emerald-400";
-
-  return (
-    <div className="rounded-2xl border border-white/15 bg-black/30 p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-sm">
-      <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">Capacidad operativa</p>
-          <p className="mt-3 text-3xl font-normal tracking-tight text-white">{current}/{max}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Ocupacion</p>
-          <p className="text-2xl font-normal text-white">{percent}%</p>
-        </div>
-      </div>
-
-      <div className="mt-5 h-2 rounded-full bg-white/10 overflow-hidden">
-        <div style={{ width: `${Math.min(percent, 100)}%` }} className={cn("h-full rounded-full transition-[width] duration-500 ease-out", barTone)} />
-      </div>
-
-      <div className="mt-4 flex items-center justify-between text-xs text-white/55">
-        <span>Disponibles: {Math.max(max - current, 0)}</span>
-        <span>{percent >= 100 ? "Cupo completo" : percent >= 75 ? "Demanda alta" : "Recepcion abierta"}</span>
-      </div>
-    </div>
-  );
-}
 
 function ResultBanner({ result }) {
   if (!result) return null;
@@ -756,7 +716,7 @@ export default function EmpresaEscaner() {
 
             {/* Dashboard Tab */}
             {activeTab === "dashboard" ? (
-              <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.55fr_0.9fr]">
+              <div className="space-y-5">
                 <div className="space-y-5">
                   <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
                     <div className="flex flex-col gap-3 sm:gap-4 border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
@@ -920,20 +880,6 @@ export default function EmpresaEscaner() {
                         <p className="mt-2 text-sm text-white/45">El roster se actualiza automaticamente despues de cada lectura valida del sensor.</p>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                <div className="space-y-5 xl:sticky xl:top-6">
-                  <OccupancyMeter
-                    current={proyecto.cupo_actual || 0}
-                    max={proyecto.capacidad_max || 0}
-                    percent={proyecto.ocupacion_porcentaje || 0}
-                  />
-
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <StatCard label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
-                    <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} />
-                    <StatCard label="Capacidad total" value={proyecto.capacidad_max} />
                   </div>
                 </div>
               </div>
