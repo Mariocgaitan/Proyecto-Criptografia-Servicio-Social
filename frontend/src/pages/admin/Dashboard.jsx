@@ -1615,6 +1615,17 @@ export default function AdminDashboard() {
                       {eventos.find(e => e.activo && e.preregistro_abierto) ? "Finalizar Pre-registro" : "Pre-registro cerrado"}
                     </Button>
 
+                    <Button
+                      onClick={() => {
+                        const ev = eventos.find(e => e.activo && !e.iniciado);
+                        if (ev) handleOpenIniciarEvento(ev.id_evento);
+                      }}
+                      className="border border-emerald-500/25 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-200 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                      disabled={!eventos.find(e => e.activo && !e.iniciado)}
+                    >
+                      <QrCode className="w-4 h-4 mr-2" />
+                      {eventos.find(e => e.activo && !e.iniciado) ? "Mostrar QR" : "QR ya activado"}
+                    </Button>
 
                   </div>
 
