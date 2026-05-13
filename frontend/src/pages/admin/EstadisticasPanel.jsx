@@ -333,10 +333,10 @@ export default function EstadisticasPanel({ eventos = [] }) {
                   }}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/15 text-white">
-                <SelectItem value="__all__" className="text-white focus:bg-white/10 focus:text-white">Evento activo / reciente</SelectItem>
+              <SelectContent>
+                <SelectItem value="__all__">Evento activo / reciente</SelectItem>
                 {safeEventos.map((ev) => (
-                  <SelectItem key={ev.id_evento} value={String(ev.id_evento)} className="text-white focus:bg-white/10 focus:text-white">
+                  <SelectItem key={ev.id_evento} value={String(ev.id_evento)}>
                     {ev.nombre} ({ev.anio})
                   </SelectItem>
                 ))}
@@ -372,11 +372,11 @@ export default function EstadisticasPanel({ eventos = [] }) {
               <SelectTrigger className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white">
                 <SelectValue>{(v) => ({ "1h": "1 hora", "24h": "24 horas", "7d": "7 dias", "30d": "30 dias" }[v] || v)}</SelectValue>
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-white/15 text-white">
-                <SelectItem value="1h" className="text-white focus:bg-white/10 focus:text-white">1 hora</SelectItem>
-                <SelectItem value="24h" className="text-white focus:bg-white/10 focus:text-white">24 horas</SelectItem>
-                <SelectItem value="7d" className="text-white focus:bg-white/10 focus:text-white">7 dias</SelectItem>
-                <SelectItem value="30d" className="text-white focus:bg-white/10 focus:text-white">30 dias</SelectItem>
+              <SelectContent>
+                <SelectItem value="1h">1 hora</SelectItem>
+                <SelectItem value="24h">24 horas</SelectItem>
+                <SelectItem value="7d">7 dias</SelectItem>
+                <SelectItem value="30d">30 dias</SelectItem>
               </SelectContent>
             </Select>
           </div>

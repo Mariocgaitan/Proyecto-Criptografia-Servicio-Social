@@ -215,6 +215,11 @@ function OccupancyBar({ current, max }) {
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [isDark, setIsDark] = useState(() => localStorage.getItem("admin-theme") !== "light");
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", isDark);
+    return () => root.classList.remove("dark");
+  }, [isDark]);
   const [proyectos, setProyectos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [eventos, setEventos] = useState([]);
@@ -1268,10 +1273,10 @@ export default function AdminDashboard() {
                           <SelectTrigger id="empresa-filter-select" className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
                             <SelectValue>{(v) => v === ALL_COMPANIES_FILTER ? "Empresa: Todas" : v}</SelectValue>
                           </SelectTrigger>
-                          <SelectContent className="bg-slate-900 border-white/15 text-white">
-                            <SelectItem value={ALL_COMPANIES_FILTER} className="text-white focus:bg-white/10 focus:text-white">Empresa: Todas</SelectItem>
+                          <SelectContent>
+                            <SelectItem value={ALL_COMPANIES_FILTER}>Empresa: Todas</SelectItem>
                             {empresasEnProyectos.map((empresa) => (
-                              <SelectItem key={empresa} value={empresa} className="text-white focus:bg-white/10 focus:text-white">
+                              <SelectItem key={empresa} value={empresa}>
                                 {empresa}
                               </SelectItem>
                             ))}
@@ -1283,10 +1288,10 @@ export default function AdminDashboard() {
                         <SelectTrigger className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
                           <SelectValue>{(v) => ({ demanda: "Ordenar: Demanda", disponibilidad: "Ordenar: Ultimos lugares", alfabetico: "Ordenar: A-Z" }[v] || v)}</SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/15 text-white">
-                          <SelectItem value="demanda" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Demanda</SelectItem>
-                          <SelectItem value="disponibilidad" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Ultimos lugares</SelectItem>
-                          <SelectItem value="alfabetico" className="text-white focus:bg-white/10 focus:text-white">Ordenar: A-Z</SelectItem>
+                        <SelectContent>
+                          <SelectItem value="demanda">Ordenar: Demanda</SelectItem>
+                          <SelectItem value="disponibilidad">Ordenar: Ultimos lugares</SelectItem>
+                          <SelectItem value="alfabetico">Ordenar: A-Z</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -2029,9 +2034,9 @@ Femsa,,Proyecto B,Otra desc,30`}
                 <SelectTrigger className="bg-white/10 border-white/15 text-white">
                   <SelectValue placeholder="Selecciona un evento" />
                 </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-white/15">
+                <SelectContent>
                   {eventos.map((ev) => (
-                    <SelectItem key={ev.id_evento} value={String(ev.id_evento)} className="text-white">
+                    <SelectItem key={ev.id_evento} value={String(ev.id_evento)}>
                       {ev.nombre} ({ev.periodo} {ev.anio})
                     </SelectItem>
                   ))}

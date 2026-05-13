@@ -153,6 +153,11 @@ export default function EmpresaEscaner() {
     localStorage.setItem("empresa-theme", next ? "dark" : "light");
     return next;
   });
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("dark", isDark);
+    return () => root.classList.remove("dark");
+  }, [isDark]);
   const [proyecto, setProyecto] = useState(null);
   const [initializing, setInitializing] = useState(true);
   const [proyectosEmpresa, setProyectosEmpresa] = useState([]);
@@ -682,9 +687,9 @@ export default function EmpresaEscaner() {
                           }}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent className="bg-slate-900 border-white/15 text-white">
+                      <SelectContent>
                         {proyectosEmpresa.map((item) => (
-                          <SelectItem key={item.id_proyecto} value={String(item.id_proyecto)} className="text-white focus:bg-white/10 focus:text-white">
+                          <SelectItem key={item.id_proyecto} value={String(item.id_proyecto)}>
                             {item.evento} - {item.nombre_proyecto}
                           </SelectItem>
                         ))}
@@ -699,10 +704,10 @@ export default function EmpresaEscaner() {
                         <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
                           <SelectValue>{(v) => ({ inscripciones: "CSV: Inscripciones", proyectos: "CSV: Proyectos", empresas: "CSV: Empresas" }[v] || v)}</SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/15 text-white">
-                          <SelectItem value="inscripciones" className="text-white focus:bg-white/10 focus:text-white">CSV: Inscripciones</SelectItem>
-                          <SelectItem value="proyectos" className="text-white focus:bg-white/10 focus:text-white">CSV: Proyectos</SelectItem>
-                          <SelectItem value="empresas" className="text-white focus:bg-white/10 focus:text-white">CSV: Empresas</SelectItem>
+                        <SelectContent>
+                          <SelectItem value="inscripciones">CSV: Inscripciones</SelectItem>
+                          <SelectItem value="proyectos">CSV: Proyectos</SelectItem>
+                          <SelectItem value="empresas">CSV: Empresas</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -710,9 +715,9 @@ export default function EmpresaEscaner() {
                         <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
                           <SelectValue>{(v) => ({ all: "Todos", filtered: "Filtrados" }[v] || v)}</SelectValue>
                         </SelectTrigger>
-                        <SelectContent className="bg-slate-900 border-white/15 text-white">
-                          <SelectItem value="all" className="text-white focus:bg-white/10 focus:text-white">Todos</SelectItem>
-                          <SelectItem value="filtered" className="text-white focus:bg-white/10 focus:text-white">Filtrados</SelectItem>
+                        <SelectContent>
+                          <SelectItem value="all">Todos</SelectItem>
+                          <SelectItem value="filtered">Filtrados</SelectItem>
                         </SelectContent>
                       </Select>
 
