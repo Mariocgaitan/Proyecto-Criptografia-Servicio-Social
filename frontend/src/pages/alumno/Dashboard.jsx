@@ -272,8 +272,66 @@ function ProjectGrid({ proyectos }) {
 
 // ProfileForm has been moved to its own component in src/components/alumno/StudentProfileForm.jsx
 
+// ─── Pre-registro banners ────────────────────────────────────────
+function PreregistroBanner({ tipo }) {
+  if (tipo === "preregistro_exitoso") {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+        className="relative overflow-hidden rounded-3xl bg-blue-500/[0.07] border border-blue-400/25 p-8 backdrop-blur-xl text-center"
+      >
+        <div className="absolute top-0 right-0 w-40 h-40 bg-blue-400/15 rounded-full blur-[60px] -mr-20 -mt-20" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/10 rounded-full blur-[50px] -ml-16 -mb-16" />
+        <div className="relative z-10 flex flex-col items-center gap-4">
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            transition={{ type: "spring", stiffness: 260, delay: 0.2 }}
+          >
+            <CheckCircle2 className="w-14 h-14 text-blue-400 drop-shadow-[0_0_18px_rgba(96,165,250,0.5)]" />
+          </motion.div>
+          <div>
+            <h3 className="text-2xl font-normal text-blue-200">Pre-registro exitoso</h3>
+            <p className="text-blue-400/80 text-sm mt-2 max-w-sm mx-auto">
+              Te registraste en tiempo. El QR para inscribirte aparecerá aquí cuando el administrador abra las inscripciones.
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      className="relative overflow-hidden rounded-3xl bg-amber-500/[0.07] border border-amber-400/25 p-8 backdrop-blur-xl text-center"
+    >
+      <div className="absolute top-0 right-0 w-40 h-40 bg-amber-400/12 rounded-full blur-[60px] -mr-20 -mt-20" />
+      <div className="relative z-10 flex flex-col items-center gap-4">
+        <motion.div
+          initial={{ scale: 0 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 260, delay: 0.2 }}
+        >
+          <AlertTriangle className="w-14 h-14 text-amber-400 drop-shadow-[0_0_18px_rgba(251,191,36,0.4)]" />
+        </motion.div>
+        <div>
+          <h3 className="text-2xl font-normal text-amber-200">No estás en el pre-registro</h3>
+          <p className="text-amber-400/80 text-sm mt-2 max-w-sm mx-auto">
+            El período de pre-registro ya cerró. Contacta al administrador para que habilite tu acceso al QR.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 // ─── QR Credential Tab Content ───────────────────────────────────
-function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onProfileUpdate, initialProfileData, isEditing, onToggleEdit }) {
+function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onProfileUpdate, initialProfileData, isEditing, onToggleEdit, estado }) {
   const [qrSize, setQrSize] = useState(400);
   const [qrLogoSize, setQrLogoSize] = useState(50);
   const TOTAL_QR_SECONDS = 30;
@@ -297,7 +355,9 @@ function QRCredentialView({ evento, qrPayload, timeLeft, perfilIncompleto, onPro
 
   return (
     <div className="w-full h-full font-sans flex flex-col">
-      {perfilIncompleto || isEditing ? (
+      {(estado === "preregistro_exitoso" || estado === "preregistro_cerrado") ? (
+        <PreregistroBanner tipo={estado} />
+      ) : perfilIncompleto || isEditing ? (
         <StudentProfileForm
           initialData={initialProfileData}
           onSubmit={() => {
@@ -437,6 +497,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
     timeLeft: 0,
     perfilIncompleto: false,
     initialProfileData: null,
+    estado: "activo",
   });
   const [activeTab, setActiveTab] = useState("credencial");
   const [isEditing, setIsEditing] = useState(false);
@@ -447,18 +508,23 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
       const res = await fetch(apiUrl(`/api/v1/alumno/qr-payload?id_evento=${evento.id_evento}`), { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
+        const estado = data.estado ?? "activo";
         if (data.ya_inscrito) {
           // Un solo setState → un solo re-render
-          setQrState({ qrPayload: null, timeLeft: 0, perfilIncompleto: false, initialProfileData: null });
+          setQrState({ qrPayload: null, timeLeft: 0, perfilIncompleto: false, initialProfileData: null, estado: "activo" });
           onEnrollmentDetected?.();
+        } else if (estado === "preregistro_exitoso" || estado === "preregistro_cerrado") {
+          // Sondear cada 30 s para detectar si el admin cambia el estado del evento
+          setQrState(prev => ({ ...prev, qrPayload: null, perfilIncompleto: false, timeLeft: 30, estado }));
         } else if (data.perfil_incompleto) {
-          setQrState(prev => ({ ...prev, perfilIncompleto: true, initialProfileData: data.datos_actuales, qrPayload: null, timeLeft: data.expira_en_segundos }));
+          setQrState(prev => ({ ...prev, perfilIncompleto: true, initialProfileData: data.datos_actuales, qrPayload: null, timeLeft: data.expira_en_segundos, estado: "activo" }));
         } else {
           setQrState(prev => ({
             qrPayload: data.qr_data,
             timeLeft: data.expira_en_segundos,
             perfilIncompleto: false,
             initialProfileData: data.datos_actuales ?? prev.initialProfileData,
+            estado: "activo",
           }));
         }
       }
@@ -479,7 +545,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
   }, [fetchQR]);
 
   // Desestructurar para pasar props al hijo
-  const { qrPayload, timeLeft, perfilIncompleto, initialProfileData } = qrState;
+  const { qrPayload, timeLeft, perfilIncompleto, initialProfileData, estado } = qrState;
 
   // If already enrolled, show the enrolled view
   if (evento.inscrito && evento.inscripcion) {
@@ -535,6 +601,7 @@ const EventCard = ({ evento, onEnrollmentDetected }) => {
                 isEditing={isEditing}
                 onToggleEdit={setIsEditing}
                 onProfileUpdate={() => fetchQR()}
+                estado={estado}
               />
             </motion.div>
           ) : (
@@ -785,8 +852,16 @@ export default function Dashboard() {
                         <p className="text-xs text-white/45 uppercase tracking-wider mb-4">{evento.periodo} {evento.anio}</p>
                         {!evento.iniciado ? (
                           <p className="text-white/65 text-sm max-w-sm">El periodo aún no ha sido iniciado por el administrador. Cuando inicie, podrás ver tu QR de inscripción si estás en el cohorte.</p>
+                        ) : evento.preregistrado ? (
+                          <>
+                            <p className="text-amber-300/80 text-sm font-medium mb-1">Pre-registro completado</p>
+                            <p className="text-white/65 text-sm max-w-sm">Tu pre-registro fue recibido exitosamente. El administrador aún no ha activado el acceso al QR para tu cohorte. Regresa más tarde.</p>
+                          </>
                         ) : (
-                          <p className="text-white/65 text-sm max-w-sm">No estás registrado como participante de este periodo. Contacta a tu coordinador si crees que es un error.</p>
+                          <>
+                            <p className="text-red-400/80 text-sm font-medium mb-1">Pre-registro cerrado</p>
+                            <p className="text-white/65 text-sm max-w-sm">El periodo de pre-registro ya había cerrado cuando te registraste. Contacta al administrador o coordinador para habilitarte manualmente.</p>
+                          </>
                         )}
                       </div>
                     ) : (

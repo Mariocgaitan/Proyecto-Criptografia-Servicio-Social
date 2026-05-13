@@ -303,3 +303,20 @@ async def api_reset_password(
         actor_matricula=current_admin.id_matricula,
         ip_origen=request.client.host if request.client else None,
     )
+
+
+# ── Pre-registro ───────────────────────────────────────────────────────────────
+
+
+@router.post("/api/v1/admin/eventos/{id_evento}/cerrar-preregistro", tags=["Admin"])
+async def api_cerrar_preregistro(
+    id_evento: int,
+    db: AsyncSession = Depends(get_db),
+    _=Depends(get_current_admin),
+):
+    """
+    Cierra la ventana de pre-registro del evento indicado.
+    A partir de este momento los alumnos que se logueen por primera vez
+    quedarán marcados como preregistrado=False y no podrán acceder al QR.
+    """
+    return await admin_service.cerrar_preregistro(db, id_evento)

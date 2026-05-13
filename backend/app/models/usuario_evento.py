@@ -24,6 +24,10 @@ class UsuarioEvento(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+    preregistrado: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False,
+        comment="True si el alumno se registro mientras preregistro_abierto estaba activo"
+    )
 
     # Relaciones
     usuario: Mapped["Usuario"] = relationship("Usuario", back_populates="usuario_eventos")

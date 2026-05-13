@@ -134,7 +134,7 @@ async def listar_eventos(db: AsyncSession) -> list[dict]:
 
 
 async def iniciar_evento(db: AsyncSession, id_evento: int) -> dict:
-    """Marca evento como iniciado y congela lista de participantes."""
+    """Marca evento como iniciado y congela como participantes solo a los pre-registrados."""
     from fastapi import HTTPException
     from datetime import datetime, timezone
     from sqlalchemy import update
@@ -146,18 +146,22 @@ async def iniciar_evento(db: AsyncSession, id_evento: int) -> dict:
     if evento.iniciado:
         raise HTTPException(status_code=409, detail="El evento ya fue iniciado")
 
+    # Solo los alumnos que hicieron pre-registro a tiempo se convierten en participantes
     res = await db.execute(
         update(UsuarioEvento)
         .where(UsuarioEvento.id_evento == id_evento)
         .where(UsuarioEvento.es_participante.is_(False))
+        .where(UsuarioEvento.preregistrado.is_(True))
         .values(es_participante=True)
     )
     congelados = res.rowcount or 0
 
     evento.iniciado = True
+    evento.preregistro_abierto = False  # Cierra la ventana si aún estaba abierta
     evento.fecha_inicio_real = datetime.now(timezone.utc)
     await db.commit()
     await cache_delete_prefix("admin_")
+    await cache_delete("alum_cat_ev")
     return {
         "id_evento": evento.id_evento,
         "iniciado": True,
@@ -547,6 +551,27 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
 # Roles cuyas contraseñas el admin puede resetear desde el panel.
 # Alumnos quedan fuera: ellos usan el flujo de Google login / OTP por separado.
 _RESETTABLE_ROLES = ("admin", "empresa")
+
+
+# ── Pre-registro ──────────────────────────────────────────────────────────────
+
+async def cerrar_preregistro(db: AsyncSession, id_evento: int) -> dict:
+    """
+    Cierra la ventana de pre-registro de un evento.
+    A partir de este momento, los nuevos alumnos que se logueen
+    quedarán con preregistrado=False y no podrán ver el QR.
+    """
+    result = await db.execute(select(Evento).where(Evento.id_evento == id_evento))
+    evento = result.scalar_one_or_none()
+    if not evento:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Evento no encontrado")
+
+    evento.preregistro_abierto = False
+    await db.commit()
+    await cache_delete_prefix("admin_")
+    await cache_delete("ocupacion_eventos")
+    return {"ok": True, "mensaje": "Pre-registro cerrado. Los nuevos registros no podrán ver el QR."}
 
 
 async def listar_credenciales(db: AsyncSession) -> list[dict]:

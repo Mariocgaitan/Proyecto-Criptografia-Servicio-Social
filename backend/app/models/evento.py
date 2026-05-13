@@ -29,6 +29,12 @@ class Evento(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 
+    # Control de pre-registro
+    preregistro_abierto: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False,
+        comment="Mientras True, los alumnos que se loguean quedan como pre-registrados"
+    )
+
     # Relaciones
     usuario_eventos: Mapped[list["UsuarioEvento"]] = relationship(
         "UsuarioEvento", back_populates="evento"
