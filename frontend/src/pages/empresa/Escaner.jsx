@@ -55,9 +55,9 @@ const CAMERA_ERRORS = {
 function StatCard({ label, value }) {
   return (
     <Card className="rounded-2xl border border-white/15 bg-black/30 shadow-[0_8px_30px_rgba(0,0,0,0.2)]">
-      <CardContent className="p-4">
+      <CardContent className="p-3 sm:p-4">
         <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/55">{label}</p>
-        <p className="mt-3 text-3xl font-normal tracking-tight text-white">{value}</p>
+        <p className="mt-2 sm:mt-3 text-2xl sm:text-3xl font-normal tracking-tight text-white">{value}</p>
       </CardContent>
     </Card>
   );
@@ -645,7 +645,7 @@ export default function EmpresaEscaner() {
       </Motion.nav>
 
       {/* Content */}
-      <div className="relative z-10 flex-1 min-h-0 px-4 py-6 sm:px-6 lg:px-8 overflow-y-auto overscroll-contain">
+      <div className="relative z-10 flex-1 min-h-0 px-3 sm:px-6 lg:px-8 py-4 sm:py-6 overflow-y-auto overscroll-contain">
         <Motion.main
           initial={{ opacity: 0, y: 25 }}
           animate={{ opacity: 1, y: 0 }}
@@ -654,8 +654,8 @@ export default function EmpresaEscaner() {
         >
           <div className="space-y-5">
             {/* Hero Section */}
-            <div className="rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-5 sm:p-6">
-              <div className="space-y-5">
+            <div className="rounded-2xl sm:rounded-3xl bg-black/35 border border-white/15 backdrop-blur-md shadow-2xl p-4 sm:p-6">
+              <div className="space-y-4 sm:space-y-5">
                 <div className="mb-2 flex flex-wrap gap-2">
                   <Badge
                     className={cn(
@@ -671,14 +671,14 @@ export default function EmpresaEscaner() {
 
                 <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.35fr_0.95fr]">
                   <div className="max-w-3xl">
-                    <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
+                    <div className="rounded-2xl border border-white/15 bg-black/20 p-3 sm:p-4">
                       <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Proyecto seleccionado</p>
                       <p className="mt-1 text-base font-normal text-white">{proyecto.nombre_proyecto}</p>
                       <p className="mt-1 text-sm text-white/55">Ultima sincronizacion: {lastSync ? lastSync.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }) : "--:--"}</p>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-white/15 bg-black/20 p-4">
+                  <div className="rounded-2xl border border-white/15 bg-black/20 p-3 sm:p-4">
                     <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
                     <select
                       value={selectedProjectId || ""}
@@ -749,7 +749,7 @@ export default function EmpresaEscaner() {
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.55fr_0.9fr]">
                 <div className="space-y-5">
                   <div className="rounded-3xl border border-white/15 bg-black/30 overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
-                    <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-col gap-3 sm:gap-4 border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between">
                       <div>
                         <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Roster del proyecto</p>
                         <h3 className="mt-1 text-lg font-normal text-white">Alumnos registrados</h3>
@@ -766,7 +766,54 @@ export default function EmpresaEscaner() {
                     </div>
 
                     {alumnosFiltrados.length ? (
-                      <div className="overflow-x-auto">
+                      <>
+                      {/* Mobile: card list */}
+                      <div className="md:hidden divide-y divide-white/10">
+                        {alumnosFiltrados.map((alumno) => {
+                          const isExpanded = expandedAlumnoId === alumno.id_inscripcion;
+                          return (
+                            <div key={alumno.id_inscripcion} className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={() => setExpandedAlumnoId(isExpanded ? null : alumno.id_inscripcion)}
+                                className="w-full text-left"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="font-medium text-white truncate">{alumno.nombre}</p>
+                                    <p className="mt-0.5 text-xs font-mono text-white/55">{alumno.matricula}</p>
+                                    <p className="mt-1 text-xs text-white/65 truncate">{alumno.carrera} · Sem {alumno.semestre}</p>
+                                    <p className="mt-0.5 text-xs text-white/45 truncate">{alumno.correo}</p>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); handleEliminarInscripcion(alumno); }}
+                                    disabled={deletingInscripcionId === alumno.id_inscripcion}
+                                    className="shrink-0 inline-flex items-center justify-center rounded-lg border border-white/10 bg-white/5 p-2 text-white/70 hover:bg-white/10 disabled:opacity-60"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                                {isExpanded && (
+                                  <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 space-y-3">
+                                    <div>
+                                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 mb-1">Contacto alterno</p>
+                                      <p className="text-xs text-white/80">{alumno.correo_alterno || "No proporcionado"}</p>
+                                      <p className="text-xs text-blue-300">{alumno.celular || "Sin número"}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 mb-1">Aportación</p>
+                                      <p className="text-xs italic text-white/65 leading-relaxed">"{alumno.descripcion_personal || "Sin descripción"}"</p>
+                                    </div>
+                                  </div>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {/* Desktop: table */}
+                      <div className="hidden md:block overflow-x-auto">
                         <Table className="min-w-[760px]">
                           <TableHeader>
                             <TableRow className="border-white/10 hover:bg-transparent">
@@ -855,6 +902,7 @@ export default function EmpresaEscaner() {
                           </TableBody>
                         </Table>
                       </div>
+                      </>
                     ) : (
                       <div className="px-6 py-16 text-center">
                         <Users className="mx-auto h-10 w-10 text-white/20" />
@@ -872,7 +920,7 @@ export default function EmpresaEscaner() {
                     percent={proyecto.ocupacion_porcentaje || 0}
                   />
 
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
                     <StatCard label="Alumnos inscritos" value={proyecto.inscripciones_totales} />
                     <StatCard label="Espacios libres" value={proyecto.cupos_disponibles} />
                     <StatCard label="Capacidad total" value={proyecto.capacidad_max} />
@@ -881,11 +929,11 @@ export default function EmpresaEscaner() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-3xl border border-white/15 bg-black/30 p-4 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md sm:p-5">
-                  <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="rounded-2xl sm:rounded-3xl border border-white/15 bg-black/30 p-3 sm:p-5 shadow-[0_8px_30px_rgba(0,0,0,0.2)] backdrop-blur-md">
+                  <div className="mb-3 sm:mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-white/45">Modulo de lectura</p>
-                      <h3 className="mt-1 text-xl font-normal text-white">Escaneo QR en sitio</h3>
+                      <h3 className="mt-1 text-lg sm:text-xl font-normal text-white">Escaneo QR en sitio</h3>
                     </div>
                     <Button
                       onClick={toggleScanner}
@@ -901,7 +949,7 @@ export default function EmpresaEscaner() {
                     </Button>
                   </div>
 
-                  <div className="relative min-h-[420px] sm:min-h-[520px] lg:min-h-[620px] xl:min-h-[70vh] overflow-hidden rounded-2xl border border-white/15 bg-black/40 p-3 sm:p-4">
+                  <div className="relative min-h-[340px] sm:min-h-[520px] lg:min-h-[620px] xl:min-h-[70vh] overflow-hidden rounded-2xl border border-white/15 bg-black/40 p-2 sm:p-4">
                     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-4 sm:p-8">
                       <div className="flex h-[84%] w-[94%] sm:h-[80%] sm:w-[86%] items-center justify-center rounded-[24px] sm:rounded-[28px] border border-dashed border-white/15">
                         <div className="h-[92%] w-[92%] rounded-[22px] border border-white/8" />
