@@ -418,9 +418,10 @@ export default function AuthWizard() {
                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
                 animate={{ opacity: 1, height: "auto", marginBottom: 16 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                className="bg-red-600 border border-red-700 rounded-xl px-4 py-3 shadow-md"
+                className="rounded-xl px-4 py-3 shadow-lg"
+                style={{ backgroundColor: "#dc2626", border: "1px solid #991b1b" }}
               >
-                <p className="text-white text-sm font-normal text-center">{error}</p>
+                <p className="text-white text-sm font-medium text-center">{error}</p>
               </motion.div>
             )}
           </AnimatePresence>
