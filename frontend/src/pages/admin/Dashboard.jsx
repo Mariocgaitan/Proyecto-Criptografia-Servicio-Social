@@ -1264,32 +1264,31 @@ export default function AdminDashboard() {
 
                       <div className="w-full md:w-auto md:min-w-[260px]">
                         <label className="sr-only" htmlFor="empresa-filter-select">Filtrar por empresa</label>
-                        <select
-                          id="empresa-filter-select"
-                          value={empresaFilter}
-                          onChange={(e) => setEmpresaFilter(e.target.value)}
-                          style={{ colorScheme: "dark" }}
-                          className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
-                        >
-                          <option value={ALL_COMPANIES_FILTER} className="bg-slate-900 text-white">Empresa: Todas</option>
-                          {empresasEnProyectos.map((empresa) => (
-                            <option key={empresa} value={empresa} className="bg-slate-900 text-white">
-                              {empresa}
-                            </option>
-                          ))}
-                        </select>
+                        <Select value={empresaFilter} onValueChange={setEmpresaFilter}>
+                          <SelectTrigger id="empresa-filter-select" className="h-9 w-full rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="bg-slate-900 border-white/15 text-white">
+                            <SelectItem value={ALL_COMPANIES_FILTER} className="text-white focus:bg-white/10 focus:text-white">Empresa: Todas</SelectItem>
+                            {empresasEnProyectos.map((empresa) => (
+                              <SelectItem key={empresa} value={empresa} className="text-white focus:bg-white/10 focus:text-white">
+                                {empresa}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      <select
-                        value={sortMode}
-                        onChange={(e) => setSortMode(e.target.value)}
-                        style={{ colorScheme: "dark" }}
-                        className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5 focus:outline-none"
-                      >
-                        <option value="demanda" className="bg-slate-900 text-white">Ordenar: Demanda</option>
-                        <option value="disponibilidad" className="bg-slate-900 text-white">Ordenar: Ultimos lugares</option>
-                        <option value="alfabetico" className="bg-slate-900 text-white">Ordenar: A-Z</option>
-                      </select>
+                      <Select value={sortMode} onValueChange={setSortMode}>
+                        <SelectTrigger className="h-9 rounded-lg bg-white/10 border border-white/20 text-white text-xs px-2.5">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-white/15 text-white">
+                          <SelectItem value="demanda" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Demanda</SelectItem>
+                          <SelectItem value="disponibilidad" className="text-white focus:bg-white/10 focus:text-white">Ordenar: Ultimos lugares</SelectItem>
+                          <SelectItem value="alfabetico" className="text-white focus:bg-white/10 focus:text-white">Ordenar: A-Z</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
 

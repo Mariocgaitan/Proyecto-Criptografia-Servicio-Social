@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -680,46 +681,47 @@ export default function EmpresaEscaner() {
 
                   <div className="rounded-2xl border border-white/15 bg-black/20 p-3 sm:p-4">
                     <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-white/45">Eventos y proyectos de la empresa</p>
-                    <select
-                      value={selectedProjectId || ""}
-                      onChange={onSelectProject}
+                    <Select
+                      value={selectedProjectId ? String(selectedProjectId) : ""}
+                      onValueChange={(val) => onSelectProject({ target: { value: val } })}
                       disabled={switchingProject || !proyectosEmpresa.length}
-                      style={{ colorScheme: "dark" }}
-                      className="mt-4 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-400/30 disabled:opacity-60"
                     >
-                      {proyectosEmpresa.map((item) => (
-                        <option key={item.id_proyecto} value={item.id_proyecto} className="bg-slate-900 text-white">
-                          {item.evento} - {item.nombre_proyecto}
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger className="mt-4 h-10 w-full rounded-xl border border-white/15 bg-white/10 px-3 text-sm text-white focus:ring-2 focus:ring-blue-400/30 disabled:opacity-60">
+                        <SelectValue placeholder="Selecciona proyecto" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-white/15 text-white">
+                        {proyectosEmpresa.map((item) => (
+                          <SelectItem key={item.id_proyecto} value={String(item.id_proyecto)} className="text-white focus:bg-white/10 focus:text-white">
+                            {item.evento} - {item.nombre_proyecto}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <p className="mt-3 text-xs text-white/50">
                       {proyectosEmpresa.length} proyecto(s) asociado(s) a tu empresa.
                     </p>
 
                     <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <select
-                        value={exportDataset}
-                        onChange={(e) => setExportDataset(e.target.value)}
-                        style={{ colorScheme: "dark" }}
-                        className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
-                        disabled={exportingCsv}
-                      >
-                        <option value="inscripciones" className="bg-slate-900 text-white">CSV: Inscripciones</option>
-                        <option value="proyectos" className="bg-slate-900 text-white">CSV: Proyectos</option>
-                        <option value="empresas" className="bg-slate-900 text-white">CSV: Empresas</option>
-                      </select>
+                      <Select value={exportDataset} onValueChange={setExportDataset} disabled={exportingCsv}>
+                        <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-white/15 text-white">
+                          <SelectItem value="inscripciones" className="text-white focus:bg-white/10 focus:text-white">CSV: Inscripciones</SelectItem>
+                          <SelectItem value="proyectos" className="text-white focus:bg-white/10 focus:text-white">CSV: Proyectos</SelectItem>
+                          <SelectItem value="empresas" className="text-white focus:bg-white/10 focus:text-white">CSV: Empresas</SelectItem>
+                        </SelectContent>
+                      </Select>
 
-                      <select
-                        value={exportScope}
-                        onChange={(e) => setExportScope(e.target.value)}
-                        style={{ colorScheme: "dark" }}
-                        className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white focus:outline-none"
-                        disabled={exportingCsv}
-                      >
-                        <option value="all" className="bg-slate-900 text-white">Todos</option>
-                        <option value="filtered" className="bg-slate-900 text-white">Filtrados</option>
-                      </select>
+                      <Select value={exportScope} onValueChange={setExportScope} disabled={exportingCsv}>
+                        <SelectTrigger className="h-10 rounded-xl border border-white/15 bg-white/10 px-3 text-xs text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-slate-900 border-white/15 text-white">
+                          <SelectItem value="all" className="text-white focus:bg-white/10 focus:text-white">Todos</SelectItem>
+                          <SelectItem value="filtered" className="text-white focus:bg-white/10 focus:text-white">Filtrados</SelectItem>
+                        </SelectContent>
+                      </Select>
 
                       <Button
                         onClick={handleExportCsv}

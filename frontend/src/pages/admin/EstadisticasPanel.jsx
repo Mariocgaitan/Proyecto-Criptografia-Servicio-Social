@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { Download, RefreshCw } from "lucide-react";
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { apiUrl, downloadCsvExport } from "@/lib/api";
 
 const DARK_TOOLTIP_PROPS = {
@@ -319,19 +320,22 @@ export default function EstadisticasPanel({ eventos = [] }) {
         <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-12">
           <div className="lg:col-span-4">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-white/50">Evento</p>
-            <select
-              value={filters.eventoId}
-              onChange={(e) => setFilters((prev) => ({ ...prev, eventoId: e.target.value }))}
-              style={{ colorScheme: "dark" }}
-              className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
+            <Select
+              value={filters.eventoId || "__all__"}
+              onValueChange={(val) => setFilters((prev) => ({ ...prev, eventoId: val === "__all__" ? "" : val }))}
             >
-              <option value="" className="bg-slate-900 text-white">Evento activo / reciente</option>
-              {safeEventos.map((ev) => (
-                <option key={ev.id_evento} value={ev.id_evento} className="bg-slate-900 text-white">
-                  {ev.nombre} ({ev.anio})
-                </option>
-              ))}
-            </select>
+              <SelectTrigger className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/15 text-white">
+                <SelectItem value="__all__" className="text-white focus:bg-white/10 focus:text-white">Evento activo / reciente</SelectItem>
+                {safeEventos.map((ev) => (
+                  <SelectItem key={ev.id_evento} value={String(ev.id_evento)} className="text-white focus:bg-white/10 focus:text-white">
+                    {ev.nombre} ({ev.anio})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="lg:col-span-2">
@@ -358,17 +362,17 @@ export default function EstadisticasPanel({ eventos = [] }) {
 
           <div className="lg:col-span-2">
             <p className="mb-1 text-[11px] uppercase tracking-wider text-white/50">Ventana</p>
-            <select
-              value={timelineRange}
-              onChange={(e) => setTimelineRange(e.target.value)}
-              style={{ colorScheme: "dark" }}
-              className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white"
-            >
-              <option value="1h" className="bg-slate-900 text-white">1 hora</option>
-              <option value="24h" className="bg-slate-900 text-white">24 horas</option>
-              <option value="7d" className="bg-slate-900 text-white">7 dias</option>
-              <option value="30d" className="bg-slate-900 text-white">30 dias</option>
-            </select>
+            <Select value={timelineRange} onValueChange={setTimelineRange}>
+              <SelectTrigger className="w-full rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-slate-900 border-white/15 text-white">
+                <SelectItem value="1h" className="text-white focus:bg-white/10 focus:text-white">1 hora</SelectItem>
+                <SelectItem value="24h" className="text-white focus:bg-white/10 focus:text-white">24 horas</SelectItem>
+                <SelectItem value="7d" className="text-white focus:bg-white/10 focus:text-white">7 dias</SelectItem>
+                <SelectItem value="30d" className="text-white focus:bg-white/10 focus:text-white">30 dias</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="lg:col-span-2">
