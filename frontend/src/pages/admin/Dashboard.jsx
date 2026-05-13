@@ -1495,7 +1495,7 @@ export default function AdminDashboard() {
                       <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
                         <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
                         <form onSubmit={handleCrearEmpresa} className="space-y-4 mt-2">
-                          {errorText && <div className="text-sm text-red-200 bg-red-500/10 p-2 rounded border border-red-500/30">{errorText}</div>}
+                          {errorText && <div className="text-sm text-white bg-red-600 p-2 rounded border border-red-700 shadow-md">{errorText}</div>}
                           <div className="space-y-1">
                             <Label className="text-white/70 text-[11px] font-normal uppercase tracking-wider">ID Asociado / Convenio</Label>
                             <Input required className="bg-white/10 border-white/15 text-white placeholder:text-white/45" value={formEmpresa.id_asociado} onChange={e => setFormEmpresa({ ...formEmpresa, id_asociado: e.target.value })} placeholder="Ej. SF-XXX24" />
@@ -1678,7 +1678,7 @@ export default function AdminDashboard() {
 
           <div className="space-y-4">
             {/* Error message */}
-            {errorText && <p className="text-red-200 text-sm rounded-lg border border-red-500/20 bg-red-500/5 p-3">{errorText}</p>}
+            {errorText && <p className="text-white text-sm rounded-lg border border-red-700 bg-red-600 p-3 shadow-md">{errorText}</p>}
 
             {/* Info del alumno */}
             <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4">

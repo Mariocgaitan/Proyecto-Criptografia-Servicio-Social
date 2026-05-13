@@ -130,7 +130,7 @@ export function StudentProfileForm({ initialData, onSubmit, onCancel }) {
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
-              className="mb-5 p-3.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs text-center font-medium"
+              className="mb-5 p-3.5 rounded-xl bg-red-600 border border-red-700 text-white text-xs text-center font-medium shadow-md"
             >
               {error}
             </motion.div>

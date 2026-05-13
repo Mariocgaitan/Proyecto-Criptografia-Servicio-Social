@@ -160,7 +160,7 @@ export default function CredencialesPanel() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <div className="rounded-xl border border-red-700 bg-red-600 p-3 text-sm text-white shadow-md">
           {error}
         </div>
       )}
@@ -259,7 +259,7 @@ export default function CredencialesPanel() {
             </DialogDescription>
           </DialogHeader>
           {resetError && (
-            <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">
+            <div className="rounded-lg border border-red-700 bg-red-600 p-3 text-sm text-white shadow-md">
               {resetError}
             </div>
           )}
