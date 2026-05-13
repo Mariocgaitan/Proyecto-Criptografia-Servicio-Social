@@ -1516,9 +1516,9 @@ export default function AdminDashboard() {
 
                     <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                       <DialogTrigger asChild>
-                        <div role="button" className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl transition-colors flex items-center justify-center cursor-pointer">
+                        <Button className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
                           <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
-                        </div>
+                        </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
                         <DialogHeader><DialogTitle className="text-xl font-normal tracking-tight text-white">Registrar Socio Formador</DialogTitle></DialogHeader>
