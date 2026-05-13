@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import {
-  LogOut, Building2, Calendar, Plus, LayoutDashboard,
+  LogOut, Calendar, Plus, LayoutDashboard,
   Users, TrendingUp, BarChart3,
   PieChart, Activity, ChevronRight, ChevronDown, Search, SlidersHorizontal,
   Trash2, List, Sun, Moon, Command,
@@ -1517,7 +1517,7 @@ export default function AdminDashboard() {
                     <Dialog open={isCrearEmpresaOpen} onOpenChange={setIsCrearEmpresaOpen}>
                       <DialogTrigger asChild>
                         <Button className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors">
-                          <Building2 className="w-4 h-4 mr-2" /> Dar de Alta Organización
+                          Dar de Alta Organización
                         </Button>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-lg bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
