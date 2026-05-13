@@ -1670,7 +1670,7 @@ export default function AdminDashboard() {
         <DialogContent className="sm:max-w-sm bg-slate-950/92 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-normal tracking-tight text-white">Ampliar Cupo</DialogTitle>
-            <DialogDescription className="text-white/60">{cupoModalInfo?.nombre}</DialogDescription>
+            <DialogDescription className="text-white/80">{cupoModalInfo?.nombre}</DialogDescription>
           </DialogHeader>
           {errorText && <p className="text-red-200 text-sm">{errorText}</p>}
           <div className="space-y-4 py-2">
@@ -1970,7 +1970,7 @@ export default function AdminDashboard() {
         <DialogContent className="sm:max-w-2xl bg-slate-950/92 border border-white/15 text-white backdrop-blur-md max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-lg font-normal tracking-tight text-white">Credenciales de Empresas</DialogTitle>
-            <DialogDescription className="text-white/60">
+            <DialogDescription className="text-white/80">
               Haz clic en "Generar Nueva Contraseña" para ver y resetear las credenciales de acceso
             </DialogDescription>
           </DialogHeader>
@@ -2021,7 +2021,7 @@ export default function AdminDashboard() {
         <DialogContent className="sm:max-w-lg bg-slate-950/95 border border-white/15 text-white backdrop-blur-md">
           <DialogHeader>
             <DialogTitle className="text-lg font-normal tracking-tight text-white">Cargar CSV de Empresas y Proyectos</DialogTitle>
-            <DialogDescription className="text-white/60">
+            <DialogDescription className="text-white/80">
               Sube un archivo CSV con el formato especificado
             </DialogDescription>
           </DialogHeader>

@@ -251,7 +251,7 @@ export default function CredencialesPanel() {
             <DialogTitle className="text-xl font-normal tracking-tight">
               Resetear contraseña
             </DialogTitle>
-            <DialogDescription className="text-white/60">
+            <DialogDescription className="text-white/80">
               Se generará una contraseña nueva para{" "}
               <span className="text-white font-medium">{confirmTarget?.nombre}</span>.
               Sus sesiones activas se cerrarán y deberá iniciar sesión con la nueva
@@ -295,7 +295,7 @@ export default function CredencialesPanel() {
             <DialogTitle className="text-xl font-normal tracking-tight">
               Contraseña generada
             </DialogTitle>
-            <DialogDescription className="text-white/60">
+            <DialogDescription className="text-white/80">
               Cópiala y entrégala al usuario. <span className="text-amber-300">No se mostrará de nuevo.</span>
             </DialogDescription>
           </DialogHeader>
