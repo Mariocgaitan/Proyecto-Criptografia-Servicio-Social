@@ -125,6 +125,7 @@ async def listar_eventos(db: AsyncSession) -> list[dict]:
             "anio": ev.anio,
             "activo": ev.activo,
             "iniciado": ev.iniciado,
+            "preregistro_abierto": ev.preregistro_abierto,
             "fecha_inicio_real": ev.fecha_inicio_real.isoformat() if ev.fecha_inicio_real else None,
             "participantes": counts.get(ev.id_evento, (0, 0))[0],
             "registrados": counts.get(ev.id_evento, (0, 0))[1],

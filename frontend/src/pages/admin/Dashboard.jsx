@@ -1601,13 +1601,22 @@ export default function AdminDashboard() {
 
                     <Button
                       onClick={() => setIsPreregConfirmOpen(true)}
-                      className="border border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/20 text-amber-200 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
                       disabled={!eventos.find(e => e.activo && e.preregistro_abierto)}
                     >
-                      <AlertTriangle className="w-4 h-4 mr-2" />
                       {eventos.find(e => e.activo && e.preregistro_abierto) ? "Finalizar Pre-registro" : "Pre-registro cerrado"}
                     </Button>
 
+                    <Button
+                      onClick={() => {
+                        const ev = eventos.find(e => e.activo && !e.iniciado);
+                        if (ev) handleOpenIniciarEvento(ev.id_evento);
+                      }}
+                      className="border border-white/10 bg-white/5 hover:bg-white/10 text-white/80 font-normal px-5 py-5 rounded-xl shadow-none transition-colors"
+                      disabled={!eventos.find(e => e.activo && !e.iniciado)}
+                    >
+                      {eventos.find(e => e.activo && !e.iniciado) ? "Mostrar QR" : "QR ya activado"}
+                    </Button>
 
                   </div>
 
