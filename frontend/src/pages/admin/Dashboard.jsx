@@ -451,6 +451,24 @@ export default function AdminDashboard() {
     } catch (err) { setErrorText(err.message); } finally { setIsSubmitting(false); }
   };
 
+  const handleIniciarEvento = async (idEvento) => {
+    const conf = window.confirm("¿Iniciar este evento? Se congelará la lista de participantes actuales. Esta acción no se puede deshacer.");
+    if (!conf) return;
+    setErrorText("");
+    try {
+      const res = await fetch(apiUrl(`/api/v1/admin/eventos/${idEvento}/iniciar`), {
+        method: "POST", credentials: "include",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "No se pudo iniciar el evento");
+      alert(`Evento iniciado. ${data.participantes_congelados} participantes congelados.`);
+      fetchData();
+    } catch (err) {
+      setErrorText(err.message);
+      alert("Error: " + err.message);
+    }
+  };
+
   const handleOpenCredenciales = useCallback(async () => {
     setIsCredencialesOpen(true);
     setErrorText("");
@@ -1643,11 +1661,28 @@ export default function AdminDashboard() {
                               <h4 className="text-sm font-normal text-white">{ev.nombre}</h4>
                               <p className="text-xs text-white/55 uppercase tracking-wide">{ev.periodo} {ev.anio}</p>
                             </div>
-                            <div className="flex items-center justify-start sm:justify-end">
-                              {ev.activo ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/70 bg-white/5 border border-white/10">
-                                  <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> En Curso
+                            <div className="flex items-center gap-2 flex-wrap justify-start sm:justify-end">
+                              {typeof ev.registrados === "number" && (
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md text-white/65 bg-white/10 border border-white/10">
+                                  {ev.iniciado ? `${ev.participantes} part.` : `${ev.registrados} reg.`}
                                 </span>
+                              )}
+                              {ev.iniciado ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-emerald-100 bg-emerald-600/20 border border-emerald-500/30">
+                                  <span className="w-1.5 h-1.5 bg-emerald-300 rounded-full" /> Iniciado
+                                </span>
+                              ) : ev.activo ? (
+                                <>
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/70 bg-white/5 border border-white/10">
+                                    <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-pulse" /> Pre-registro
+                                  </span>
+                                  <Button
+                                    onClick={() => handleIniciarEvento(ev.id_evento)}
+                                    className="border border-emerald-500/40 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-50 font-normal px-3 py-1.5 rounded-lg text-[11px]"
+                                  >
+                                    Iniciar Proyecto
+                                  </Button>
+                                </>
                               ) : (
                                 <span className="inline-flex items-center text-[10px] font-normal px-2.5 py-1 rounded-full uppercase tracking-wider text-white/40 bg-white/5 border border-white/10">
                                   Archivado

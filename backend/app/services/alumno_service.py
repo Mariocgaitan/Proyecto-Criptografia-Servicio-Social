@@ -101,7 +101,7 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
     rows = result.all()
 
     eventos_data = []
-    for _ue, evento in rows:
+    for ue, evento in rows:
         # ¿Está inscrito en este evento?
         ins_result = await db.execute(
             select(Inscripcion).where(
@@ -116,6 +116,9 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
             "nombre": evento.nombre,
             "periodo": evento.periodo,
             "anio": evento.anio,
+            "activo": evento.activo,
+            "iniciado": evento.iniciado,
+            "es_participante": ue.es_participante,
             "inscrito": inscripcion is not None,
             "inscripcion": None,
         }
@@ -183,8 +186,14 @@ async def generar_qr_payload(
     row = usr_ue_res.first()
     if not row:
         raise AlumnoError("No estás registrado para este evento o tu usuario no se encontró", 403)
-    
-    usuario, _ = row
+
+    usuario, usuario_evento = row
+
+    evento_obj = await db.get(Evento, id_evento)
+    if not evento_obj or not evento_obj.iniciado:
+        raise AlumnoError("El periodo aún no ha sido iniciado por el administrador.", 403)
+    if not usuario_evento.es_participante:
+        raise AlumnoError("No estás registrado como participante de este periodo.", 403)
 
     # 2. Verificar si ya está inscrito
     ins_result = await db.execute(

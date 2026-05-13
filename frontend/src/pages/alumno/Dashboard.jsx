@@ -774,11 +774,27 @@ export default function Dashboard() {
                 <p className="text-white/65 max-w-sm text-sm">No estás habilitado para ningún evento de Servicio Social en curso. Consulta con tu coordinador de carrera.</p>
               </motion.div>
             ) : (
-              data.eventos.map((evento, i) => (
-                <motion.div key={evento.id_evento} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1, duration: 0.5 }}>
-                  <EventCard evento={evento} onEnrollmentDetected={refreshEnrollmentStatus} />
-                </motion.div>
-              ))
+              data.eventos.map((evento, i) => {
+                const accesoBloqueado = !evento.iniciado || !evento.es_participante;
+                return (
+                  <motion.div key={evento.id_evento} initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.1, duration: 0.5 }}>
+                    {accesoBloqueado ? (
+                      <div className="bg-black/35 backdrop-blur-md rounded-3xl border border-white/15 p-10 flex flex-col items-center text-center shadow-2xl">
+                        <Calendar className="w-12 h-12 text-white/25 mb-4" />
+                        <h3 className="text-lg font-normal text-white mb-1">{evento.nombre}</h3>
+                        <p className="text-xs text-white/45 uppercase tracking-wider mb-4">{evento.periodo} {evento.anio}</p>
+                        {!evento.iniciado ? (
+                          <p className="text-white/65 text-sm max-w-sm">El periodo aún no ha sido iniciado por el administrador. Cuando inicie, podrás ver tu QR de inscripción si estás en el cohorte.</p>
+                        ) : (
+                          <p className="text-white/65 text-sm max-w-sm">No estás registrado como participante de este periodo. Contacta a tu coordinador si crees que es un error.</p>
+                        )}
+                      </div>
+                    ) : (
+                      <EventCard evento={evento} onEnrollmentDetected={refreshEnrollmentStatus} />
+                    )}
+                  </motion.div>
+                );
+              })
             )}
           </div>
         </motion.main>
