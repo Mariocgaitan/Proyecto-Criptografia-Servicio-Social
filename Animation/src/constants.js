@@ -50,13 +50,16 @@ export const FONTS = {
 
 // ── Frames por escena (30 FPS, total 2700 = 90s) ─────────────────────────────
 export const SCENE_FRAMES = {
-  S1:  { from: 0,    duration: 360 },   // 12s — El Problema
-  S2A: { from: 360,  duration: 600 },   // 20s — Estudiante
-  S2B: { from: 960,  duration: 540 },   // 18s — Empresa
-  S2C: { from: 1500, duration: 450 },   // 15s — Admin
-  S3:  { from: 1950, duration: 450 },   // 15s — Seguridad
-  S4:  { from: 2400, duration: 300 },   // 10s — Cierre
+  S1:      { from: 0,    duration: 360 },   // 12s — El Problema
+  SBRIDGE: { from: 360,  duration: 180 },   //  6s — Nace la línea digital
+  S2A:     { from: 540,  duration: 540 },   // 18s — Estudiante
+  S2B:     { from: 1080, duration: 420 },   // 14s — Empresa
+  SLIVE:   { from: 1500, duration: 450 },   // 15s — Evento vivo          (NEW)
+  S2C:     { from: 1950, duration: 390 },   // 13s — Admin
+  S3:      { from: 2340, duration: 240 },   //  8s — Seguridad
+  S4:      { from: 2580, duration: 120 },   //  4s — Cierre
 };
+// Total: 360+180+540+420+450+390+240+120 = 2700 ✓
 
 // ── Configuraciones de spring ─────────────────────────────────────────────────
 export const SPRING = {

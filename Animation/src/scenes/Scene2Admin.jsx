@@ -3,403 +3,272 @@ import { COLORS, FONTS } from "../constants.js";
 
 const C = { extrapolateLeft: "clamp", extrapolateRight: "clamp" };
 
-// Cada tarjeta entra desde la derecha, se detiene, sale a la izquierda
-const CARD_SEQUENCE = [
-  {
-    id: "preregistro",
-    icon: "🔒",
-    title: "Pre-registro",
-    desc: "Controla exactamente cuándo los alumnos pueden inscribirse al evento",
-    tag: "cerrar-preregistro",
-    enterF: 22, exitF: 92,
-  },
-  {
-    id: "evento",
-    icon: "▶",
-    title: "Iniciar Evento · Habilitar QR",
-    desc: "Un clic activa el acceso QR para todos los participantes registrados",
-    tag: "iniciar-evento",
-    enterF: 80, exitF: 158,
-  },
-  {
-    id: "proyectos",
-    icon: "📁",
-    title: "Gestión de Proyectos",
-    desc: "Cupos, capacidades y disponibilidad de cada empresa en tiempo real",
-    tag: "proyectos",
-    enterF: 146, exitF: 225,
-  },
-  {
-    id: "empresas",
-    icon: "🏢",
-    title: "Empresas + Carga CSV",
-    desc: "Registro masivo de empresas y proyectos con un solo archivo",
-    tag: "upload-csv",
-    enterF: 213, exitF: 292,
-  },
-  {
-    id: "inscripciones",
-    icon: "👥",
-    title: "Inscripciones en Vivo",
-    desc: "Feed en tiempo real — cada escaneo aparece al instante en el panel",
-    tag: "inscripciones",
-    enterF: 280, exitF: 368,
-  },
-  {
-    id: "credenciales",
-    icon: "🔑",
-    title: "Credenciales de Empresa",
-    desc: "Gestión de usuarios y reset de contraseñas para acceso al scanner",
-    tag: "credenciales",
-    enterF: 356, exitF: 428,
-  },
-];
+// Duration: 390 frames (13 s @ 30 fps)
 
 const CAPACITY_BARS = [
-  { label: "Cemex",   used: 3, max: 5, color: COLORS.accent  },
-  { label: "Femsa",   used: 1, max: 3, color: COLORS.violet  },
-  { label: "OXXO",    used: 4, max: 5, color: COLORS.green   },
-  { label: "Bimbo",   used: 2, max: 4, color: "#FF9900"      },
+  { label: "Cemex",   used: 3, max: 5, color: COLORS.accent            },
+  { label: "Femsa",   used: 1, max: 3, color: COLORS.violet            },
+  { label: "OXXO",    used: 4, max: 5, color: "#4D7AFF"               },
+  { label: "Bimbo",   used: 2, max: 4, color: "#A375FF"               },
+  { label: "Banorte", used: 3, max: 4, color: "rgba(255,255,255,0.45)" },
+];
+
+const LIVE_FEED = [
+  { name: "Carlos Silva",    code: "A01234567", empresa: "Cemex",   t: 88  },
+  { name: "Sofia Ramirez",   code: "A01098765", empresa: "Femsa",   t: 108 },
+  { name: "Diego Torres",    code: "A01182345", empresa: "OXXO",    t: 125 },
+  { name: "Ana Gutierrez",   code: "A01456789", empresa: "Bimbo",   t: 142 },
+  { name: "Luis Hernandez",  code: "A01789012", empresa: "Cemex",   t: 158 },
+  { name: "Valeria Morales", code: "A01234012", empresa: "Banorte", t: 173 },
 ];
 
 const COMPANIES = ["Cemex", "Femsa", "OXXO", "Bimbo", "Banorte"];
-
-const LIVE_ROWS = [
-  { name: "Carlos Silva",   code: "A01234567", empresa: "Cemex"   },
-  { name: "Sofía Ramírez",  code: "A01098765", empresa: "Femsa"   },
-  { name: "Diego Torres",   code: "A01182345", empresa: "Bimbo"   },
-];
-
-const CRED_USERS = [
-  { name: "cemex_admin",  email: "admin@cemex.com" },
-  { name: "femsa_ops",    email: "ops@femsa.com"   },
-  { name: "oxxo_scanner", email: "scan@oxxo.com"   },
-];
-
-function CardVisual({ id, localF, fps }) {
-  if (id === "preregistro") {
-    const isOpen   = localF < 32;
-    const toggleX  = isOpen ? 24 : 2;
-    const toggleBg = isOpen ? COLORS.green : "rgba(255,255,255,0.18)";
-    const flashOp  = interpolate(localF, [28, 38], [0, 1], { ...C, extrapolateRight: "clamp" });
-    const countOp  = interpolate(localF, [35, 55], [0, 1], C);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontFamily: FONTS.sans, fontSize: 18, fontWeight: 600, color: COLORS.white }}>
-              Estado actual
-            </div>
-            <div style={{ fontFamily: FONTS.mono, fontSize: 13, marginTop: 5, color: isOpen ? COLORS.green : "#FF6B6B" }}>
-              {isOpen ? "● Abierto para inscripciones" : "● Cerrado · ventana expirada"}
-            </div>
-          </div>
-          <div style={{
-            width: 62, height: 32, borderRadius: 16, position: "relative",
-            backgroundColor: toggleBg,
-            boxShadow: isOpen ? `0 0 12px ${COLORS.greenGlow}` : "none",
-          }}>
-            <div style={{
-              position: "absolute", top: 5, left: toggleX, width: 22, height: 22,
-              borderRadius: "50%", backgroundColor: "#fff",
-              boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
-            }} />
-          </div>
-        </div>
-        <div style={{
-          padding: "18px 22px", borderRadius: 12,
-          backgroundColor: "rgba(255,255,255,0.04)",
-          border: `1px solid rgba(255,255,255,${0.08 + (isOpen ? 0 : flashOp * 0.1)})`,
-          opacity: countOp,
-        }}>
-          <div style={{ fontFamily: FONTS.sans, fontSize: 46, fontWeight: 900, color: COLORS.white, letterSpacing: "-2px", lineHeight: 1 }}>
-            247
-          </div>
-          <div style={{ fontFamily: FONTS.mono, fontSize: 12, color: COLORS.white30, marginTop: 6 }}>
-            solicitudes de preregistro recibidas
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "evento") {
-    const btnClicked = localF >= 22;
-    const btnScl     = localF >= 22 && localF < 38 ? interpolate(localF, [22, 30, 38], [1, 0.92, 1], C) : 1;
-    const count      = Math.floor(interpolate(Math.min(localF, 75), [28, 75], [0, 158], C));
-    const counterOp  = interpolate(localF, [28, 48], [0, 1], C);
-    const dotPulse   = 0.6 + 0.4 * Math.sin(localF / 5 * Math.PI);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, alignItems: "center" }}>
-        <div style={{
-          width: "100%", padding: "20px 0", borderRadius: 14, textAlign: "center",
-          backgroundColor: COLORS.accent, transform: `scale(${btnScl})`,
-          fontFamily: FONTS.sans, fontSize: 20, fontWeight: 700, color: "#fff",
-          boxShadow: `0 6px 28px ${COLORS.accentGlow}`,
-        }}>
-          ▶  Iniciar evento
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, opacity: counterOp }}>
-          <div style={{
-            width: 12, height: 12, borderRadius: "50%", backgroundColor: COLORS.green,
-            boxShadow: `0 0 10px ${COLORS.green}`, opacity: dotPulse,
-          }} />
-          <span style={{ fontFamily: FONTS.sans, fontSize: 34, fontWeight: 800, color: COLORS.white, letterSpacing: "-1px" }}>
-            {count}
-          </span>
-          <span style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.white60 }}>
-            participantes habilitados
-          </span>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "proyectos") {
-    const barProg = interpolate(localF, [14, 70], [0, 1], C);
-    const totalOp  = interpolate(localF, [55, 74], [0, 1], C);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {CAPACITY_BARS.map((b, i) => {
-          const filled = Math.min(b.used, Math.round(b.max * barProg));
-          return (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80, width: 60, flexShrink: 0 }}>
-                {b.label}
-              </span>
-              <div style={{ flex: 1, height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.10)", overflow: "hidden" }}>
-                <div style={{ height: "100%", width: `${(filled / b.max) * 100}%`, backgroundColor: b.color, borderRadius: 5 }} />
-              </div>
-              <span style={{ fontFamily: FONTS.mono, fontSize: 12, color: b.color, width: 42, textAlign: "right" }}>
-                {filled}/{b.max}
-              </span>
-            </div>
-          );
-        })}
-        <div style={{ fontFamily: FONTS.mono, fontSize: 11, color: COLORS.white30, marginTop: 4, opacity: totalOp }}>
-          24 proyectos activos · 5 empresas participantes
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "empresas") {
-    const tagsVisible = Math.floor(interpolate(localF, [12, 60], [0, COMPANIES.length], C));
-    const csvOp = interpolate(localF, [58, 78], [0, 1], C);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-          {COMPANIES.slice(0, tagsVisible).map((c, i) => {
-            const tagOp = interpolate(localF, [12 + i * 9, 22 + i * 9], [0, 1], C);
-            const tagScl = spring({ frame: localF - (12 + i * 9), fps, config: { damping: 24, stiffness: 200 }, from: 0.7, to: 1 });
-            return (
-              <div key={i} style={{
-                padding: "6px 16px", borderRadius: 22,
-                backgroundColor: "rgba(0,85,255,0.12)", border: "1px solid rgba(0,85,255,0.30)",
-                fontFamily: FONTS.sans, fontSize: 14, color: COLORS.accent,
-                opacity: tagOp, transform: `scale(${tagScl})`,
-              }}>
-                {c}
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, opacity: csvOp,
-          padding: "12px 16px", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.18)",
-          backgroundColor: "rgba(255,255,255,0.03)",
-        }}>
-          <span style={{ fontSize: 22 }}>📄</span>
-          <div>
-            <div style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80 }}>Carga masiva vía CSV</div>
-            <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, marginTop: 2 }}>
-              POST /api/v1/admin/upload-csv
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (id === "inscripciones") {
-    const count  = Math.floor(interpolate(Math.min(localF, 65), [8, 65], [240, 247], C));
-    const rowsVisible = Math.floor(interpolate(localF, [45, 72], [0, 3], C));
-    const dotPulse = 0.55 + 0.45 * Math.sin(localF / 6 * Math.PI);
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <span style={{ fontFamily: FONTS.sans, fontSize: 56, fontWeight: 900, color: COLORS.white, letterSpacing: "-2px", lineHeight: 1 }}>
-            {count}
-          </span>
-          <span style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.white30 }}>inscritos</span>
-        </div>
-        {LIVE_ROWS.slice(0, rowsVisible).map((r, i) => {
-          const rowOp = interpolate(localF, [45 + i * 9, 60 + i * 9], [0, 1], C);
-          return (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 10, padding: "8px 0",
-              borderTop: "1px solid rgba(255,255,255,0.07)", opacity: rowOp,
-            }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: COLORS.green, opacity: dotPulse, flexShrink: 0 }} />
-              <span style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80, flex: 1 }}>{r.name}</span>
-              <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30 }}>{r.code}</span>
-              <span style={{ fontFamily: FONTS.mono, fontSize: 11, color: COLORS.accent }}>{r.empresa}</span>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-
-  if (id === "credenciales") {
-    const resetHighlight = interpolate(localF, [30, 48], [0, 1], { ...C, extrapolateRight: "clamp" });
-    return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        {CRED_USERS.map((u, i) => {
-          const rowOp = interpolate(localF, [10 + i * 10, 25 + i * 10], [0, 1], C);
-          const isTarget = i === 0;
-          return (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 12, padding: "10px 14px",
-              borderRadius: 10, border: "1px solid rgba(255,255,255,0.07)",
-              backgroundColor: "rgba(255,255,255,0.03)",
-              opacity: rowOp,
-            }}>
-              <div style={{
-                width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                backgroundColor: `rgba(0,85,255,0.15)`,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 16,
-              }}>🏢</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white }}>{u.name}</div>
-                <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, marginTop: 2 }}>{u.email}</div>
-              </div>
-              <div style={{
-                padding: "5px 14px", borderRadius: 7, cursor: "pointer",
-                backgroundColor: isTarget
-                  ? `rgba(0,85,255,${0.12 + resetHighlight * 0.22})`
-                  : "rgba(0,85,255,0.08)",
-                border: `1px solid rgba(0,85,255,${isTarget ? 0.4 + resetHighlight * 0.5 : 0.2})`,
-                fontFamily: FONTS.mono, fontSize: 12, color: COLORS.accent,
-              }}>
-                ↺ Reset
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  }
-  return null;
-}
+const CRED_USERS = ["cemex_admin", "femsa_ops", "oxxo_scanner"];
 
 export const Scene2Admin = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
   const sceneIn  = interpolate(frame, [0, 22], [0, 1], C);
-  const sceneOut = interpolate(frame, [422, 450], [1, 0], C);
-  const labelOp  = interpolate(frame, [10, 38], [0, 1], C);
+  const sceneOut = interpolate(frame, [368, 390], [1, 0], C);
+  const opacity  = Math.min(sceneIn, sceneOut);
+  const labelOp  = interpolate(frame, [8, 32], [0, 1], C);
 
-  // Puntos de paginación — cuál está más centrado en el frame actual
-  const activeIdx = CARD_SEQUENCE.reduce((best, card, i) => {
-    const mid = (card.enterF + card.exitF) / 2;
-    const bestMid = (CARD_SEQUENCE[best].enterF + CARD_SEQUENCE[best].exitF) / 2;
-    return Math.abs(frame - mid) < Math.abs(frame - bestMid) ? i : best;
-  }, 0);
+  const chromeOp = interpolate(frame, [5, 35], [0, 1], C);
+
+  // Headline
+  const headlineOp  = interpolate(frame, [15, 42], [0, 1], C);
+  const headlineScl = spring({ frame: frame - 15, fps, config: { damping: 28, stiffness: 195 }, from: 0.88, to: 1 });
+
+  // Status badge
+  const statusOp = interpolate(frame, [30, 55], [0, 1], C);
+  const dotPulse = 0.55 + 0.45 * Math.sin((frame / 6) * Math.PI);
+
+  // Left panel
+  const leftOp       = interpolate(frame, [28, 55], [0, 1], C);
+  const toggleX      = interpolate(frame, [56, 70], [2, 24], C);
+  const isToggleOn   = frame >= 63;
+  const iniciaBtnOp  = interpolate(frame, [40, 62], [0, 1], C);
+  const csvOp        = interpolate(frame, [82, 108], [0, 1], C);
+  const credOp       = interpolate(frame, [100, 125], [0, 1], C);
+
+  // Center panel
+  const feedTitleOp = interpolate(frame, [72, 96], [0, 1], C);
+  const countOp     = interpolate(frame, [38, 62], [0, 1], C);
+  const inscritos   = Math.floor(interpolate(frame, [42, 210], [0, 260], C));
+  const statOp      = interpolate(frame, [202, 230], [0, 1], C);
+
+  // Right panel
+  const rightOp = interpolate(frame, [52, 76], [0, 1], C);
+  const barProg = interpolate(frame, [62, 170], [0, 1], C);
+  const tagsOp  = interpolate(frame, [142, 168], [0, 1], C);
+  const projOp  = interpolate(frame, [198, 225], [0, 1], C);
+
+  // Push zoom
+  const sceneZoom = interpolate(frame, [358, 390], [1, 1.04], C);
 
   return (
     <div style={{
-      width: 1920, height: 1080, backgroundColor: COLORS.bg,
-      display: "flex", flexDirection: "column",
-      alignItems: "center", justifyContent: "center",
+      width: 1920, height: 1080,
+      backgroundColor: COLORS.surface,
       position: "relative", overflow: "hidden",
-      opacity: Math.min(sceneIn, sceneOut),
+      opacity,
     }}>
-      {/* Dot grid */}
+      {/* Grid background */}
       <div style={{
-        position: "absolute", inset: 0, pointerEvents: "none", opacity: 0.04,
-        backgroundImage: `radial-gradient(circle, ${COLORS.ink} 1px, transparent 1px)`,
-        backgroundSize: "56px 56px",
+        position: "absolute", inset: 0, pointerEvents: "none",
+        backgroundImage: `
+          linear-gradient(rgba(0,85,255,0.04) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0,85,255,0.04) 1px, transparent 1px)
+        `,
+        backgroundSize: "60px 60px", opacity: 0.8,
       }} />
 
-      {/* Etiqueta */}
+      {/* Top glow */}
       <div style={{
-        position: "absolute", top: 60, left: 80,
-        fontFamily: FONTS.mono, fontSize: 13, color: COLORS.ink45,
-        letterSpacing: "3px", textTransform: "uppercase", opacity: labelOp,
-      }}>
-        02-C · Admin
-      </div>
+        position: "absolute", top: 0, left: 0, right: 0, height: 220, pointerEvents: "none",
+        background: "linear-gradient(180deg, rgba(0,85,255,0.07) 0%, transparent 100%)",
+      }} />
 
-      {/* Paginación */}
-      <div style={{
-        position: "absolute", top: 68, left: "50%", transform: "translateX(-50%)",
-        display: "flex", gap: 8, alignItems: "center",
-        opacity: interpolate(frame, [22, 48], [0, 1], C),
-      }}>
-        {CARD_SEQUENCE.map((c, i) => (
-          <div key={i} style={{
-            width: i === activeIdx ? 24 : 8, height: 8, borderRadius: 4,
-            backgroundColor: i === activeIdx ? COLORS.accent : COLORS.ink20,
-            transition: "none",
-          }} />
-        ))}
-      </div>
+      {/* Zoom wrapper */}
+      <div style={{ position: "absolute", inset: 0, transform: `scale(${sceneZoom})`, transformOrigin: "50% 50%" }}>
 
-      {/* TARJETAS — una a la vez */}
-      <div style={{ position: "relative", width: 920, height: 430 }}>
-        {CARD_SEQUENCE.map((card) => {
-          const isVisible = frame >= card.enterF && frame <= card.exitF;
-          if (!isVisible) return null;
-          const localF = frame - card.enterF;
-          const xPos   = interpolate(frame,
-            [card.enterF, card.enterF + 14, card.exitF - 14, card.exitF],
-            [1400, 0, 0, -1400], C
-          );
-          const op = interpolate(frame,
-            [card.enterF, card.enterF + 10, card.exitF - 10, card.exitF],
-            [0, 1, 1, 0], C
-          );
-          return (
-            <div key={card.id} style={{
-              position: "absolute", inset: 0,
-              backgroundColor: COLORS.surfaceCard,
-              border: `1px solid ${COLORS.surfaceBorder}`,
-              borderRadius: 22, padding: "38px 44px",
-              display: "flex", gap: 44,
-              transform: `translateX(${xPos}px)`,
-              opacity: op,
-              boxShadow: "0 10px 50px rgba(0,0,0,0.24)",
-            }}>
-              {/* LEFT: info */}
-              <div style={{ width: 295, display: "flex", flexDirection: "column", gap: 14, flexShrink: 0 }}>
-                <div style={{ fontSize: 46 }}>{card.icon}</div>
-                <div style={{ fontFamily: FONTS.sans, fontSize: 22, fontWeight: 800, color: COLORS.white, letterSpacing: "-0.5px", lineHeight: 1.2 }}>
-                  {card.title}
+        {/* TOP NAV */}
+        <div style={{
+          position: "absolute", top: 48, left: 80, right: 80,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          opacity: chromeOp, zIndex: 30,
+        }}>
+          <div style={{ opacity: headlineOp, transform: `scale(${headlineScl})`, transformOrigin: "left center" }}>
+            <div style={{ fontFamily: FONTS.sans, fontSize: 34, fontWeight: 800, color: COLORS.white, letterSpacing: "-1px" }}>
+              Control en tiempo real.
+            </div>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 12, color: COLORS.white60, letterSpacing: "2px", textTransform: "uppercase", marginTop: 4 }}>
+              Feria Servicio Social - Panel de administracion
+            </div>
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 10, padding: "10px 22px", borderRadius: 30,
+            backgroundColor: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.28)",
+            opacity: statusOp,
+          }}>
+            <div style={{ width: 9, height: 9, borderRadius: "50%", backgroundColor: COLORS.accent, opacity: dotPulse, boxShadow: `0 0 10px ${COLORS.accent}` }} />
+            <span style={{ fontFamily: FONTS.mono, fontSize: 13, color: COLORS.accent, letterSpacing: "1.5px", textTransform: "uppercase" }}>Evento activo</span>
+          </div>
+        </div>
+
+        {/* Top divider */}
+        <div style={{ position: "absolute", top: 146, left: 80, right: 80, height: 1, backgroundColor: COLORS.surfaceBorder, opacity: chromeOp }} />
+
+        {/* THREE COLUMNS */}
+        <div style={{ position: "absolute", top: 158, left: 80, right: 80, bottom: 72, display: "flex", gap: 0, opacity: chromeOp }}>
+
+          {/* LEFT: Controles */}
+          <div style={{ width: 330, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, paddingRight: 28, opacity: leftOp }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: 2 }}>Controles</div>
+
+            {/* Pre-registro toggle */}
+            <div style={{ padding: "16px 18px", borderRadius: 12, backgroundColor: COLORS.surfaceCard, border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontFamily: FONTS.sans, fontSize: 13, fontWeight: 600, color: COLORS.white }}>Pre-registro</div>
+                  <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: isToggleOn ? COLORS.white80 : COLORS.white30, marginTop: 3 }}>
+                    {isToggleOn ? "Abierto" : "Cerrado"}
+                  </div>
                 </div>
-                <div style={{ fontFamily: FONTS.sans, fontSize: 14, color: COLORS.white60, lineHeight: 1.6, flex: 1 }}>
-                  {card.desc}
+                <div style={{ width: 50, height: 26, borderRadius: 13, position: "relative", backgroundColor: isToggleOn ? COLORS.accent : "rgba(255,255,255,0.18)", boxShadow: isToggleOn ? `0 0 12px ${COLORS.accentGlow}` : "none", flexShrink: 0 }}>
+                  <div style={{ position: "absolute", top: 3, left: toggleX, width: 20, height: 20, borderRadius: "50%", backgroundColor: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" }} />
                 </div>
-                <div style={{
-                  padding: "6px 14px", borderRadius: 7, alignSelf: "flex-start",
-                  backgroundColor: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.25)",
-                  fontFamily: FONTS.mono, fontSize: 11, color: COLORS.accent,
-                }}>
-                  /{card.tag}
-                </div>
-              </div>
-
-              {/* Divider */}
-              <div style={{ width: 1, backgroundColor: COLORS.surfaceBorder, flexShrink: 0 }} />
-
-              {/* RIGHT: visual interactivo */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                <CardVisual id={card.id} localF={localF} fps={fps} />
               </div>
             </div>
-          );
-        })}
+
+            {/* Iniciar evento */}
+            <div style={{ padding: "15px 18px", borderRadius: 12, backgroundColor: COLORS.accent, boxShadow: `0 4px 22px ${COLORS.accentGlow}`, display: "flex", alignItems: "center", gap: 10, opacity: iniciaBtnOp }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.18)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONTS.mono, fontSize: 12, color: COLORS.white }}>
+                &#9654;
+              </div>
+              <span style={{ fontFamily: FONTS.sans, fontSize: 14, fontWeight: 700, color: COLORS.white }}>Iniciar evento</span>
+            </div>
+
+            {/* CSV */}
+            <div style={{ padding: "13px 16px", borderRadius: 10, border: "1px dashed rgba(255,255,255,0.14)", backgroundColor: "rgba(255,255,255,0.02)", display: "flex", alignItems: "center", gap: 12, opacity: csvOp }}>
+              <div style={{ width: 34, height: 34, borderRadius: 8, backgroundColor: "rgba(0,85,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: FONTS.mono, fontSize: 10, color: COLORS.accent }}>CSV</div>
+              <div>
+                <div style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80 }}>Carga masiva</div>
+                <div style={{ fontFamily: FONTS.mono, fontSize: 9, color: COLORS.white30, marginTop: 2 }}>/api/admin/upload-csv</div>
+              </div>
+            </div>
+
+            {/* Credenciales */}
+            <div style={{ padding: "14px 16px", borderRadius: 12, backgroundColor: COLORS.surfaceCard, border: "1px solid rgba(255,255,255,0.06)", opacity: credOp }}>
+              <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 10 }}>Credenciales</div>
+              {CRED_USERS.map((u, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 7, opacity: interpolate(frame, [100 + i * 12, 118 + i * 12], [0, 1], C) }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: COLORS.accent, flexShrink: 0 }} />
+                  <span style={{ fontFamily: FONTS.mono, fontSize: 11, color: COLORS.white60 }}>{u}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider L-C */}
+          <div style={{ width: 1, flexShrink: 0, backgroundColor: COLORS.surfaceBorder }} />
+
+          {/* CENTER: Inscripciones en vivo */}
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", paddingLeft: 28, paddingRight: 28 }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: 10, opacity: feedTitleOp }}>Inscripciones en vivo</div>
+
+            {/* Big counter */}
+            <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginBottom: 14, opacity: countOp }}>
+              <span style={{ fontFamily: FONTS.sans, fontSize: 88, fontWeight: 900, color: COLORS.white, letterSpacing: "-4px", lineHeight: 1 }}>{inscritos}</span>
+              <div>
+                <div style={{ fontFamily: FONTS.sans, fontSize: 15, color: COLORS.white60 }}>inscritos</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 5 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: COLORS.accent, opacity: dotPulse, boxShadow: `0 0 8px ${COLORS.accent}` }} />
+                  <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.accent, letterSpacing: "1.5px" }}>EN TIEMPO REAL</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: 1, backgroundColor: COLORS.surfaceBorder, marginBottom: 12 }} />
+
+            {/* Live feed */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 4, flex: 1 }}>
+              {LIVE_FEED.map((r, i) => {
+                if (frame < r.t) return null;
+                const rowOp = interpolate(frame, [r.t, r.t + 18], [0, 1], C);
+                const isNew = frame < r.t + 28;
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, padding: "9px 14px", borderRadius: 8, backgroundColor: isNew ? "rgba(0,85,255,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${isNew ? "rgba(0,85,255,0.18)" : "rgba(255,255,255,0.05)"}`, opacity: rowOp }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", backgroundColor: COLORS.accent, opacity: isNew ? dotPulse : 0.30, flexShrink: 0 }} />
+                    <span style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80, flex: 1 }}>{r.name}</span>
+                    <span style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30 }}>{r.code}</span>
+                    <span style={{ fontFamily: FONTS.mono, fontSize: 11, color: COLORS.accent, padding: "2px 10px", borderRadius: 12, backgroundColor: "rgba(0,85,255,0.12)" }}>{r.empresa}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Stat footer */}
+            <div style={{ padding: "14px 18px", borderRadius: 12, backgroundColor: "rgba(0,85,255,0.06)", border: "1px solid rgba(0,85,255,0.15)", marginTop: 12, opacity: statOp }}>
+              <div style={{ fontFamily: FONTS.sans, fontSize: 14, fontWeight: 600, color: COLORS.white80 }}>260 inscritos en 10 minutos</div>
+              <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, marginTop: 4 }}>26 reg/min &middot; Tasa de exito: 100%</div>
+            </div>
+          </div>
+
+          {/* Divider C-R */}
+          <div style={{ width: 1, flexShrink: 0, backgroundColor: COLORS.surfaceBorder }} />
+
+          {/* RIGHT: Cupos + Empresas */}
+          <div style={{ width: 360, flexShrink: 0, display: "flex", flexDirection: "column", gap: 14, paddingLeft: 28, opacity: rightOp }}>
+            <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, letterSpacing: "2.5px", textTransform: "uppercase", marginBottom: 2 }}>Cupos por empresa</div>
+
+            {CAPACITY_BARS.map((b, i) => {
+              const filled   = b.used * Math.min(1, barProg);
+              const barWidth = (filled / b.max) * 100;
+              const barOp    = interpolate(frame, [62 + i * 12, 82 + i * 12], [0, 1], C);
+              return (
+                <div key={i} style={{ opacity: barOp }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+                    <span style={{ fontFamily: FONTS.sans, fontSize: 13, color: COLORS.white80 }}>{b.label}</span>
+                    <span style={{ fontFamily: FONTS.mono, fontSize: 11, color: b.color, padding: "2px 8px", borderRadius: 8, backgroundColor: `${b.color}18` }}>{Math.round(filled)}/{b.max}</span>
+                  </div>
+                  <div style={{ height: 10, borderRadius: 5, backgroundColor: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${barWidth}%`, background: `linear-gradient(90deg, ${b.color} 0%, ${b.color}BB 100%)`, borderRadius: 5, boxShadow: `0 0 8px ${b.color}44` }} />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Empresas activas */}
+            <div style={{ padding: "14px 16px", borderRadius: 12, backgroundColor: COLORS.surfaceCard, border: "1px solid rgba(255,255,255,0.07)", opacity: tagsOp }}>
+              <div style={{ fontFamily: FONTS.mono, fontSize: 10, color: COLORS.white30, letterSpacing: "2px", textTransform: "uppercase", marginBottom: 10 }}>Empresas activas</div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 7 }}>
+                {COMPANIES.map((c, i) => (
+                  <div key={i} style={{ padding: "4px 13px", borderRadius: 20, backgroundColor: "rgba(0,85,255,0.10)", border: "1px solid rgba(0,85,255,0.26)", fontFamily: FONTS.sans, fontSize: 12, color: COLORS.accent, opacity: interpolate(frame, [142 + i * 9, 160 + i * 9], [0, 1], C) }}>{c}</div>
+                ))}
+              </div>
+            </div>
+
+            {/* Proyectos summary */}
+            <div style={{ padding: "14px 16px", borderRadius: 12, backgroundColor: "rgba(0,85,255,0.05)", border: "1px solid rgba(0,85,255,0.12)", opacity: projOp }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <span style={{ fontFamily: FONTS.sans, fontSize: 12, color: COLORS.white60 }}>Proyectos activos</span>
+                <span style={{ fontFamily: FONTS.sans, fontSize: 22, fontWeight: 800, color: COLORS.accent }}>24</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontFamily: FONTS.sans, fontSize: 12, color: COLORS.white60 }}>Cupos disponibles</span>
+                <span style={{ fontFamily: FONTS.sans, fontSize: 22, fontWeight: 800, color: COLORS.accent }}>{Math.max(0, 21 - Math.round(21 * Math.min(1, barProg)))}</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>{/* end zoom wrapper */}
+
+      {/* Scene label */}
+      <div style={{ position: "absolute", top: 60, right: 80, zIndex: 80, fontFamily: FONTS.mono, fontSize: 13, color: COLORS.white60, letterSpacing: "3px", textTransform: "uppercase", opacity: labelOp }}>
+        05 &middot; Centro de control
       </div>
     </div>
   );
