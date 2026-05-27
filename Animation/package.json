@@ -1,0 +1,20 @@
+{
+  "name": "feria-animation",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "studio": "remotion studio src/index.jsx",
+    "render": "remotion render src/index.jsx FeriaServicioSocial out/feria.mp4",
+    "render:hq": "remotion render src/index.jsx FeriaServicioSocial out/feria_hq.mp4 --jpeg-quality=95 --concurrency=4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/google-fonts": "^4.0.0",
+    "lucide-react": "^0.577.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-icons": "^4.12.0",
+    "remotion": "^4.0.0"
+  }
+}
