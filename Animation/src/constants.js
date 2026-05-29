@@ -48,18 +48,19 @@ export const FONTS = {
   mono: '"Fira Code", "Courier New", monospace',
 };
 
-// ── Frames por escena (30 FPS, total 2700 = 90s) ─────────────────────────────
+// ── Frames por escena (30 FPS, total 3000 = 100s) ────────────────────────────
 export const SCENE_FRAMES = {
-  S1:      { from: 0,    duration: 360 },   // 12s — El Problema
-  SBRIDGE: { from: 360,  duration: 180 },   //  6s — Nace la línea digital
-  S2A:     { from: 540,  duration: 540 },   // 18s — Estudiante
-  S2B:     { from: 1080, duration: 420 },   // 14s — Empresa
-  SLIVE:   { from: 1500, duration: 450 },   // 15s — Evento vivo          (NEW)
-  S2C:     { from: 1950, duration: 390 },   // 13s — Admin
-  S3:      { from: 2340, duration: 240 },   //  8s — Seguridad
-  S4:      { from: 2580, duration: 120 },   //  4s — Cierre
+  S0:      { from: 0,    duration: 300 },   // 10s — Browser search intro
+  S1:      { from: 300,  duration: 360 },   // 12s — El Problema
+  SBRIDGE: { from: 660,  duration: 180 },   //  6s — Nace la línea digital
+  S2A:     { from: 840,  duration: 540 },   // 18s — Estudiante
+  S2B:     { from: 1380, duration: 420 },   // 14s — Empresa
+  SLIVE:   { from: 1800, duration: 450 },   // 15s — Evento vivo
+  S2C:     { from: 2250, duration: 390 },   // 13s — Admin
+  S3:      { from: 2640, duration: 240 },   //  8s — Seguridad
+  S4:      { from: 2880, duration: 120 },   //  4s — Cierre
 };
-// Total: 360+180+540+420+450+390+240+120 = 2700 ✓
+// Total: 300+360+180+540+420+450+390+240+120 = 3000 ✓
 
 // ── Configuraciones de spring ─────────────────────────────────────────────────
 export const SPRING = {

@@ -4,30 +4,8 @@ import { DigitalGuideLine } from "../components/DigitalGuideLine.jsx";
 
 const C = { extrapolateLeft: "clamp", extrapolateRight: "clamp" };
 
-// Paleta de bandas — solo colores de la paleta oficial (sin rojo/verde/naranja)
-const HEADER_COLORS = [COLORS.accent, COLORS.violet, "#4D7AFF", "#1E3A8A", "#5B21B6"];
 
-// Generador pseudo-aleatorio determinístico (reproducible, sin Math.random)
-function hr(seed) {
-  const x = Math.sin(seed * 127.1 + 311.7) * 43758.5453;
-  return x - Math.floor(x);
-}
 
-// 65 papeles: posición orgánica, delays cortos, dinámica variada por papel
-// Sin cuadrícula — cada papel cae de forma única con su propio rebote
-const PAPERS = Array.from({ length: 65 }, (_, i) => ({
-  x:      hr(i * 3)     * 1940 - 970,          // -970 a +970
-  y:      hr(i * 3 + 1) * 1060 - 495,          // cubre toda la pantalla
-  rot:    hr(i * 3 + 2) * 56   - 28,           // -28 a +28 grados
-  delay:  Math.floor(hr(i * 5 + 9) * 95) + 6,  // 6..101 frames — llegan rapido
-  w:      Math.floor(hr(i * 5 + 7) * 42) + 84, // 84..126 px
-  damp:   12 + hr(i * 7 + 3) * 10,             // 12..22  (variedad de rebote)
-  stiff:  95 + hr(i * 7 + 4) * 65,             // 95..160 (caída rápida o lenta)
-  startY: -(900 + hr(i * 7 + 5) * 330),        // -900..-1230 (alturas variadas)
-}));
-
-const SWEEP_START = 230;
-const SWEEP_DUR   = 52;
 
 export const Scene1Problema = () => {
   const frame = useCurrentFrame();
@@ -126,68 +104,7 @@ export const Scene1Problema = () => {
         </div>
       </div>
 
-      {/* 65 papeles — posición orgánica, caída variada, llegada rápida */}
-      {PAPERS.map((p, i) => {
-        // Cada papel tiene su propio spring de caída (damping y stiffness únicos)
-        const landY = spring({
-          frame: frame - p.delay, fps,
-          config: { damping: p.damp, stiffness: p.stiff },
-          from: p.startY, to: p.y,
-        });
-        const landScale = spring({
-          frame: frame - p.delay, fps,
-          config: { damping: p.damp + 8, stiffness: p.stiff + 40 },
-          from: 0.15, to: 1,
-        });
-        const appearedOp = interpolate(frame, [p.delay, p.delay + 8], [0, 1], C);
 
-        // Sweep — vuelan radialmente hacia afuera
-        const sweepProg  = interpolate(frame, [SWEEP_START, SWEEP_START + SWEEP_DUR], [0, 1], C);
-        const dist       = Math.sqrt(p.x * p.x + p.y * p.y) || 1;
-        const sweepX     = (p.x / dist) * sweepProg * 2200;
-        const sweepY     = (p.y / dist) * sweepProg * 1300;
-        const sweepScale = interpolate(frame, [SWEEP_START, SWEEP_START + SWEEP_DUR * 0.8], [1, 0.3], C);
-        const sweepOp    = interpolate(frame, [SWEEP_START + 5, SWEEP_START + SWEEP_DUR * 0.7], [1, 0], C);
-
-        const isSweeping = frame >= SWEEP_START;
-        const tx = isSweeping ? p.x + sweepX : p.x;
-        const ty = isSweeping ? p.y + sweepY : landY;
-        const sc = isSweeping ? sweepScale   : landScale;
-        const op = isSweeping ? sweepOp      : appearedOp;
-
-        const pw = p.w;
-        const ph = Math.round(pw * 1.294);
-        const hc = HEADER_COLORS[i % HEADER_COLORS.length];
-
-        return (
-          <div key={i} style={{
-            position: "absolute", left: "50%", top: "50%",
-            width: pw, height: ph,
-            marginLeft: -pw / 2, marginTop: -ph / 2,
-            transform: `translate(${tx}px, ${ty}px) rotate(${p.rot}deg) scale(${sc})`,
-            opacity: op, zIndex: 3 + i,
-            backgroundColor: "#FEFEFE", borderRadius: 2,
-            border: "1px solid rgba(0,0,0,0.08)",
-            boxShadow: "1px 3px 12px rgba(0,0,0,0.18), 0 1px 0 rgba(0,0,0,0.05)",
-            overflow: "hidden",
-          }}>
-            <div style={{ height: 7, backgroundColor: hc, opacity: 0.82 }} />
-            <div style={{ padding: "5px 8px 4px", display: "flex", flexDirection: "column" }}>
-              <div style={{ height: 3, borderRadius: 1, backgroundColor: "rgba(0,0,0,0.18)", width: "87%", marginBottom: 5 }} />
-              {[82, 68, 90, 55, 75, 88, 60].map((w, j) => (
-                <div key={j} style={{ marginBottom: 4 }}>
-                  <div style={{ height: 1.5, borderRadius: 0.5, backgroundColor: "rgba(0,0,0,0.07)", width: `${Math.round(w * 0.42)}%`, marginBottom: 1.5 }} />
-                  <div style={{ height: 1.5, borderRadius: 0.5, backgroundColor: `rgba(0,0,0,${j % 2 === 0 ? 0.12 : 0.09})`, width: `${w}%` }} />
-                </div>
-              ))}
-              <div style={{ marginTop: 4, display: "flex", gap: 6 }}>
-                <div style={{ flex: 1, borderBottom: "1px solid rgba(0,0,0,0.10)", height: 9 }} />
-                <div style={{ flex: 1, borderBottom: "1px solid rgba(0,0,0,0.10)", height: 9 }} />
-              </div>
-            </div>
-          </div>
-        );
-      })}
 
       {/* "Hay una mejor manera." */}
       {frame >= 258 && (

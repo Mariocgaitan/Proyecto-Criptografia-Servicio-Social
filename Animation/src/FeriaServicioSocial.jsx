@@ -1,6 +1,7 @@
-﻿import { useCurrentFrame, Sequence, interpolate } from "remotion";
+﻿import { useCurrentFrame, Sequence, interpolate, Audio, staticFile } from "remotion";
 import { loadFont } from "@remotion/google-fonts/Inter";
 import { COLORS, FONTS, SCENE_FRAMES } from "./constants.js";
+import { SceneBrowserSearch } from "./scenes/SceneBrowserSearch.jsx";
 import { Scene1Problema }    from "./scenes/Scene1Problema.jsx";
 import { Scene2Estudiante }  from "./scenes/Scene2Estudiante.jsx";
 import { Scene2Empresa }     from "./scenes/Scene2Empresa.jsx";
@@ -41,6 +42,7 @@ function easeInOut(t) {
 
 // Posiciones en el canvas virtual 7680x4320
 const NODES = [
+  { id: "S0",      x: -2200, y: 0    },   // Browser search intro
   { id: "S1",      x: 0,    y: 0    },   // El Problema
   { id: "SBRIDGE", x: 2200, y: 500  },   // Nace la linea
   { id: "S2A",     x: 4200, y: 0    },   // Estudiante
@@ -55,6 +57,7 @@ const nodeCenter = (n) => ({ cx: n.x + 960, cy: n.y + 540 });
 
 const SF = SCENE_FRAMES;
 const SCENE_LIST = [
+  { key: "S0",      sf: SF.S0,      Comp: SceneBrowserSearch },
   { key: "S1",      sf: SF.S1,      Comp: Scene1Problema   },
   { key: "SBRIDGE", sf: SF.SBRIDGE, Comp: SceneBridge      },
   { key: "S2A",     sf: SF.S2A,     Comp: Scene2Estudiante },
@@ -183,6 +186,39 @@ export const FeriaServicioSocial = () => {
       fontFamily,
     }}>
 
+      {/* ── Audio: música de fondo — fade in/out en extremos ── */}
+      <Audio
+        src={staticFile("Musica_Fondo.mp3")}
+        volume={(f) => interpolate(f, [0, 60, 2940, 3000], [0, 0.18, 0.18, 0], C)}
+        loop
+      />
+
+      {/* ── Audio: narración — un clip por escena sincronizado al timeline ── */}
+      <Sequence from={SF.S1.from}      durationInFrames={SF.S1.duration}>
+        <Audio src={staticFile("1-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.SBRIDGE.from} durationInFrames={SF.SBRIDGE.duration}>
+        <Audio src={staticFile("2-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.S2A.from}     durationInFrames={SF.S2A.duration}>
+        <Audio src={staticFile("3-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.S2B.from}     durationInFrames={SF.S2B.duration}>
+        <Audio src={staticFile("4-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.SLIVE.from}   durationInFrames={SF.SLIVE.duration}>
+        <Audio src={staticFile("5-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.S2C.from}     durationInFrames={SF.S2C.duration}>
+        <Audio src={staticFile("6-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.S3.from}      durationInFrames={SF.S3.duration}>
+        <Audio src={staticFile("7-Audio.mp3")} volume={1} />
+      </Sequence>
+      <Sequence from={SF.S4.from}      durationInFrames={SF.S4.duration}>
+        <Audio src={staticFile("8-Audio.mp3")} volume={1} />
+      </Sequence>
+
       {/* ── Canvas virtual ── */}
       <div style={{
         position: "absolute",
@@ -289,7 +325,7 @@ export const FeriaServicioSocial = () => {
         {NODES.map((n, i) => {
           const c = nodeCenter(n);
           const labels = [
-            "El Problema", "Solucion",  "Estudiante", "Empresa",
+            "Web App", "El Problema", "Solucion",  "Estudiante", "Empresa",
             "Evento vivo", "Admin",     "Confianza",  "Cierre",
           ];
           const reached = cam.lineProgress >= i / (NODES.length - 1) - 0.02;
