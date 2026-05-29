@@ -1,0 +1,54 @@
+[project]
+name = "core-access-engine"
+version = "0.1.0"
+description = "Motor criptográfico y de identidad reutilizable — independiente del dominio de negocio"
+readme = "README.md"
+requires-python = ">=3.12"
+
+# ---------------------------------------------------------------------------
+# Solo dependencias del NÚCLEO — sin FastAPI, sin SQLAlchemy, sin Alembic,
+# sin drivers de base de datos. Cualquier app que instale este paquete
+# trae únicamente lo que necesita para auth y criptografía.
+# ---------------------------------------------------------------------------
+dependencies = [
+    # Criptografía simétrica (Fernet: AES-128-CBC + HMAC-SHA256)
+    "cryptography>=46.0.0",
+    # TOTP — RFC 6238 (Google Authenticator)
+    "pyotp>=2.9.0",
+    # JSON Web Tokens
+    "pyjwt>=2.12.0",
+    # Hashing de contraseñas
+    "bcrypt>=5.0.0",
+    # Validación de id_token de Google OAuth 2.0
+    "google-auth>=2.49.0",
+    # Rate limiting
+    "slowapi>=0.1.9",
+    # Cliente Redis async (rate limiting + invalidación de sesiones)
+    "redis>=7.4.0",
+    # Logging estructurado en JSON
+    "structlog>=25.0.0",
+    # Monitoreo de errores en producción
+    "sentry-sdk>=2.58.0",
+    # Gestión de configuración desde env vars
+    "pydantic-settings>=2.13.0",
+    # AWS Parameter Store (secretos en producción)
+    "boto3>=1.42.0",
+]
+
+[project.optional-dependencies]
+# Instalar solo en entornos de desarrollo/test de los proyectos consumidores
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+
+# ---------------------------------------------------------------------------
+# Build backend — permite `pip install -e ./packages/core_access_engine`
+# desde cualquier app consumidora o desde el Dockerfile.
+# ---------------------------------------------------------------------------
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/core_access_engine"]
