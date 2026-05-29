@@ -1,6 +1,6 @@
 [project]
 name = "core-access-engine"
-version = "0.1.0"
+version = "0.2.0"
 description = "Motor criptográfico y de identidad reutilizable — independiente del dominio de negocio"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -36,8 +36,19 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Proveedor SMS Twilio (alternativa a AWS SNS)
+# pip install core-access-engine[twilio]
+twilio = [
+    "twilio>=9.0.0",
+]
 # Instalar solo en entornos de desarrollo/test de los proyectos consumidores
 dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.24.0",
+]
+# Todo junto para desarrollo completo
+all = [
+    "twilio>=9.0.0",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
 ]

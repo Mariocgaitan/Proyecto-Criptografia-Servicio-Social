@@ -70,6 +70,23 @@ class CoreSettings(BaseSettings):
     MAX_FAILED_LOGIN_ATTEMPTS: int = 5
     LOCKOUT_DURATION_MINUTES: int = 15
 
+    # ── SMS OTP (autenticación por teléfono) ──────────────────────────────
+    # Proveedor: "twilio" o "aws_sns". Vacío = SMS desactivado.
+    SMS_PROVIDER: str = ""
+
+    # Twilio (requerido si SMS_PROVIDER="twilio")
+    TWILIO_ACCOUNT_SID: str = ""
+    TWILIO_AUTH_TOKEN: str = ""
+    TWILIO_FROM_NUMBER: str = ""
+
+    # AWS SNS (requerido si SMS_PROVIDER="aws_sns"; región ya definida en AWS_REGION)
+    # El IAM Role del servidor necesita permiso sns:Publish
+    SMS_SENDER_ID: str = ""  # Nombre visible en el SMS (máx 11 chars, no disponible en todos los países)
+
     @property
     def is_production(self) -> bool:
         return self.APP_ENV == "production"
+
+    @property
+    def sms_enabled(self) -> bool:
+        return self.SMS_PROVIDER in ("twilio", "aws_sns")
