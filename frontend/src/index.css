@@ -201,3 +201,38 @@ body,
 [data-admin-theme="light"] .recharts-cartesian-grid line {
   stroke: rgba(15, 23, 42, 0.1) !important;
 }
+
+/* ── Portaled overlays in light mode ──────────────────────────────────
+   Dialogs and select dropdowns render at document.body, outside the
+   dashboard container. The theme is mirrored onto <html> (see Dashboard
+   admin-theme effect) so the white-opacity / text-white overrides above
+   reach them; these rules fix what those force-dark surfaces still miss. */
+
+/* Force-dark slate surfaces (modals, forced select dropdown, footer) → white */
+[data-admin-theme="light"] [class*="bg-slate-950"] {
+  background-color: #ffffff !important;
+}
+[data-admin-theme="light"] [data-slot="dialog-content"] {
+  border-color: rgba(15, 23, 42, 0.10) !important;
+  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.35) !important;
+}
+
+/* Backdrop stays a soft dark veil (the bg-black→white remap would bleach it) */
+[data-admin-theme="light"] [data-slot="dialog-overlay"] {
+  background-color: rgba(15, 23, 42, 0.28) !important;
+}
+
+/* Semantic title / accent text needs darker shades on the white modal */
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-amber-2"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-amber-4"] { color: #b45309 !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-emerald-2"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-emerald-4"] { color: #047857 !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-red-2"] { color: #b91c1c !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-green-1"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-green-2"] { color: #15803d !important; }
+
+/* Saturated action buttons keep white labels (override the blanket text-white→ink rule) */
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-blue-6"][class*="text-white"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-amber-6"][class*="text-white"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-emerald-7"][class*="text-white"],
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-red-6"][class*="text-white"] { color: #ffffff !important; }

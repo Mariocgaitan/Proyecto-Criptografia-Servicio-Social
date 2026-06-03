@@ -218,7 +218,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     const root = document.documentElement;
     root.classList.toggle("dark", isDark);
-    return () => root.classList.remove("dark");
+    // Mirror the theme onto <html> so portaled overlays (dialogs, selects),
+    // which render at document.body outside the dashboard container, inherit
+    // the same [data-admin-theme="light"] overrides.
+    root.setAttribute("data-admin-theme", isDark ? "dark" : "light");
+    return () => {
+      root.classList.remove("dark");
+      root.removeAttribute("data-admin-theme");
+    };
   }, [isDark]);
   const [proyectos, setProyectos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
