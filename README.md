@@ -1,113 +1,140 @@
-# Feria Servicio Social
+<div align="left" style="display:flex;align-items:center;gap:16px;">
+  <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="72" />
+  <div>
+    <div style="margin:0;font-size:2rem;font-weight:700;line-height:1.05;">Feria Servicio Social</div>
+    <div style="margin:0;font-size:2rem;font-weight:700;line-height:1.15;">Tecnológico de Monterrey Campus Ciudad de México</div>
+  </div>
+</div>
 
-FastAPI + Vite/React. Auth con Google + 2FA, Postgres, Redis, SSH tunnel a DB remota.
+<p align="center">
+  <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
+</p>
+
+Plataforma **full‑stack** que digitaliza la vinculación entre alumnos y empresas en la Feria de Servicio Social del Tecnológico de Monterrey. Reemplaza el proceso en papel con registro seguro, **QR dinámico cifrado**, escaneo en tiempo real y panel administrativo con métricas.
+
+[![Estado](https://img.shields.io/badge/estado-producci%C3%B3n-success)](https://feriaserviciosocial.com)
+![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
+![Frontend](https://img.shields.io/badge/frontend-React%20%2B%20Vite-61DAFB)
+![DB](https://img.shields.io/badge/db-PostgreSQL-336791)
+![Cache](https://img.shields.io/badge/cache-Redis-DC382D)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED)
+![Cloud](https://img.shields.io/badge/cloud-AWS%20EC2-FF9900)
+![Seguridad](https://img.shields.io/badge/seguridad-MFA%20%2B%20QR%20cifrado-blue)
+
+
+## Funcionalidades clave
+- **Alumno:** registro, perfil, QR dinámico y dashboard.
+- **Empresa:** escaneo QR, lista de inscritos y bajas controladas.
+- **Admin:** padrón de alumnos, eventos, empresas, proyectos y reportes.
+- **Métricas:** dashboards con latencias y estadísticas de inscripción.
+
+## Arquitectura (Abstracción)
+```
+Cliente (Browser)
+    │ HTTPS
+    ▼
+Cloudflare (CDN + DDoS + DNS)
+    │ HTTP (Flexible TLS)
+    ▼
+EC2:80/443 → Nginx (Reverse Proxy)
+    │
+    ├──▶ /api/*  → FastAPI app:8000 (Gunicorn + Uvicorn workers)
+    │               │
+    │               ├──▶ Redis (caché, rate limiting)
+    │               └──▶ PostgreSQL (vía SSH Tunnel)
+    │
+    └──▶ /*      → React SPA (estáticos)
+```
+
+## Stack tecnológico
+**Backend:** Python 3.12, FastAPI, SQLAlchemy async, asyncpg, Alembic, Pydantic v2, PyJWT, bcrypt, pyotp, cryptography/Fernet, SlowAPI, Redis, structlog, Sentry.
+
+**Frontend:** React 19, Vite, React Router, Tailwind CSS, shadcn/ui, Recharts, html5‑qrcode, Framer Motion, TypeScript, Vitest.
+
+**Infra/DevOps:** Docker, Docker Compose, Nginx, Cloudflare, AWS EC2, AWS SSM Parameter Store, GitHub Actions, GHCR, PostgreSQL.
+
+## Seguridad (resumen)
+- **MFA completo:** OAuth 2.0 + nonce anti‑replay + TOTP (RFC 6238).
+- **QR cifrado:** payload con TOTP embebido + Fernet (AES‑128‑CBC + HMAC‑SHA256).
+- **Rate limiting:** 10 req/min/IP en endpoints críticos.
+- **Cookies seguras:** HttpOnly/Secure + refresh token con hash en DB.
+- **CORS y headers de seguridad:** CSP, HSTS, X‑Frame‑Options, etc.
+
+## Modelo de datos (entidades principales)
+`Usuario`, `PadronAlumno`, `Evento`, `Empresa`, `Proyecto`, `Inscripcion`, `RefreshToken`, `GoogleNonce`, `LogAuditoria`, `RequestMetric`.
+
+## API por dominios
+| Dominio | Endpoints clave |
+|---|---|
+| Auth | `/api/v1/auth/login`, `/google/nonce`, `/google/callback`, `/totp/verify`, `/refresh`, `/logout` |
+| Alumno | `/api/v1/alumno/dashboard`, `/qr-payload`, `/perfil` |
+| Empresa | `/api/v1/empresa/escanear`, `/inscritos`, `/inscripcion/{id}` |
+| Admin | CRUD de eventos/empresas/proyectos/padrón, `/logs` |
+| Estadísticas | métricas por evento/empresa/carrera |
+| Sistema | healthcheck, latencias, request count |
+
+## Flujo de negocio
+1. Admin precarga padrón oficial.
+2. Alumno se registra y valida identidad.
+3. Se habilita 2FA (TOTP).
+4. Alumno selecciona eventos y completa perfil.
+5. Se genera QR cifrado con refresco cada 30s.
+6. Empresa escanea QR desde su dashboard.
+7. Backend valida cupo/duplicados e inscribe.
+8. Se envía confirmación y se registra auditoría.
+9. Admin monitorea métricas y reportes.
+
+## Gestión de secretos
+- **Desarrollo:** `.env` local (ignorado en git).
+- **Producción:** AWS SSM Parameter Store bajo `/feria/prod/*`.
+
+## Docker e infraestructura
+- **Multi‑stage build:** frontend compilado y servido por FastAPI.
+- **Servicios prod:** `app` + `redis` + `nginx` en `docker-compose.prod.yml`.
+- **Reverse proxy:** Nginx expone 80/443 y enruta `/api/*`.
+- **Dominio:** administrado mediante `cloudflared` sobre Cloudflare.
+
+## CI/CD y despliegue
+Pipeline con GitHub Actions: **tests → build multi‑stage → push a GHCR → deploy vía SSH a EC2 → healthcheck → migraciones**.
 
 ## Desarrollo local
+- Backend
+    ```bash
+    cd backend
+    uv venv --python 3.12 .venv
+    uv pip install -r requirements.txt
+    alembic upgrade head
+    uvicorn app.main:app --reload
+    ```
+- Frontend
 
-```bash
-# Backend
-cd backend
-uv venv && source .venv/bin/activate
-uv pip install -r requirements.txt
-alembic upgrade head
-uvicorn app.main:app --reload
+    ```bash
+    cd frontend
+    npm ci
+    npm run dev
+    ```
+    - Rutas protegidas por rol (alumno/empresa/admin).
+    - Dashboard con Recharts y paneles especializados.
+    - Escaneo QR con acceso a cámara (`html5‑qrcode`).
 
-# Frontend
-cd frontend
-npm ci
-npm run dev
+## Patrones de ingeniería
+- Service layer y DI (`Depends`) en FastAPI.
+- Logging estructurado con `request_id`.
+- Background tasks para notificaciones.
+
+## Observabilidad
+Sentry + structlog JSON + métricas por endpoint con buffer en memoria. Dashboard técnico en el panel admin.
+
+## Estructura del repositorio
+```
+backend/     # FastAPI + servicios + migraciones
+frontend/    # React + Vite + UI
+nginx/       # Reverse proxy y estáticos
+scripts/     # Deploy y utilidades
 ```
 
-## Deploy a producción (AWS EC2 + Cloudflare)
+## Contribuidores
+<a href="https://github.com/Mariocgaitan/Proyecto-Criptografia-Servicio-Social/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Mariocgaitan/Proyecto-Criptografia-Servicio-Social" alt="Contribuidores" />
+</a>
 
-### Arquitectura
-
-```
-Cliente ──HTTPS──▶ Cloudflare ──HTTP──▶ EC2:80 nginx ──▶ app:8000 (gunicorn+uvicorn)
-                                                          │
-                                                          ├──▶ redis (contenedor)
-                                                          └──▶ Postgres remoto vía SSH tunnel
-```
-
-Secretos: AWS Parameter Store bajo `/feria/prod/*`. Imágenes: GHCR. CI/CD: GitHub Actions.
-
-### Setup inicial (una sola vez por servidor)
-
-1. **EC2**: Elastic IP asignada, SG con 22/80/443, IAM Role con `AmazonSSMReadOnlyAccess`.
-2. **DNS**: en Cloudflare, `A @` y `A www` apuntando al Elastic IP (proxy activado).
-3. **Bootstrap del EC2**:
-   ```bash
-   ssh webservice@<elastic-ip>
-   curl -fsSL https://raw.githubusercontent.com/Mariocgaitan/Proyecto-Criptografia-Servicio-Social/main/scripts/deploy/setup-ec2.sh | sudo bash
-   ```
-4. **SSH key** para el túnel a la DB:
-   ```bash
-   # Copia la key privada a /home/webservice/.ssh/db_tunnel_db_key y asegura permisos
-   chmod 600 /home/webservice/.ssh/db_tunnel_db_key
-   ```
-5. **Secretos a SSM** (desde tu máquina):
-   ```bash
-   ./scripts/deploy/seed-ssm.sh path/a/tu/.env
-   ```
-6. **Login a GHCR en el EC2** (una vez):
-   ```bash
-   echo <PAT_con_read_packages> | docker login ghcr.io -u <tu-user> --password-stdin
-   ```
-7. **`.env.production` en el EC2**: editar `/home/webservice/app/.env.production` con `REDIS_PASSWORD` fuerte.
-8. **GitHub Secrets** (Settings → Secrets and variables → Actions):
-   - `EC2_HOST` = `52.45.12.70`
-   - `EC2_USER` = `webservice`
-   - `EC2_SSH_KEY` = llave privada SSH para el deploy (NO la del túnel DB)
-9. **Google OAuth**: agregar `https://feriaserviciosocial.com` y `https://www.feriaserviciosocial.com` a los authorized origins.
-
-### Flujo diario
-
-```
-git push main  →  GH Actions:  tests  →  build+push GHCR  →  SSH EC2:
-                                                              docker pull
-                                                              docker compose up -d
-                                                              alembic upgrade head
-```
-
-En ~3-5 min el cambio está en `https://feriaserviciosocial.com`.
-
-### Operación manual en el EC2
-
-```bash
-ssh webservice@52.45.12.70
-cd ~/app
-
-# Estado
-docker compose -f docker-compose.prod.yml ps
-
-# Logs
-docker compose -f docker-compose.prod.yml logs -f app
-docker compose -f docker-compose.prod.yml logs -f nginx
-
-# Restart de un servicio
-docker compose -f docker-compose.prod.yml restart app
-
-# Migraciones manuales
-docker compose -f docker-compose.prod.yml exec app alembic -c /app/backend/alembic.ini upgrade head
-
-# Rollback a una imagen anterior
-APP_IMAGE=ghcr.io/mariocgaitan/proyecto-criptografia-servicio-social:sha-<commit> \
-  docker compose -f docker-compose.prod.yml --env-file .env.production up -d app
-```
-
-### Troubleshooting
-
-| Síntoma | Dónde mirar |
-|---------|-------------|
-| 502/504 del navegador | `docker compose logs nginx` y `docker compose logs app` |
-| `app` no queda healthy | `docker inspect feria_app --format '{{json .State.Health}}'` |
-| SSH tunnel falla | `.env.production` → `USE_SSH_TUNNEL=true` y permisos de la key `600` |
-| Secretos no cargan de SSM | IAM Role y política `AmazonSSMReadOnlyAccess` en el EC2 |
-| Rate limit 429 en `/api/auth/` | Es intencional (10 req/min/IP). Ajustar en `nginx/nginx.conf` |
-
-### Escalado futuro (fuera de alcance de este deploy)
-
-- Mover el SSH tunnel a un sidecar `autossh` → habilita `WEB_CONCURRENCY>1`.
-- Migrar Postgres remoto a RDS y quitar el tunnel.
-- ALB + varios EC2 detrás para HA.
-- Cloudflare Full (strict) + cert Let's Encrypt en nginx (hoy: Flexible).
