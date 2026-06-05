@@ -1,17 +1,19 @@
 # Feria Servicio Social
 
-<table>
-  <tr>
-    <td valign="middle" width="140">
-      <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="120" />
-    </td>
-    <td valign="middle">
-      <strong>Feria Servicio Social</strong>
-      <br />
-      <strong>Tecnológico de Monterrey</strong>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <table>
+    <tr>
+      <td valign="middle" width="140">
+        <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="120" />
+      </td>
+      <td valign="middle">
+        <strong>Feria Servicio Social</strong>
+        <br />
+        <strong>Tecnológico de Monterrey</strong>
+      </td>
+    </tr>
+  </table>
+</p>
 
 <p align="center">
   <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
