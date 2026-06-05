@@ -1,12 +1,17 @@
 # Feria Servicio Social
 
-<p align="center">
-  <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="120" />
-</p>
-
-<p align="center">
-  <strong>Tecnológico de Monterrey — Campus Ciudad de México</strong>
-</p>
+<table>
+  <tr>
+    <td valign="middle" width="140">
+      <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="120" />
+    </td>
+    <td valign="middle">
+      <strong>Feria Servicio Social</strong>
+      <br />
+      <strong>Tecnológico de Monterrey</strong>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
   <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
