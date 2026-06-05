@@ -1,16 +1,18 @@
-<div align="center">
-  <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="92" style="vertical-align:middle; margin-right:18px;" />
-  <span style="display:inline-block; vertical-align:middle; text-align:left;">
-    <span style="font-size:1.65em; font-weight:800; line-height:1.1;">Feria Servicio Social</span><br />
-    <span style="font-size:1.05em; font-weight:700; line-height:1.15;">Tecnológico de Monterrey Campus Ciudad de México</span>
-  </span>
-</div>
+# Feria Servicio Social
+
+<p align="center">
+  <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="120" />
+</p>
+
+<p align="center">
+  <strong>Tecnológico de Monterrey — Campus Ciudad de México</strong>
+</p>
 
 <p align="center">
   <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
 </p>
 
-Plataforma **full‑stack** que digitaliza la vinculación entre alumnos y empresas en la Feria de Servicio Social del Tecnológico de Monterrey. Reemplaza el proceso en papel con registro seguro, **QR dinámico cifrado**, escaneo en tiempo real y panel administrativo con métricas.
+Plataforma **full‑stack** que digitaliza la vinculación entre alumnos y empresas en la Feria de Servicio Social del Tecnológico de Monterrey. Reemplaza el proceso en papel con registro seguro, **QR dinámico cifrado** e inscripción instant.
 
 [![Estado](https://img.shields.io/badge/estado-producci%C3%B3n-success)](https://feriaserviciosocial.com)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
@@ -137,4 +139,3 @@ scripts/     # Deploy y utilidades
 <a href="https://github.com/Mariocgaitan/Proyecto-Criptografia-Servicio-Social/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=Mariocgaitan/Proyecto-Criptografia-Servicio-Social" alt="Contribuidores" />
 </a>
-
