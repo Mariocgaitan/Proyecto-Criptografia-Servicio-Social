@@ -9,7 +9,7 @@
       <td valign="middle" align="left">
         <strong>Feria Servicio Social</strong>
         <br />
-        <strong>Tecnológico de Monterrey</strong>
+        <strong>Tecnológico de Monterrey Campus Ciudad de México</strong>
       </td>
     </tr>
   </table>
