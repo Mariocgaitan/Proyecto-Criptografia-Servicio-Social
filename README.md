@@ -12,7 +12,7 @@
   <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
 </p>
 
-Plataforma **full‑stack** que digitaliza la vinculación entre alumnos y empresas en la Feria de Servicio Social del Tecnológico de Monterrey. Reemplaza el proceso en papel con registro seguro, **QR dinámico cifrado** e inscripción instant.
+Plataforma **full‑stack** que digitaliza la vinculación entre alumnos y empresas en la Feria de Servicio Social del Tecnológico de Monterrey. Reemplaza el proceso en papel con registro seguro,[...]
 
 [![Estado](https://img.shields.io/badge/estado-producci%C3%B3n-success)](https://feriaserviciosocial.com)
 ![Backend](https://img.shields.io/badge/backend-FastAPI-009688)
