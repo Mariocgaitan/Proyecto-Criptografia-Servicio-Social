@@ -1,14 +1,10 @@
-<table align="center">
-  <tr>
-    <td width="110" valign="middle">
-      <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="92" />
-    </td>
-    <td valign="middle">
-      <div style="font-size:1.65em; font-weight:800; line-height:1.1;">Feria Servicio Social</div>
-      <div style="font-size:1.05em; font-weight:700; line-height:1.15;">Tecnológico de Monterrey Campus Ciudad de México</div>
-    </td>
-  </tr>
-</table>
+<div align="center">
+  <img src="frontend/public/ser_social.svg" alt="Feria Servicio Social" width="92" style="vertical-align:middle; margin-right:18px;" />
+  <span style="display:inline-block; vertical-align:middle; text-align:left;">
+    <span style="font-size:1.65em; font-weight:800; line-height:1.1;">Feria Servicio Social</span><br />
+    <span style="font-size:1.05em; font-weight:700; line-height:1.15;">Tecnológico de Monterrey Campus Ciudad de México</span>
+  </span>
+</div>
 
 <p align="center">
   <img src="frontend/src/assets/ser_social_login.gif" alt="Feria Servicio Social" />
