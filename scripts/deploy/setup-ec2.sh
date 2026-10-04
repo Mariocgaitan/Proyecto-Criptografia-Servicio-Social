@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bootstrap idempotente del EC2 para correr Feria Servicio Social en producción.
 # Uso (SSH al EC2 como usuario webservice o root con sudo):
-#   curl -fsSL https://raw.githubusercontent.com/Mariocgaitan/Proyecto-Criptografia-Servicio-Social/main/scripts/deploy/setup-ec2.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/Monknow/Proyecto-Criptografia-Servicio-Social/main/scripts/deploy/setup-ec2.sh | bash
 # o:
 #   sudo bash scripts/deploy/setup-ec2.sh
 
@@ -9,7 +9,7 @@ set -euo pipefail
 
 APP_USER="${APP_USER:-webservice}"
 APP_DIR="/home/${APP_USER}/app"
-REPO_URL="${REPO_URL:-https://github.com/Mariocgaitan/Proyecto-Criptografia-Servicio-Social.git}"
+REPO_URL="${REPO_URL:-https://github.com/Monknow/Proyecto-Criptografia-Servicio-Social.git}"
 
 log() { echo -e "\033[1;34m==>\033[0m $*"; }
 

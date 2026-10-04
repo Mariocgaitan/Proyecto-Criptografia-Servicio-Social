@@ -1,5 +1,5 @@
 """
-Servicio del módulo Empresa — validación de QR y procesamiento de inscripciones.
+Servicio del módulo Socioformador — validación de QR y procesamiento de inscripciones.
 """
 import json
 import time
@@ -36,13 +36,13 @@ def _first_attr(obj, names, default=None):
 
 
 async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
-    """Devuelve la info del proyecto asignado al representante de empresa."""
-    from app.models.empresa import Empresa
+    """Devuelve la info del proyecto asignado al representante de socioformador."""
+    from app.models.socioformador import Socioformador
     from app.models.evento import Evento
 
     result = await db.execute(
-        select(Proyecto, Empresa, Evento)
-        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        select(Proyecto, Socioformador, Evento)
+        .join(Socioformador, Proyecto.id_socioformador == Socioformador.id_socioformador)
         .join(Evento, Proyecto.id_evento == Evento.id_evento)
         .where(Proyecto.id_proyecto == id_proyecto)
     )
@@ -50,7 +50,7 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
     if not row:
         raise EscanerError("Proyecto no encontrado", 404)
 
-    proyecto, empresa, evento = row
+    proyecto, socioformador, evento = row
 
     # Contar inscripciones confirmadas
     ins_result = await db.execute(
@@ -82,20 +82,20 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
         )
 
     ocupacion_pct = round((proyecto.cupo_actual / proyecto.capacidad_max) * 100) if proyecto.capacidad_max else 0
-    razon_social = _first_attr(empresa, ["razon_social", "nombre_fiscal", "nombre_empresa"], empresa.nombre_empresa)
-    id_asociado = _first_attr(empresa, ["id_asociado", "codigo_asociado", "codigo_empresa"])
-    direccion = _first_attr(empresa, ["direccion", "domicilio", "calle"])
+    razon_social = _first_attr(socioformador, ["razon_social", "nombre_fiscal", "nombre_socioformador"], socioformador.nombre_socioformador)
+    id_asociado = _first_attr(socioformador, ["id_asociado", "codigo_asociado", "codigo_socioformador"])
+    direccion = _first_attr(socioformador, ["direccion", "domicilio", "calle"])
     semestre = _first_attr(evento, ["semestre", "periodo"])
 
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
         "descripcion": proyecto.descripcion,
-        "empresa": empresa.nombre_empresa,
+        "socioformador": socioformador.nombre_socioformador,
         "razon_social": razon_social,
         "id_asociado": id_asociado,
         "direccion": direccion,
-        "logo_url": getattr(empresa, "logo_url", None),
+        "logo_url": getattr(socioformador, "logo_url", None),
         "evento": evento.nombre,
         "id_evento": proyecto.id_evento,
         "periodo": evento.periodo,
@@ -111,36 +111,36 @@ async def obtener_info_proyecto(db: AsyncSession, id_proyecto: int) -> dict:
     }
 
 
-async def obtener_id_empresa_de_proyecto(db: AsyncSession, id_proyecto: int) -> int:
-    """Devuelve el id_empresa dueño de un proyecto."""
+async def obtener_id_socioformador_de_proyecto(db: AsyncSession, id_proyecto: int) -> int:
+    """Devuelve el id_socioformador dueño de un proyecto."""
     result = await db.execute(
-        select(Proyecto.id_empresa).where(Proyecto.id_proyecto == id_proyecto)
+        select(Proyecto.id_socioformador).where(Proyecto.id_proyecto == id_proyecto)
     )
-    id_empresa = result.scalar_one_or_none()
-    if not id_empresa:
+    id_socioformador = result.scalar_one_or_none()
+    if not id_socioformador:
         raise EscanerError("Proyecto no encontrado", 404)
-    return id_empresa
+    return id_socioformador
 
 
-async def proyecto_pertenece_a_empresa(db: AsyncSession, id_empresa: int, id_proyecto: int) -> bool:
-    """Valida que un proyecto pertenezca a una empresa."""
+async def proyecto_pertenece_a_socioformador(db: AsyncSession, id_socioformador: int, id_proyecto: int) -> bool:
+    """Valida que un proyecto pertenezca a una socioformador."""
     result = await db.execute(
         select(Proyecto.id_proyecto).where(
             Proyecto.id_proyecto == id_proyecto,
-            Proyecto.id_empresa == id_empresa,
+            Proyecto.id_socioformador == id_socioformador,
         )
     )
     return result.scalar_one_or_none() is not None
 
 
-async def obtener_proyectos_empresa(db: AsyncSession, id_empresa: int) -> list[dict]:
-    """Lista los proyectos/eventos asociados a una empresa."""
+async def obtener_proyectos_socioformador(db: AsyncSession, id_socioformador: int) -> list[dict]:
+    """Lista los proyectos/eventos asociados a una socioformador."""
     from app.models.evento import Evento
 
     result = await db.execute(
         select(Proyecto, Evento)
         .join(Evento, Proyecto.id_evento == Evento.id_evento)
-        .where(Proyecto.id_empresa == id_empresa)
+        .where(Proyecto.id_socioformador == id_socioformador)
         .order_by(Evento.activo.desc(), Evento.anio.desc(), Evento.periodo.desc(), Proyecto.nombre_proyecto.asc())
     )
 
@@ -261,9 +261,9 @@ async def validar_y_inscribir(
         }
 
     # 8. Todo ok — inscribir
-    from app.models.empresa import Empresa
-    empresa = await db.get(Empresa, proyecto.id_empresa)
-    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+    from app.models.socioformador import Socioformador
+    socioformador = await db.get(Socioformador, proyecto.id_socioformador)
+    nombre_socioformador = socioformador.nombre_socioformador if socioformador else "Desconocida"
 
     inscripcion = Inscripcion(
         id_matricula=matricula,
@@ -282,10 +282,10 @@ async def validar_y_inscribir(
         "matricula_alumno": alumno.id_matricula,
         "correo_alumno": alumno.correo,
         "nombre_proyecto": proyecto.nombre_proyecto,
-        "nombre_empresa": nombre_empresa,
+        "nombre_socioformador": nombre_socioformador,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
-        # Datos adicionales para mostrar a la empresa
+        # Datos adicionales para mostrar a el socioformador
         "datos_adicionales": {
             "correo_alterno": correo_alt,
             "celular": celular_alt,
@@ -296,13 +296,13 @@ async def validar_y_inscribir(
 
 async def eliminar_inscripcion_proyecto(
     db: AsyncSession,
-    id_empresa: int,
+    id_socioformador: int,
     id_proyecto: int,
     id_inscripcion: str,
     actor_matricula: str | None = None,
     ip_origen: str | None = None,
 ) -> dict:
-    """Elimina una inscripción solo si pertenece al proyecto y empresa indicados."""
+    """Elimina una inscripción solo si pertenece al proyecto y socioformador indicados."""
     try:
         inscripcion_uuid = uuid.UUID(str(id_inscripcion))
     except ValueError as exc:
@@ -312,8 +312,8 @@ async def eliminar_inscripcion_proyecto(
     if not proyecto:
         raise EscanerError("Proyecto no encontrado", 404)
 
-    if proyecto.id_empresa != id_empresa:
-        raise EscanerError("El proyecto no pertenece a tu empresa", 403)
+    if proyecto.id_socioformador != id_socioformador:
+        raise EscanerError("El proyecto no pertenece a tu socioformador", 403)
 
     result = await db.execute(
         select(Inscripcion)
@@ -333,17 +333,17 @@ async def eliminar_inscripcion_proyecto(
     alumno = inscripcion.usuario
     correo_alumno = alumno.correo if alumno else None
 
-    from app.models.empresa import Empresa
-    empresa = await db.get(Empresa, proyecto.id_empresa)
-    nombre_empresa = empresa.nombre_empresa if empresa else "Desconocida"
+    from app.models.socioformador import Socioformador
+    socioformador = await db.get(Socioformador, proyecto.id_socioformador)
+    nombre_socioformador = socioformador.nombre_socioformador if socioformador else "Desconocida"
 
     db.add(
         LogAuditoria(
-            tipo_evento="INSCRIPCION_ELIMINADA_EMPRESA",
+            tipo_evento="INSCRIPCION_ELIMINADA_SOCIOFORMADOR",
             id_matricula=actor_matricula,
             ip_origen=ip_origen,
             detalle=(
-                f"Empresa eliminó inscripción {inscripcion.id_inscripcion} de "
+                f"Socioformador eliminó inscripción {inscripcion.id_inscripcion} de "
                 f"{alumno.id_matricula if alumno else 'N/A'} en proyecto {id_proyecto}"
             ),
         )
@@ -358,7 +358,7 @@ async def eliminar_inscripcion_proyecto(
         "nombre_alumno": alumno.nombre if alumno else None,
         "correo_alumno": correo_alumno,
         "nombre_proyecto": proyecto.nombre_proyecto,
-        "nombre_empresa": nombre_empresa,
+        "nombre_socioformador": nombre_socioformador,
         "cupo_actual": proyecto.cupo_actual,
         "capacidad_max": proyecto.capacidad_max,
     }

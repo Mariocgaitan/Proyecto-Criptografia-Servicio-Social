@@ -11,7 +11,7 @@ import pyotp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.empresa import Empresa
+from app.models.socioformador import Socioformador
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
 from app.models.proyecto import Proyecto
@@ -59,16 +59,16 @@ async def actualizar_perfil_alumno(db: AsyncSession, id_matricula: str, datos: d
 @cached(key="alum_cat_ev", ttl=30)
 async def _get_catalogo_evento_cached(db: AsyncSession, evento_id: int) -> list[dict]:
     proyectos_result = await db.execute(
-        select(Proyecto, Empresa)
-        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        select(Proyecto, Socioformador)
+        .join(Socioformador, Proyecto.id_socioformador == Socioformador.id_socioformador)
         .where(Proyecto.id_evento == evento_id)
-        .order_by(Empresa.nombre_empresa, Proyecto.nombre_proyecto)
+        .order_by(Socioformador.nombre_socioformador, Proyecto.nombre_proyecto)
     )
     return [
         {
             "id_proyecto": p.id_proyecto,
             "nombre_proyecto": p.nombre_proyecto,
-            "empresa": e.nombre_empresa,
+            "socioformador": e.nombre_socioformador,
             "descripcion": p.descripcion,
             "cupo_actual": p.cupo_actual,
             "capacidad_max": p.capacidad_max,
@@ -126,17 +126,17 @@ async def obtener_datos_dashboard(db: AsyncSession, id_matricula: str) -> dict:
 
         if inscripcion:
             proj_result = await db.execute(
-                select(Proyecto, Empresa)
-                .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+                select(Proyecto, Socioformador)
+                .join(Socioformador, Proyecto.id_socioformador == Socioformador.id_socioformador)
                 .where(Proyecto.id_proyecto == inscripcion.id_proyecto)
             )
             proj_row = proj_result.first()
             if proj_row:
-                proyecto, empresa = proj_row
+                proyecto, socioformador = proj_row
                 evento_info["inscripcion"] = {
                     "id_proyecto": proyecto.id_proyecto,
                     "nombre_proyecto": proyecto.nombre_proyecto,
-                    "empresa": empresa.nombre_empresa,
+                    "socioformador": socioformador.nombre_socioformador,
                     "descripcion": proyecto.descripcion,
                     "timestamp": inscripcion.timestamp.isoformat(),
                 }
@@ -310,16 +310,16 @@ async def obtener_estado_inscripcion(db: AsyncSession, id_matricula: str) -> dic
 
         if inscripcion:
             proj_result = await db.execute(
-                select(Proyecto, Empresa)
-                .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+                select(Proyecto, Socioformador)
+                .join(Socioformador, Proyecto.id_socioformador == Socioformador.id_socioformador)
                 .where(Proyecto.id_proyecto == inscripcion.id_proyecto)
             )
             proj_row = proj_result.first()
             if proj_row:
-                proyecto, empresa = proj_row
+                proyecto, socioformador = proj_row
                 evento_info["proyecto"] = {
                     "nombre": proyecto.nombre_proyecto,
-                    "empresa": empresa.nombre_empresa,
+                    "socioformador": socioformador.nombre_socioformador,
                     "descripcion": proyecto.descripcion,
                 }
                 evento_info["timestamp"] = inscripcion.timestamp.isoformat()

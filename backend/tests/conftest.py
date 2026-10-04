@@ -71,7 +71,7 @@ from app.db import models_import as _models  # noqa: F401 — register all model
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
-from app.models.empresa import Empresa
+from app.models.socioformador import Socioformador
 from app.models.evento import Evento
 from app.models.padron_alumno import PadronAlumno
 from app.models.proyecto import Proyecto
@@ -207,7 +207,7 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
     Seed the DB with a representative set of related entities and return
     them as a dict for easy access in tests.
 
-    Keys: evento, empresa, proyecto, alumno, admin, empresa_user,
+    Keys: evento, socioformador, proyecto, alumno, admin, socioformador_user,
           usuario_evento, padron_alumno
     """
     # Evento
@@ -221,14 +221,14 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
     db_session.add(evento)
     await db_session.flush()
 
-    # Empresa
-    empresa = Empresa(nombre_empresa="Acme Corp")
-    db_session.add(empresa)
+    # Socioformador
+    socioformador = Socioformador(nombre_socioformador="Acme Corp")
+    db_session.add(socioformador)
     await db_session.flush()
 
     # Proyecto
     proyecto = Proyecto(
-        id_empresa=empresa.id_empresa,
+        id_socioformador=socioformador.id_socioformador,
         id_evento=evento.id_evento,
         nombre_proyecto="Proyecto Alpha",
         descripcion="Descripcion del proyecto alpha",
@@ -267,20 +267,20 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
     )
     db_session.add(admin)
 
-    # Empresa user
-    empresa_user = Usuario(
+    # Socioformador user
+    socioformador_user = Usuario(
         id_matricula="EMP000001",
-        nombre="Empresa User Test",
-        correo="empresa@acme.com",
+        nombre="Socioformador User Test",
+        correo="socioformador@acme.com",
         carrera="N/A",
         semestre=0,
         password_hash=hash_password("Test1234!"),
         is_google_login=False,
         totp_secret="JBSWY3DPEHPK3PXP",
-        rol="empresa",
-        id_empresa=empresa.id_empresa,
+        rol="socioformador",
+        id_socioformador=socioformador.id_socioformador,
     )
-    db_session.add(empresa_user)
+    db_session.add(socioformador_user)
     await db_session.flush()
 
     # UsuarioEvento (pivot)
@@ -304,11 +304,11 @@ async def sample_data(db_session: AsyncSession) -> dict[str, Any]:
 
     return {
         "evento": evento,
-        "empresa": empresa,
+        "socioformador": socioformador,
         "proyecto": proyecto,
         "alumno": alumno,
         "admin": admin,
-        "empresa_user": empresa_user,
+        "socioformador_user": socioformador_user,
         "usuario_evento": usuario_evento,
         "padron_alumno": padron_alumno,
     }

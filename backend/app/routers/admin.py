@@ -7,9 +7,9 @@ Endpoints:
   GET  /api/v1/admin/proyectos          → Listar proyectos del evento activo
   POST /api/v1/admin/proyectos          → Crear nuevo proyecto
   PATCH /api/v1/admin/proyectos/{id}/capacidad → Ampliar cupo
-  GET  /api/v1/admin/usuarios-empresa   → Listar usuarios de tipo empresa
-  POST /api/v1/admin/usuarios-empresa/{id_matricula}/reset-password → Resetear contraseña de empresa
-  POST /api/v1/admin/upload-csv         → Cargar CSV de empresas y proyectos
+  GET  /api/v1/admin/usuarios-socioformador   → Listar usuarios de tipo socioformador
+  POST /api/v1/admin/usuarios-socioformador/{id_matricula}/reset-password → Resetear contraseña de socioformador
+  POST /api/v1/admin/upload-csv         → Cargar CSV de socioformadores y proyectos
 """
 
 from datetime import datetime
@@ -40,7 +40,7 @@ router = APIRouter()
 
 
 class ProyectoCreate(BaseModel):
-    id_empresa: int
+    id_socioformador: int
     id_evento: int
     nombre_proyecto: str
     descripcion: str | None = None
@@ -122,7 +122,7 @@ async def api_eliminar_inscripcion(
             to_email=resultado["correo_alumno"],
             nombre_alumno=resultado["nombre_alumno"],
             nombre_proyecto=resultado["nombre_proyecto"],
-            nombre_empresa=resultado["nombre_empresa"],
+            nombre_socioformador=resultado["nombre_socioformador"],
         )
     return resultado
 
@@ -151,7 +151,7 @@ async def api_crear_inscripcion(
             to_email=resultado["correo_alumno"],
             nombre_alumno=resultado["nombre_alumno"],
             nombre_proyecto=resultado["nombre_proyecto"],
-            nombre_empresa=resultado["nombre_empresa"],
+            nombre_socioformador=resultado["nombre_socioformador"],
         )
     return resultado
 
@@ -166,12 +166,12 @@ async def api_alumnos_disponibles(
     return await admin_service.listar_alumnos_disponibles(db, id_evento)
 
 
-@router.get("/api/v1/admin/empresas", tags=["Admin"])
-async def api_listar_empresas(
+@router.get("/api/v1/admin/socioformadores", tags=["Admin"])
+async def api_listar_socioformadores(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await admin_service.listar_empresas(db)
+    return await admin_service.listar_socioformadores(db)
 
 
 @router.get("/api/v1/admin/eventos", tags=["Admin"])
@@ -204,28 +204,28 @@ async def api_iniciar_evento(
     return await admin_service.iniciar_evento(db, id_evento)
 
 
-@router.get("/api/v1/admin/usuarios-empresa", tags=["Admin"])
-async def api_listar_usuarios_empresa(
+@router.get("/api/v1/admin/usuarios-socioformador", tags=["Admin"])
+async def api_listar_usuarios_socioformador(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    """Lista todos los usuarios de tipo empresa con sus correos y empresas vinculadas."""
-    return await admin_service.listar_usuarios_empresa(db)
+    """Lista todos los usuarios de tipo socioformador con sus correos y socioformadores vinculadas."""
+    return await admin_service.listar_usuarios_socioformador(db)
 
 
 @router.post(
-    "/api/v1/admin/usuarios-empresa/{id_matricula}/reset-password", tags=["Admin"]
+    "/api/v1/admin/usuarios-socioformador/{id_matricula}/reset-password", tags=["Admin"]
 )
-async def api_resetear_password_empresa(
+async def api_resetear_password_socioformador(
     id_matricula: str,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
     """
-    Resetea la contraseña de un usuario empresa y retorna la nueva contraseña.
+    Resetea la contraseña de un usuario socioformador y retorna la nueva contraseña.
     ⚠️ La contraseña se retorna EN TEXTO PLANO - solo usar cuando el admin lo necesite.
     """
-    return await admin_service.resetear_password_empresa(db, id_matricula)
+    return await admin_service.resetear_password_socioformador(db, id_matricula)
 
 
 @router.post("/api/v1/admin/upload-csv", tags=["Admin"])
@@ -238,16 +238,16 @@ async def api_upload_csv(
     _=Depends(get_current_admin),
 ):
     """
-    Carga un CSV con empresas y proyectos.
+    Carga un CSV con socioformadores y proyectos.
 
     Formato esperado (CSV con headers):
-    nombre_empresa,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
+    nombre_socioformador,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
 
     Ejemplo:
     Cemex,https://logo.url,Proyecto A,Descripción del proyecto,50
     Femsa,,Proyecto B,Otra descripción,30
 
-    - Crea empresas si no existen
+    - Crea socioformadores si no existen
     - Siempre crea nuevos proyectos en el evento especificado
     """
     from fastapi import HTTPException
@@ -267,7 +267,7 @@ async def api_upload_csv(
                 detail="No se pudo decodificar el archivo. Usa codificación UTF-8 o Latin-1",
             )
 
-    return await admin_service.procesar_csv_empresas_proyectos(db, csv_text, id_evento)
+    return await admin_service.procesar_csv_socioformadores_proyectos(db, csv_text, id_evento)
 
 
 # ── Credenciales ───────────────────────────────────────────────────────────────
@@ -278,7 +278,7 @@ async def api_listar_credenciales(
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    """Lista usuarios admin/empresa para el panel de credenciales."""
+    """Lista usuarios admin/socioformador para el panel de credenciales."""
     return await admin_service.listar_credenciales(db)
 
 

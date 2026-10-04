@@ -6,14 +6,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
-class Empresa(Base):
+class Socioformador(Base):
     """
-    Representa una empresa participante en el evento de vinculación.
+    Representa una socioformador participante en el evento de vinculación.
     """
-    __tablename__ = "empresas"
+    __tablename__ = "socioformadores"
 
-    id_empresa: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    nombre_empresa: Mapped[str] = mapped_column(String(150), nullable=False)
+    id_socioformador: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    nombre_socioformador: Mapped[str] = mapped_column(String(150), nullable=False)
     logo_url: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -21,8 +21,8 @@ class Empresa(Base):
 
     # Relaciones
     proyectos: Mapped[list["Proyecto"]] = relationship(
-        "Proyecto", back_populates="empresa"
+        "Proyecto", back_populates="socioformador"
     )
     usuarios: Mapped[list["Usuario"]] = relationship(
-        "Usuario", back_populates="empresa"
+        "Usuario", back_populates="socioformador"
     )

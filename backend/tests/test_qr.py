@@ -63,21 +63,21 @@ async def test_alumno_genera_qr(client: AsyncClient, sample_data):
     assert "qr_data" in body
 
 
-# ── Empresa scan endpoint ─────────────────────────────────────────────────────
+# ── Socioformador scan endpoint ─────────────────────────────────────────────────────
 
-async def test_empresa_escanea_qr_invalido(client: AsyncClient, sample_data):
-    """Empresa POST /api/v1/empresa/escanear with invalid QR returns 4xx (not 500)."""
+async def test_socioformador_escanea_qr_invalido(client: AsyncClient, sample_data):
+    """Socioformador POST /api/v1/socioformador/escanear with invalid QR returns 4xx (not 500)."""
     from app.core.security import create_access_token
 
-    empresa_user = sample_data["empresa_user"]
+    socioformador_user = sample_data["socioformador_user"]
     token = create_access_token(
-        {"sub": empresa_user.id_matricula, "rol": empresa_user.rol, "nombre": empresa_user.nombre}
+        {"sub": socioformador_user.id_matricula, "rol": socioformador_user.rol, "nombre": socioformador_user.nombre}
     )
     cookies = {"access_token": token}
     id_proyecto = sample_data["proyecto"].id_proyecto
 
     resp = await client.post(
-        "/api/v1/empresa/escanear",
+        "/api/v1/socioformador/escanear",
         json={"qr_data": "invalid-garbage", "id_proyecto": id_proyecto},
         cookies=cookies,
     )

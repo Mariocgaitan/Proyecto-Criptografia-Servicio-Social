@@ -13,7 +13,7 @@ from app.models.refresh_token import RefreshToken
 
 from app.core.cache import cached, cache_delete, cache_delete_prefix
 from app.core.pagination import paginate
-from app.models.empresa import Empresa
+from app.models.socioformador import Socioformador
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
 from app.models.log_auditoria import LogAuditoria
@@ -26,12 +26,12 @@ from app.models.usuario_evento import UsuarioEvento
 
 @cached(key="admin_proyectos", ttl=15)
 async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20) -> dict:
-    """Devuelve proyectos con datos de empresa y evento, paginados."""
+    """Devuelve proyectos con datos de socioformador y evento, paginados."""
     base_query = (
-        select(Proyecto, Empresa, Evento)
-        .join(Empresa, Proyecto.id_empresa == Empresa.id_empresa)
+        select(Proyecto, Socioformador, Evento)
+        .join(Socioformador, Proyecto.id_socioformador == Socioformador.id_socioformador)
         .join(Evento, Proyecto.id_evento == Evento.id_evento)
-        .order_by(Evento.id_evento, Empresa.nombre_empresa)
+        .order_by(Evento.id_evento, Socioformador.nombre_socioformador)
     )
 
     result = await paginate(db, base_query, page, page_size)
@@ -68,8 +68,8 @@ async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20)
             "id_proyecto": p.id_proyecto,
             "nombre_proyecto": p.nombre_proyecto,
             "descripcion": p.descripcion,
-            "empresa": e.nombre_empresa,
-            "id_empresa": p.id_empresa,
+            "socioformador": e.nombre_socioformador,
+            "id_socioformador": p.id_socioformador,
             "evento": ev.nombre,
             "id_evento": p.id_evento,
             "capacidad_max": p.capacidad_max,
@@ -91,11 +91,11 @@ async def listar_proyectos(db: AsyncSession, page: int = 1, page_size: int = 20)
     return result
 
 
-async def listar_empresas(db: AsyncSession) -> list[dict]:
-    """Devuelve todas las empresas."""
-    result = await db.execute(select(Empresa).order_by(Empresa.nombre_empresa))
+async def listar_socioformadores(db: AsyncSession) -> list[dict]:
+    """Devuelve todas los socioformadores."""
+    result = await db.execute(select(Socioformador).order_by(Socioformador.nombre_socioformador))
     return [
-        {"id_empresa": e.id_empresa, "nombre_empresa": e.nombre_empresa}
+        {"id_socioformador": e.id_socioformador, "nombre_socioformador": e.nombre_socioformador}
         for e in result.scalars().all()
     ]
 
@@ -174,9 +174,9 @@ async def iniciar_evento(db: AsyncSession, id_evento: int) -> dict:
 async def crear_evento(db: AsyncSession, datos) -> dict:
     """Crea un nuevo evento y lo activa, desactivando el anterior."""
     # Desactivar evento actual
-    result = await db.execute(select(Evento).where(Evento.activo == True))
-    for ev in result.scalars().all():
-        ev.activo = False
+    #result = await db.execute(select(Evento).where(Evento.activo == True))
+    #for ev in result.scalars().all():
+    #    ev.activo = False
 
     nuevo = Evento(
         nombre=datos.nombre,
@@ -202,13 +202,13 @@ async def crear_evento(db: AsyncSession, datos) -> dict:
 
 async def crear_proyecto(db: AsyncSession, datos) -> dict:
     """
-    Crea un nuevo proyecto para una empresa y evento.
+    Crea un nuevo proyecto para una socioformador y evento.
     """
     from fastapi import HTTPException
 
-    empresa = await db.get(Empresa, datos.id_empresa)
-    if not empresa:
-        raise HTTPException(status_code=404, detail="Empresa no encontrada")
+    socioformador = await db.get(Socioformador, datos.id_socioformador)
+    if not socioformador:
+        raise HTTPException(status_code=404, detail="Socioformador no encontrada")
 
     evento = await db.get(Evento, datos.id_evento)
     if not evento:
@@ -216,7 +216,7 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
 
     # 1. Crear el proyecto
     proyecto = Proyecto(
-        id_empresa=datos.id_empresa,
+        id_socioformador=datos.id_socioformador,
         id_evento=datos.id_evento,
         nombre_proyecto=datos.nombre_proyecto,
         descripcion=datos.descripcion,
@@ -236,7 +236,7 @@ async def crear_proyecto(db: AsyncSession, datos) -> dict:
     return {
         "id_proyecto": proyecto.id_proyecto,
         "nombre_proyecto": proyecto.nombre_proyecto,
-        "empresa": empresa.nombre_empresa,
+        "socioformador": socioformador.nombre_socioformador,
         "evento": evento.nombre,
         "capacidad_max": proyecto.capacidad_max,
         "cupo_actual": 0,
@@ -291,7 +291,7 @@ async def eliminar_inscripcion(
         select(Inscripcion)
         .options(
             selectinload(Inscripcion.usuario),
-            selectinload(Inscripcion.proyecto).selectinload(Proyecto.empresa)
+            selectinload(Inscripcion.proyecto).selectinload(Proyecto.socioformador)
         )
         .where(Inscripcion.id_inscripcion == inscripcion_uuid)
     )
@@ -323,7 +323,7 @@ async def eliminar_inscripcion(
 
     await cache_delete("kpis")
     await cache_delete("ocupacion_eventos")
-    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_socioformador")
     await cache_delete("alumnos_por_carrera")
     await cache_delete_prefix("admin_proyectos")
 
@@ -335,7 +335,7 @@ async def eliminar_inscripcion(
         "nombre_alumno": alumno.nombre if alumno else None,
         "correo_alumno": alumno.correo if alumno else None,
         "nombre_proyecto": proyecto.nombre_proyecto if proyecto else None,
-        "nombre_empresa": (proyecto.empresa.nombre_empresa if proyecto and proyecto.empresa else None)
+        "nombre_socioformador": (proyecto.socioformador.nombre_socioformador if proyecto and proyecto.socioformador else None)
     }
 
 
@@ -398,7 +398,7 @@ async def crear_inscripcion(
     # 2. Verificar que el proyecto existe
     result = await db.execute(
         select(Proyecto)
-        .options(selectinload(Proyecto.empresa), selectinload(Proyecto.evento))
+        .options(selectinload(Proyecto.socioformador), selectinload(Proyecto.evento))
         .where(Proyecto.id_proyecto == id_proyecto)
     )
     proyecto = result.scalar_one_or_none()
@@ -466,7 +466,7 @@ async def crear_inscripcion(
 
     await cache_delete("kpis")
     await cache_delete("ocupacion_eventos")
-    await cache_delete("alumnos_por_empresa")
+    await cache_delete("alumnos_por_socioformador")
     await cache_delete("alumnos_por_carrera")
     await cache_delete_prefix("admin_proyectos")
 
@@ -480,50 +480,50 @@ async def crear_inscripcion(
         "capacidad_max": proyecto.capacidad_max,
         "correo_alumno": alumno.correo,
         "nombre_proyecto": proyecto.nombre_proyecto,
-        "nombre_empresa": proyecto.empresa.nombre_empresa if proyecto.empresa else None,
+        "nombre_socioformador": proyecto.socioformador.nombre_socioformador if proyecto.socioformador else None,
     }
 
 
-# ── Usuarios Empresa ──────────────────────────────────────────────────────────
+# ── Usuarios Socioformador ──────────────────────────────────────────────────────────
 
-async def listar_usuarios_empresa(db: AsyncSession) -> list[dict]:
-    """Lista todos los usuarios de tipo empresa con datos de la empresa vinculada."""
+async def listar_usuarios_socioformador(db: AsyncSession) -> list[dict]:
+    """Lista todos los usuarios de tipo socioformador con datos del socioformador vinculada."""
     result = await db.execute(
-        select(Usuario, Empresa)
-        .outerjoin(Empresa, Usuario.id_empresa == Empresa.id_empresa)
-        .where(Usuario.rol == "empresa")
-        .order_by(Empresa.nombre_empresa)
+        select(Usuario, Socioformador)
+        .outerjoin(Socioformador, Usuario.id_socioformador == Socioformador.id_socioformador)
+        .where(Usuario.rol == "socioformador")
+        .order_by(Socioformador.nombre_socioformador)
     )
     return [
         {
             "id_matricula": u.id_matricula,
             "nombre": u.nombre,
             "correo": u.correo,
-            "id_empresa": u.id_empresa,
-            "nombre_empresa": e.nombre_empresa if e else None,
+            "id_socioformador": u.id_socioformador,
+            "nombre_socioformador": e.nombre_socioformador if e else None,
             "created_at": u.created_at.isoformat() if u.created_at else None,
         }
         for u, e in result.all()
     ]
 
 
-async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict:
+async def resetear_password_socioformador(db: AsyncSession, id_matricula: str) -> dict:
     """
-    Resetea la contraseña de un usuario empresa y retorna la nueva contraseña en texto plano.
+    Resetea la contraseña de un usuario socioformador y retorna la nueva contraseña en texto plano.
     Se usa cuando el admin necesita recuperar/regenerar las credenciales de acceso.
     """
     from fastapi import HTTPException
 
     result = await db.execute(
-        select(Usuario, Empresa)
-        .outerjoin(Empresa, Usuario.id_empresa == Empresa.id_empresa)
-        .where(Usuario.id_matricula == id_matricula, Usuario.rol == "empresa")
+        select(Usuario, Socioformador)
+        .outerjoin(Socioformador, Usuario.id_socioformador == Socioformador.id_socioformador)
+        .where(Usuario.id_matricula == id_matricula, Usuario.rol == "socioformador")
     )
     row = result.first()
     if not row:
-        raise HTTPException(status_code=404, detail="Usuario empresa no encontrado")
+        raise HTTPException(status_code=404, detail="Usuario socioformador no encontrado")
 
-    usuario, empresa = row
+    usuario, socioformador = row
 
     nueva_password = secrets.token_urlsafe(12)
     usuario.password_hash = hash_password(nueva_password)
@@ -532,7 +532,7 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
         LogAuditoria(
             tipo_evento="PASSWORD_RESET_ADMIN",
             id_matricula=usuario.id_matricula,
-            detalle=f"Admin reseteó contraseña para usuario empresa: {usuario.correo}",
+            detalle=f"Admin reseteó contraseña para usuario socioformador: {usuario.correo}",
         )
     )
 
@@ -543,7 +543,7 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
         "nombre": usuario.nombre,
         "correo": usuario.correo,
         "password": nueva_password,
-        "nombre_empresa": empresa.nombre_empresa if empresa else None,
+        "nombre_socioformador": socioformador.nombre_socioformador if socioformador else None,
     }
 
 
@@ -551,7 +551,7 @@ async def resetear_password_empresa(db: AsyncSession, id_matricula: str) -> dict
 
 # Roles cuyas contraseñas el admin puede resetear desde el panel.
 # Alumnos quedan fuera: ellos usan el flujo de Google login / OTP por separado.
-_RESETTABLE_ROLES = ("admin", "empresa")
+_RESETTABLE_ROLES = ("admin", "socioformador")
 
 
 # ── Pre-registro ──────────────────────────────────────────────────────────────
@@ -576,10 +576,10 @@ async def cerrar_preregistro(db: AsyncSession, id_evento: int) -> dict:
 
 
 async def listar_credenciales(db: AsyncSession) -> list[dict]:
-    """Lista usuarios con rol admin/empresa para el panel de credenciales."""
+    """Lista usuarios con rol admin/socioformador para el panel de credenciales."""
     result = await db.execute(
-        select(Usuario, Empresa)
-        .join(Empresa, Usuario.id_empresa == Empresa.id_empresa, isouter=True)
+        select(Usuario, Socioformador)
+        .join(Socioformador, Usuario.id_socioformador == Socioformador.id_socioformador, isouter=True)
         .where(
             Usuario.rol.in_(_RESETTABLE_ROLES),
             Usuario.is_google_login.is_(False),
@@ -592,8 +592,8 @@ async def listar_credenciales(db: AsyncSession) -> list[dict]:
             "nombre": u.nombre,
             "correo": u.correo,
             "rol": u.rol,
-            "id_empresa": u.id_empresa,
-            "nombre_empresa": e.nombre_empresa if e else None,
+            "id_socioformador": u.id_socioformador,
+            "nombre_socioformador": e.nombre_socioformador if e else None,
         }
         for u, e in result.all()
     ]
@@ -610,7 +610,7 @@ async def reset_password_usuario(
     todos sus refresh tokens. Devuelve el password en plano (solo una vez).
 
     Reglas:
-      - Solo se permite resetear usuarios con rol admin/empresa.
+      - Solo se permite resetear usuarios con rol admin/socioformador.
       - El admin no puede resetear su propia cuenta (evita lockout).
     """
     from fastapi import HTTPException
@@ -671,16 +671,16 @@ async def reset_password_usuario(
 
 # ── Carga de CSV ──────────────────────────────────────────────────────────────
 
-async def procesar_csv_empresas_proyectos(
+async def procesar_csv_socioformadores_proyectos(
     db: AsyncSession,
     csv_content: str,
     id_evento: int,
 ) -> dict:
     """
-    Procesa un CSV con empresas y proyectos.
-    Formato esperado: nombre_empresa,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
+    Procesa un CSV con socioformadores y proyectos.
+    Formato esperado: nombre_socioformador,logo_url,nombre_proyecto,descripcion_proyecto,capacidad_max
 
-    Crea empresas si no existen y siempre crea nuevos proyectos.
+    Crea socioformadores si no existen y siempre crea nuevos proyectos.
     Retorna resumen de registros creados.
     """
     import csv
@@ -694,7 +694,7 @@ async def procesar_csv_empresas_proyectos(
 
     # Parse CSV
     reader = csv.DictReader(io.StringIO(csv_content))
-    expected_columns = {"nombre_empresa", "logo_url", "nombre_proyecto", "descripcion_proyecto", "capacidad_max"}
+    expected_columns = {"nombre_socioformador", "logo_url", "nombre_proyecto", "descripcion_proyecto", "capacidad_max"}
 
     if not reader.fieldnames or not set(reader.fieldnames).issuperset(expected_columns):
         raise HTTPException(
@@ -702,24 +702,24 @@ async def procesar_csv_empresas_proyectos(
             detail=f"CSV debe contener las columnas: {', '.join(expected_columns)}"
         )
 
-    empresas_creadas = 0
+    socioformadores_creadas = 0
     proyectos_creados = 0
     errores = []
 
-    # Cache de empresas para no repetir queries
-    empresas_cache = {}
+    # Cache de socioformadores para no repetir queries
+    socioformadores_cache = {}
 
     for idx, row in enumerate(reader, start=2):  # start=2 porque la fila 1 son headers
         try:
-            nombre_empresa = (row.get("nombre_empresa") or "").strip()
+            nombre_socioformador = (row.get("nombre_socioformador") or "").strip()
             logo_url = (row.get("logo_url") or "").strip() or None
             nombre_proyecto = (row.get("nombre_proyecto") or "").strip()
             descripcion = (row.get("descripcion_proyecto") or "").strip() or None
             capacidad_str = (row.get("capacidad_max") or "").strip()
 
             # Validaciones básicas
-            if not nombre_empresa:
-                errores.append(f"Fila {idx}: nombre_empresa vacío")
+            if not nombre_socioformador:
+                errores.append(f"Fila {idx}: nombre_socioformador vacío")
                 continue
 
             if not nombre_proyecto:
@@ -734,29 +734,29 @@ async def procesar_csv_empresas_proyectos(
                 errores.append(f"Fila {idx}: capacidad_max debe ser un número positivo (recibido: {capacidad_str})")
                 continue
 
-            # Buscar o crear empresa
-            if nombre_empresa in empresas_cache:
-                empresa = empresas_cache[nombre_empresa]
+            # Buscar o crear socioformador
+            if nombre_socioformador in socioformadores_cache:
+                socioformador = socioformadores_cache[nombre_socioformador]
             else:
                 result = await db.execute(
-                    select(Empresa).where(Empresa.nombre_empresa == nombre_empresa)
+                    select(Socioformador).where(Socioformador.nombre_socioformador == nombre_socioformador)
                 )
-                empresa = result.scalar_one_or_none()
+                socioformador = result.scalar_one_or_none()
 
-                if not empresa:
-                    empresa = Empresa(
-                        nombre_empresa=nombre_empresa,
+                if not socioformador:
+                    socioformador = Socioformador(
+                        nombre_socioformador=nombre_socioformador,
                         logo_url=logo_url,
                     )
-                    db.add(empresa)
-                    await db.flush()  # Para obtener id_empresa
-                    empresas_creadas += 1
+                    db.add(socioformador)
+                    await db.flush()  # Para obtener id_socioformador
+                    socioformadores_creadas += 1
 
-                empresas_cache[nombre_empresa] = empresa
+                socioformadores_cache[nombre_socioformador] = socioformador
 
             # Crear proyecto
             proyecto = Proyecto(
-                id_empresa=empresa.id_empresa,
+                id_socioformador=socioformador.id_socioformador,
                 id_evento=id_evento,
                 nombre_proyecto=nombre_proyecto,
                 descripcion=descripcion,
@@ -778,7 +778,7 @@ async def procesar_csv_empresas_proyectos(
 
     return {
         "ok": True,
-        "empresas_creadas": empresas_creadas,
+        "socioformadores_creadas": socioformadores_creadas,
         "proyectos_creados": proyectos_creados,
         "errores": errores,
         "total_errores": len(errores),

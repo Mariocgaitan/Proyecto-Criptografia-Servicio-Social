@@ -6,200 +6,205 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.58 0.22 27);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
-    --chart-1: oklch(0.809 0.105 251.813);
-    --chart-2: oklch(0.623 0.214 259.815);
-    --chart-3: oklch(0.546 0.245 262.881);
-    --chart-4: oklch(0.488 0.243 264.376);
-    --chart-5: oklch(0.424 0.199 265.638);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0)
-  }
-  .dark {
-    /* Tec de Monterrey Brand System */
-    --tec-primary: #0039A6;
-    --tec-deep: #082970;
-    --tec-denim: #1154BD;
-    --tec-surface: #0A1628;
+    :root {
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.145 0 0);
+        --card: oklch(1 0 0);
+        --card-foreground: oklch(0.145 0 0);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0 0);
+        --primary: oklch(0.205 0 0);
+        --primary-foreground: oklch(0.985 0 0);
+        --secondary: oklch(0.97 0 0);
+        --secondary-foreground: oklch(0.205 0 0);
+        --muted: oklch(0.97 0 0);
+        --muted-foreground: oklch(0.556 0 0);
+        --accent: oklch(0.97 0 0);
+        --accent-foreground: oklch(0.205 0 0);
+        --destructive: oklch(0.58 0.22 27);
+        --border: oklch(0.922 0 0);
+        --input: oklch(0.922 0 0);
+        --ring: oklch(0.708 0 0);
+        --chart-1: oklch(0.809 0.105 251.813);
+        --chart-2: oklch(0.623 0.214 259.815);
+        --chart-3: oklch(0.546 0.245 262.881);
+        --chart-4: oklch(0.488 0.243 264.376);
+        --chart-5: oklch(0.424 0.199 265.638);
+        --radius: 0.625rem;
+        --sidebar: oklch(0.985 0 0);
+        --sidebar-foreground: oklch(0.145 0 0);
+        --sidebar-primary: oklch(0.205 0 0);
+        --sidebar-primary-foreground: oklch(0.985 0 0);
+        --sidebar-accent: oklch(0.97 0 0);
+        --sidebar-accent-foreground: oklch(0.205 0 0);
+        --sidebar-border: oklch(0.922 0 0);
+        --sidebar-ring: oklch(0.708 0 0);
+    }
+    .dark {
+        /* Tec de Monterrey Brand System */
+        --tec-primary: #0039a6;
+        --tec-deep: #082970;
+        --tec-denim: #1154bd;
+        --tec-surface: #0a1628;
 
-    --background: oklch(0.15 0.03 260);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.18 0.025 260);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.18 0.025 260);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.45 0.18 260);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.25 0.04 260);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.25 0.03 260);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.50 0.16 260);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.50 0.16 260);
-    --chart-1: oklch(0.55 0.20 260);
-    --chart-2: oklch(0.50 0.18 255);
-    --chart-3: oklch(0.45 0.16 250);
-    --chart-4: oklch(0.40 0.14 245);
-    --chart-5: oklch(0.35 0.12 240);
-    --sidebar: oklch(0.15 0.03 260);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.45 0.18 260);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.25 0.04 260);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: oklch(0.50 0.16 260)
-  }
-  .theme {
-    --font-sans: 'Geist Variable', sans-serif
-  ;
-    --animate-caret-blink: caret-blink 1.25s ease-out infinite}
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-    min-height: 100dvh;
-    overflow-x: hidden;
-  }
-  html {
-    @apply font-sans;
-  }
+        --background: oklch(0.15 0.03 260);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.18 0.025 260);
+        --card-foreground: oklch(0.985 0 0);
+        --popover: oklch(0.18 0.025 260);
+        --popover-foreground: oklch(0.985 0 0);
+        --primary: oklch(0.45 0.18 260);
+        --primary-foreground: oklch(0.985 0 0);
+        --secondary: oklch(0.25 0.04 260);
+        --secondary-foreground: oklch(0.985 0 0);
+        --muted: oklch(0.25 0.03 260);
+        --muted-foreground: oklch(0.708 0 0);
+        --accent: oklch(0.5 0.16 260);
+        --accent-foreground: oklch(0.985 0 0);
+        --destructive: oklch(0.704 0.191 22.216);
+        --border: oklch(1 0 0 / 10%);
+        --input: oklch(1 0 0 / 15%);
+        --ring: oklch(0.5 0.16 260);
+        --chart-1: oklch(0.55 0.2 260);
+        --chart-2: oklch(0.5 0.18 255);
+        --chart-3: oklch(0.45 0.16 250);
+        --chart-4: oklch(0.4 0.14 245);
+        --chart-5: oklch(0.35 0.12 240);
+        --sidebar: oklch(0.15 0.03 260);
+        --sidebar-foreground: oklch(0.985 0 0);
+        --sidebar-primary: oklch(0.45 0.18 260);
+        --sidebar-primary-foreground: oklch(0.985 0 0);
+        --sidebar-accent: oklch(0.25 0.04 260);
+        --sidebar-accent-foreground: oklch(0.985 0 0);
+        --sidebar-border: oklch(1 0 0 / 10%);
+        --sidebar-ring: oklch(0.5 0.16 260);
+    }
+    .theme {
+        --font-sans: "Geist Variable", sans-serif;
+        --animate-caret-blink: caret-blink 1.25s ease-out infinite;
+    }
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+        min-height: 100dvh;
+        overflow-x: hidden;
+    }
+    html {
+        @apply font-sans;
+    }
 }
 
 html,
 body,
 #root {
-  width: 100%;
-  min-height: 100dvh;
+    width: 100%;
+    min-height: 100dvh;
+
+    font-size: clamp(12px, 2.5vmin, 18px);
 }
 
 /* input-otp: fix giant visible character on WebKit/iOS.
    The library sets font-size=container-height but only hides text via
    color:transparent — WebKit also needs -webkit-text-fill-color set. */
 [data-input-otp] {
-  -webkit-text-fill-color: transparent !important;
+    -webkit-text-fill-color: transparent !important;
 }
 
 /* Aceternity UI - Hide scrollbar for tabs */
 .no-visible-scrollbar {
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    -webkit-overflow-scrolling: touch;
 }
 .no-visible-scrollbar::-webkit-scrollbar {
-  display: none;
+    display: none;
 }
 
 @theme inline {
-  @keyframes caret-blink {
-  0%,70%,100% {
-    opacity: 1;
+    @keyframes caret-blink {
+        0%,
+        70%,
+        100% {
+            opacity: 1;
+        }
+        20%,
+        50% {
+            opacity: 0;
+        }
     }
-  20%,50% {
-    opacity: 0;
-    }
-  }
 }
 
 /* ── Admin panel light theme ──────────────────────────────────────── */
 [data-admin-theme="light"] {
-  background-color: #f1f5f9;
-  color: #0f172a;
+    background-color: #f1f5f9;
+    color: #0f172a;
 }
 
 /* Header */
 [data-admin-theme="light"] header {
-  background-color: rgba(255, 255, 255, 0.92) !important;
-  border-bottom-color: rgba(15, 23, 42, 0.08) !important;
-  backdrop-filter: blur(12px);
+    background-color: rgba(255, 255, 255, 0.92) !important;
+    border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+    backdrop-filter: blur(12px);
 }
 
 /* Cards / surface containers with black bg */
 [data-admin-theme="light"] [class*="bg-black"] {
-  background-color: rgba(255, 255, 255, 0.85) !important;
+    background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
 /* Low-opacity white items → soft slate */
 [data-admin-theme="light"] [class*="bg-white/5"],
 [data-admin-theme="light"] [class*="bg-white/8"] {
-  background-color: rgba(15, 23, 42, 0.04) !important;
+    background-color: rgba(15, 23, 42, 0.04) !important;
 }
 [data-admin-theme="light"] [class*="bg-white/10"] {
-  background-color: rgba(15, 23, 42, 0.07) !important;
+    background-color: rgba(15, 23, 42, 0.07) !important;
 }
 [data-admin-theme="light"] [class*="bg-white/15"] {
-  background-color: rgba(15, 23, 42, 0.10) !important;
+    background-color: rgba(15, 23, 42, 0.1) !important;
 }
 [data-admin-theme="light"] [class*="bg-white/20"],
 [data-admin-theme="light"] [class*="bg-white/25"] {
-  background-color: rgba(15, 23, 42, 0.13) !important;
+    background-color: rgba(15, 23, 42, 0.13) !important;
 }
 
 /* Borders */
 [data-admin-theme="light"] [class*="border-white"] {
-  border-color: rgba(15, 23, 42, 0.12) !important;
+    border-color: rgba(15, 23, 42, 0.12) !important;
 }
 
 /* Text: white → dark slate */
 [data-admin-theme="light"] [class*="text-white"]:not([class*="text-white/3"]):not([class*="text-white/4"]) {
-  color: #0f172a !important;
+    color: #0f172a !important;
 }
 [data-admin-theme="light"] [class*="text-white/3"],
 [data-admin-theme="light"] [class*="text-white/4"],
 [data-admin-theme="light"] [class*="text-white/5"],
 [data-admin-theme="light"] [class*="text-white/6"] {
-  color: rgba(15, 23, 42, 0.5) !important;
+    color: rgba(15, 23, 42, 0.5) !important;
 }
 [data-admin-theme="light"] [class*="text-white/7"],
 [data-admin-theme="light"] [class*="text-white/8"] {
-  color: rgba(15, 23, 42, 0.7) !important;
+    color: rgba(15, 23, 42, 0.7) !important;
 }
 
 /* Inputs */
 [data-admin-theme="light"] input,
 [data-admin-theme="light"] select,
 [data-admin-theme="light"] textarea {
-  background-color: rgba(15, 23, 42, 0.05) !important;
-  border-color: rgba(15, 23, 42, 0.15) !important;
-  color: #0f172a !important;
+    background-color: rgba(15, 23, 42, 0.05) !important;
+    border-color: rgba(15, 23, 42, 0.15) !important;
+    color: #0f172a !important;
 }
 
 /* Recharts axis text */
 [data-admin-theme="light"] .recharts-cartesian-axis-tick text {
-  fill: #475569 !important;
+    fill: #475569 !important;
 }
 [data-admin-theme="light"] .recharts-cartesian-grid line {
-  stroke: rgba(15, 23, 42, 0.1) !important;
+    stroke: rgba(15, 23, 42, 0.1) !important;
 }
 
 /* ── Portaled overlays in light mode ──────────────────────────────────
@@ -210,29 +215,39 @@ body,
 
 /* Force-dark slate surfaces (modals, forced select dropdown, footer) → white */
 [data-admin-theme="light"] [class*="bg-slate-950"] {
-  background-color: #ffffff !important;
+    background-color: #ffffff !important;
 }
 [data-admin-theme="light"] [data-slot="dialog-content"] {
-  border-color: rgba(15, 23, 42, 0.10) !important;
-  box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.35) !important;
+    border-color: rgba(15, 23, 42, 0.1) !important;
+    box-shadow: 0 24px 60px -20px rgba(15, 23, 42, 0.35) !important;
 }
 
 /* Backdrop stays a soft dark veil (the bg-black→white remap would bleach it) */
 [data-admin-theme="light"] [data-slot="dialog-overlay"] {
-  background-color: rgba(15, 23, 42, 0.28) !important;
+    background-color: rgba(15, 23, 42, 0.28) !important;
 }
 
 /* Semantic title / accent text needs darker shades on the white modal */
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-amber-2"],
-[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-amber-4"] { color: #b45309 !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-amber-4"] {
+    color: #b45309 !important;
+}
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-emerald-2"],
-[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-emerald-4"] { color: #047857 !important; }
-[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-red-2"] { color: #b91c1c !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-emerald-4"] {
+    color: #047857 !important;
+}
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-red-2"] {
+    color: #b91c1c !important;
+}
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-green-1"],
-[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-green-2"] { color: #15803d !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="text-green-2"] {
+    color: #15803d !important;
+}
 
 /* Saturated action buttons keep white labels (override the blanket text-white→ink rule) */
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-blue-6"][class*="text-white"],
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-amber-6"][class*="text-white"],
 [data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-emerald-7"][class*="text-white"],
-[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-red-6"][class*="text-white"] { color: #ffffff !important; }
+[data-admin-theme="light"] [data-slot="dialog-content"] [class*="bg-red-6"][class*="text-white"] {
+    color: #ffffff !important;
+}

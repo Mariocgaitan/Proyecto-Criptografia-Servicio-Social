@@ -32,11 +32,11 @@ PROTECTED_GETS = [
     "/api/v1/alumno/qr-payload?id_evento=1",
     "/api/v1/alumno/estado-inscripcion",
     "/api/v1/admin/proyectos",
-    "/api/v1/admin/empresas",
+    "/api/v1/admin/socioformadores",
     "/api/v1/admin/eventos",
     "/api/v1/admin/estadisticas/kpis",
     "/api/v1/admin/sistema/cache-stats",
-    "/api/v1/empresa/proyecto",
+    "/api/v1/socioformador/proyecto",
 ]
 
 
@@ -54,14 +54,14 @@ async def test_alumno_en_admin_retorna_403(client: AsyncClient, sample_data):
     assert resp.status_code == 403
 
 
-async def test_alumno_en_empresa_retorna_403(client: AsyncClient, sample_data):
+async def test_alumno_en_socioformador_retorna_403(client: AsyncClient, sample_data):
     cookies = _cookies_for(sample_data["alumno"])
-    resp = await client.get("/api/v1/empresa/proyecto", cookies=cookies)
+    resp = await client.get("/api/v1/socioformador/proyecto", cookies=cookies)
     assert resp.status_code == 403
 
 
-async def test_empresa_en_admin_retorna_403(client: AsyncClient, sample_data):
-    cookies = _cookies_for(sample_data["empresa_user"])
+async def test_socioformador_en_admin_retorna_403(client: AsyncClient, sample_data):
+    cookies = _cookies_for(sample_data["socioformador_user"])
     resp = await client.get("/api/v1/admin/proyectos", cookies=cookies)
     assert resp.status_code == 403
 

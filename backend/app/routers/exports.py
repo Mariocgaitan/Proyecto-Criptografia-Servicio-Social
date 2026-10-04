@@ -22,7 +22,7 @@ async def export_csv(
     request: Request,
     scope: str = Query(default="all", pattern="^(all|filtered)$"),
     evento_id: int | None = Query(default=None),
-    empresa_id: int | None = Query(default=None),
+    socioformador_id: int | None = Query(default=None),
     proyecto_id: int | None = Query(default=None),
     carrera: str | None = Query(default=None),
     fecha_inicio: date | None = Query(default=None),
@@ -32,15 +32,15 @@ async def export_csv(
     current_user=Depends(get_current_user),
 ):
     """Descarga CSV por dataset con soporte de scope all/filtered."""
-    if current_user.rol not in {"admin", "empresa"}:
+    if current_user.rol not in {"admin", "socioformador"}:
         raise HTTPException(status_code=403, detail="Acceso denegado")
 
-    if current_user.rol == "empresa" and dataset in {"usuarios_padron", "logs"}:
+    if current_user.rol == "socioformador" and dataset in {"usuarios_padron", "logs"}:
         raise HTTPException(status_code=403, detail="No tienes permisos para este dataset")
 
     filters = ExportFilters(
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         carrera=carrera,
         fecha_inicio=fecha_inicio,
@@ -54,7 +54,7 @@ async def export_csv(
         scope=scope,
         filters=filters,
         user_role=current_user.rol,
-        user_empresa_id=current_user.id_empresa,
+        user_socioformador_id=current_user.id_socioformador,
     )
 
     try:

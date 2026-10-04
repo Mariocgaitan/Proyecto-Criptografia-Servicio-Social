@@ -39,7 +39,7 @@ async def test_crear_proyecto(
 ):
     cookies = await auth_cookies("admin")
     payload = {
-        "id_empresa": sample_data["empresa"].id_empresa,
+        "id_socioformador": sample_data["socioformador"].id_socioformador,
         "id_evento": sample_data["evento"].id_evento,
         "nombre_proyecto": "Proyecto Beta",
         "descripcion": "Un proyecto de prueba",

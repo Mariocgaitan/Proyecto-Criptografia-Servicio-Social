@@ -33,7 +33,7 @@ from app.core.redis import connect_redis, disconnect_redis
 from app.db.ssh_manager import ssh_tunnel_manager
 from app.db.session import AsyncSessionLocal
 from app.db import models_import as _models  # noqa: F401 — carga todos los modelos para SQLAlchemy
-from app.routers import auth, alumno, admin, empresa, estadisticas, system_metrics, exports, health
+from app.routers import auth, alumno, admin, socioformador, estadisticas, system_metrics, exports, health
 
 # ── Logging & Sentry ──────────────────────────────────────────────────────────
 setup_logging()
@@ -160,7 +160,7 @@ async def security_headers_middleware(request: Request, call_next) -> Response:
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
 
     # Permitir cámara solo en la ruta del escáner; bloquearla en el resto
-    if request.url.path.startswith("/empresa/escaner"):
+    if request.url.path.startswith("/socioformador/escaner"):
         response.headers["Permissions-Policy"] = (
             "geolocation=(), camera=(self), microphone=(), payment=()"
         )
@@ -230,7 +230,7 @@ app.include_router(health.router)
 app.include_router(auth.router, tags=["Autenticación"])
 app.include_router(alumno.router, tags=["Alumno"])
 app.include_router(admin.router, tags=["Admin"])
-app.include_router(empresa.router, tags=["Empresa"])
+app.include_router(socioformador.router, tags=["Socioformador"])
 app.include_router(estadisticas.router, tags=["Estadisticas"])
 app.include_router(system_metrics.router, tags=["Sistema"])
 app.include_router(exports.router, tags=["Export"])

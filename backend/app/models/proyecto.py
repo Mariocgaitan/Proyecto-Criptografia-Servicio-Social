@@ -8,13 +8,13 @@ from app.db.base import Base
 
 class Proyecto(Base):
     """
-    Representa un proyecto/oportunidad ofrecido por una empresa en un evento.
+    Representa un proyecto/oportunidad ofrecido por una socioformador en un evento.
     """
     __tablename__ = "proyectos"
 
     id_proyecto: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    id_empresa: Mapped[int] = mapped_column(
-        Integer, ForeignKey("empresas.id_empresa", ondelete="RESTRICT"), nullable=False
+    id_socioformador: Mapped[int] = mapped_column(
+        Integer, ForeignKey("socioformadores.id_socioformador", ondelete="RESTRICT"), nullable=False
     )
     id_evento: Mapped[int] = mapped_column(
         Integer, ForeignKey("eventos.id_evento", ondelete="RESTRICT"), nullable=False
@@ -28,7 +28,7 @@ class Proyecto(Base):
     )
 
     # Relaciones
-    empresa: Mapped["Empresa"] = relationship("Empresa", back_populates="proyectos")
+    socioformador: Mapped["Socioformador"] = relationship("Socioformador", back_populates="proyectos")
     evento: Mapped["Evento"] = relationship("Evento", back_populates="proyectos")
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
         "Inscripcion", back_populates="proyecto"

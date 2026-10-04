@@ -12,7 +12,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.empresa import Empresa
+from app.models.socioformador import Socioformador
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
 from app.models.log_auditoria import LogAuditoria
@@ -25,7 +25,7 @@ from app.models.usuario_evento import UsuarioEvento
 ALLOWED_DATASETS = {
     "inscripciones",
     "proyectos",
-    "empresas",
+    "socioformadores",
     "usuarios_padron",
     "logs",
 }
@@ -34,7 +34,7 @@ ALLOWED_DATASETS = {
 @dataclass(slots=True)
 class ExportFilters:
     evento_id: int | None = None
-    empresa_id: int | None = None
+    socioformador_id: int | None = None
     proyecto_id: int | None = None
     carrera: str | None = None
     fecha_inicio: date | None = None
@@ -56,26 +56,26 @@ async def _rows_inscripciones(
     db: AsyncSession,
     filters: ExportFilters,
     user_role: str,
-    user_empresa_id: int | None,
+    user_socioformador_id: int | None,
 ) -> list[dict]:
     query = (
-        select(Inscripcion, Usuario, Proyecto, Empresa, Evento)
+        select(Inscripcion, Usuario, Proyecto, Socioformador, Evento)
         .join(Usuario, Usuario.id_matricula == Inscripcion.id_matricula)
         .join(Proyecto, Proyecto.id_proyecto == Inscripcion.id_proyecto)
-        .join(Empresa, Empresa.id_empresa == Proyecto.id_empresa)
+        .join(Socioformador, Socioformador.id_socioformador == Proyecto.id_socioformador)
         .join(Evento, Evento.id_evento == Inscripcion.id_evento)
         .order_by(Inscripcion.timestamp.desc())
     )
 
-    if user_role == "empresa":
-        if not user_empresa_id:
-            raise HTTPException(status_code=403, detail="Usuario empresa sin empresa asignada")
-        query = query.where(Proyecto.id_empresa == user_empresa_id)
+    if user_role == "socioformador":
+        if not user_socioformador_id:
+            raise HTTPException(status_code=403, detail="Usuario socioformador sin socioformador asignada")
+        query = query.where(Proyecto.id_socioformador == user_socioformador_id)
 
     if filters.evento_id is not None:
         query = query.where(Inscripcion.id_evento == filters.evento_id)
-    if filters.empresa_id is not None and user_role == "admin":
-        query = query.where(Proyecto.id_empresa == filters.empresa_id)
+    if filters.socioformador_id is not None and user_role == "admin":
+        query = query.where(Proyecto.id_socioformador == filters.socioformador_id)
     if filters.proyecto_id is not None:
         query = query.where(Inscripcion.id_proyecto == filters.proyecto_id)
     if filters.carrera:
@@ -87,14 +87,14 @@ async def _rows_inscripciones(
 
     result = await db.execute(query.limit(filters.limite))
     rows: list[dict] = []
-    for ins, usuario, proyecto, empresa, evento in result.all():
+    for ins, usuario, proyecto, socioformador, evento in result.all():
         rows.append(
             {
                 "id_inscripcion": str(ins.id_inscripcion),
                 "id_evento": evento.id_evento,
                 "evento": evento.nombre,
-                "id_empresa": empresa.id_empresa,
-                "empresa": empresa.nombre_empresa,
+                "id_socioformador": socioformador.id_socioformador,
+                "socioformador": socioformador.nombre_socioformador,
                 "id_proyecto": proyecto.id_proyecto,
                 "proyecto": proyecto.nombre_proyecto,
                 "matricula": usuario.id_matricula,
@@ -115,24 +115,24 @@ async def _rows_proyectos(
     db: AsyncSession,
     filters: ExportFilters,
     user_role: str,
-    user_empresa_id: int | None,
+    user_socioformador_id: int | None,
 ) -> list[dict]:
     query = (
-        select(Proyecto, Empresa, Evento)
-        .join(Empresa, Empresa.id_empresa == Proyecto.id_empresa)
+        select(Proyecto, Socioformador, Evento)
+        .join(Socioformador, Socioformador.id_socioformador == Proyecto.id_socioformador)
         .join(Evento, Evento.id_evento == Proyecto.id_evento)
-        .order_by(Evento.id_evento.desc(), Empresa.nombre_empresa.asc(), Proyecto.nombre_proyecto.asc())
+        .order_by(Evento.id_evento.desc(), Socioformador.nombre_socioformador.asc(), Proyecto.nombre_proyecto.asc())
     )
 
-    if user_role == "empresa":
-        if not user_empresa_id:
-            raise HTTPException(status_code=403, detail="Usuario empresa sin empresa asignada")
-        query = query.where(Proyecto.id_empresa == user_empresa_id)
+    if user_role == "socioformador":
+        if not user_socioformador_id:
+            raise HTTPException(status_code=403, detail="Usuario socioformador sin socioformador asignada")
+        query = query.where(Proyecto.id_socioformador == user_socioformador_id)
 
     if filters.evento_id is not None:
         query = query.where(Proyecto.id_evento == filters.evento_id)
-    if filters.empresa_id is not None and user_role == "admin":
-        query = query.where(Proyecto.id_empresa == filters.empresa_id)
+    if filters.socioformador_id is not None and user_role == "admin":
+        query = query.where(Proyecto.id_socioformador == filters.socioformador_id)
     if filters.proyecto_id is not None:
         query = query.where(Proyecto.id_proyecto == filters.proyecto_id)
     if filters.fecha_inicio:
@@ -142,15 +142,15 @@ async def _rows_proyectos(
 
     result = await db.execute(query.limit(filters.limite))
     rows: list[dict] = []
-    for proyecto, empresa, evento in result.all():
+    for proyecto, socioformador, evento in result.all():
         ocupacion_pct = (proyecto.cupo_actual / proyecto.capacidad_max * 100) if proyecto.capacidad_max else 0
         rows.append(
             {
                 "id_proyecto": proyecto.id_proyecto,
                 "proyecto": proyecto.nombre_proyecto,
                 "descripcion": proyecto.descripcion or "",
-                "id_empresa": empresa.id_empresa,
-                "empresa": empresa.nombre_empresa,
+                "id_socioformador": socioformador.id_socioformador,
+                "socioformador": socioformador.nombre_socioformador,
                 "id_evento": evento.id_evento,
                 "evento": evento.nombre,
                 "capacidad_max": proyecto.capacidad_max,
@@ -163,30 +163,30 @@ async def _rows_proyectos(
     return rows
 
 
-async def _rows_empresas(
+async def _rows_socioformadores(
     db: AsyncSession,
     filters: ExportFilters,
     user_role: str,
-    user_empresa_id: int | None,
+    user_socioformador_id: int | None,
 ) -> list[dict]:
-    query = select(Empresa).order_by(Empresa.nombre_empresa.asc())
+    query = select(Socioformador).order_by(Socioformador.nombre_socioformador.asc())
 
-    if user_role == "empresa":
-        if not user_empresa_id:
-            raise HTTPException(status_code=403, detail="Usuario empresa sin empresa asignada")
-        query = query.where(Empresa.id_empresa == user_empresa_id)
-    elif filters.empresa_id is not None:
-        query = query.where(Empresa.id_empresa == filters.empresa_id)
+    if user_role == "socioformador":
+        if not user_socioformador_id:
+            raise HTTPException(status_code=403, detail="Usuario socioformador sin socioformador asignada")
+        query = query.where(Socioformador.id_socioformador == user_socioformador_id)
+    elif filters.socioformador_id is not None:
+        query = query.where(Socioformador.id_socioformador == filters.socioformador_id)
 
     result = await db.execute(query.limit(filters.limite))
     return [
         {
-            "id_empresa": empresa.id_empresa,
-            "nombre_empresa": empresa.nombre_empresa,
-            "logo_url": empresa.logo_url or "",
-            "created_at": empresa.created_at.isoformat() if empresa.created_at else "",
+            "id_socioformador": socioformador.id_socioformador,
+            "nombre_socioformador": socioformador.nombre_socioformador,
+            "logo_url": socioformador.logo_url or "",
+            "created_at": socioformador.created_at.isoformat() if socioformador.created_at else "",
         }
-        for empresa in result.scalars().all()
+        for socioformador in result.scalars().all()
     ]
 
 
@@ -260,7 +260,7 @@ async def register_export_audit(
     """Registra en auditoría la descarga del CSV."""
     safe_filters = {
         "evento_id": filters.evento_id,
-        "empresa_id": filters.empresa_id,
+        "socioformador_id": filters.socioformador_id,
         "proyecto_id": filters.proyecto_id,
         "carrera": filters.carrera,
         "fecha_inicio": filters.fecha_inicio.isoformat() if filters.fecha_inicio else None,
@@ -293,7 +293,7 @@ async def export_dataset_csv(
     scope: str,
     filters: ExportFilters,
     user_role: str,
-    user_empresa_id: int | None,
+    user_socioformador_id: int | None,
 ) -> tuple[str, int]:
     """Construye el contenido CSV y devuelve (csv_text, row_count)."""
     if dataset not in ALLOWED_DATASETS:
@@ -306,13 +306,13 @@ async def export_dataset_csv(
         filters = ExportFilters(limite=filters.limite)
 
     if dataset == "inscripciones":
-        rows = await _rows_inscripciones(db, filters, user_role, user_empresa_id)
+        rows = await _rows_inscripciones(db, filters, user_role, user_socioformador_id)
         fieldnames = [
             "id_inscripcion",
             "id_evento",
             "evento",
-            "id_empresa",
-            "empresa",
+            "id_socioformador",
+            "socioformador",
             "id_proyecto",
             "proyecto",
             "matricula",
@@ -326,13 +326,13 @@ async def export_dataset_csv(
             "fecha_inscripcion",
         ]
     elif dataset == "proyectos":
-        rows = await _rows_proyectos(db, filters, user_role, user_empresa_id)
+        rows = await _rows_proyectos(db, filters, user_role, user_socioformador_id)
         fieldnames = [
             "id_proyecto",
             "proyecto",
             "descripcion",
-            "id_empresa",
-            "empresa",
+            "id_socioformador",
+            "socioformador",
             "id_evento",
             "evento",
             "capacidad_max",
@@ -341,9 +341,9 @@ async def export_dataset_csv(
             "ocupacion_pct",
             "evento_activo",
         ]
-    elif dataset == "empresas":
-        rows = await _rows_empresas(db, filters, user_role, user_empresa_id)
-        fieldnames = ["id_empresa", "nombre_empresa", "logo_url", "created_at"]
+    elif dataset == "socioformadores":
+        rows = await _rows_socioformadores(db, filters, user_role, user_socioformador_id)
+        fieldnames = ["id_socioformador", "nombre_socioformador", "logo_url", "created_at"]
     elif dataset == "usuarios_padron":
         rows = await _rows_usuarios_padron(db, filters)
         fieldnames = [

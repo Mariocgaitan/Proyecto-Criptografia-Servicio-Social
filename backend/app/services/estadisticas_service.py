@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.cache import cached
 from app.core.pagination import paginate
-from app.models.empresa import Empresa
+from app.models.socioformador import Socioformador
 from app.models.evento import Evento
 from app.models.inscripcion import Inscripcion
 from app.models.log_auditoria import LogAuditoria
@@ -111,7 +111,7 @@ async def get_kpis(
 
     total_registrados = 0
     total_inscritos = 0
-    total_empresas = 0
+    total_socioformadores = 0
     ocupacion_promedio = 0.0
 
     if selected_evento_id is not None:
@@ -132,9 +132,9 @@ async def get_kpis(
 
         total_inscritos = int(await db.scalar(select(func.count(Inscripcion.id_inscripcion)).where(and_(*ins_filters))) or 0)
 
-        total_empresas = int(
+        total_socioformadores = int(
             await db.scalar(
-                select(func.count(distinct(Proyecto.id_empresa))).where(Proyecto.id_evento == selected_evento_id)
+                select(func.count(distinct(Proyecto.id_socioformador))).where(Proyecto.id_evento == selected_evento_id)
             )
             or 0
         )
@@ -166,7 +166,7 @@ async def get_kpis(
         "total_alumnos_registrados": total_registrados,
         "total_inscritos": total_inscritos,
         "ocupacion_promedio": ocupacion_promedio,
-        "empresas_participantes": total_empresas,
+        "socioformadores_participantes": total_socioformadores,
         "intentos_login_fallido_7d": login_fallidos_7d,
     }
 
@@ -211,7 +211,7 @@ async def get_general_contract(
             "total_alumnos_registrados": kpis.get("total_alumnos_registrados", 0),
             "total_inscritos": kpis.get("total_inscritos", 0),
             "ocupacion_promedio": kpis.get("ocupacion_promedio", 0),
-            "empresas_participantes": kpis.get("empresas_participantes", 0),
+            "socioformadores_participantes": kpis.get("socioformadores_participantes", 0),
         },
         "series": {
             "ocupacion_eventos": ocupacion_eventos,
@@ -232,7 +232,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
                 "total_inscritos": 0,
                 "total_pendientes": 0,
                 "porcentaje_avance": 0.0,
-                "empresas_participantes": 0,
+                "socioformadores_participantes": 0,
                 "proyectos_totales": 0,
                 "proyectos_con_cupo": 0,
                 "proyectos_sin_movimiento": 0,
@@ -248,7 +248,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
             "series": {
                 "inscripciones_por_dia": [],
                 "carreras_con_pendientes": [],
-                "empresas_con_mas_inscritos": [],
+                "socioformadores_con_mas_inscritos": [],
                 "proyectos_con_mas_demanda": [],
             },
         }
@@ -258,8 +258,8 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
     proyectos = await get_proyectos_cupo(db, evento_id=selected_evento_id)
     carreras_result = await get_alumnos_por_carrera(db, evento_id=selected_evento_id, page_size=100)
     carreras = carreras_result.get("data", []) if isinstance(carreras_result, dict) else carreras_result
-    empresas_result = await get_alumnos_por_empresa(db, evento_id=selected_evento_id, page_size=8)
-    empresas = empresas_result.get("data", []) if isinstance(empresas_result, dict) else empresas_result
+    socioformadores_result = await get_alumnos_por_socioformador(db, evento_id=selected_evento_id, page_size=8)
+    socioformadores = socioformadores_result.get("data", []) if isinstance(socioformadores_result, dict) else socioformadores_result
     timeline = await get_inscripciones_timeline(db, evento_id=selected_evento_id, ventana="30d")
 
     pending_rows = (
@@ -311,7 +311,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
         base_item = {
             "id_proyecto": proyecto.get("id_proyecto"),
             "proyecto": proyecto.get("proyecto"),
-            "empresa": proyecto.get("empresa"),
+            "socioformador": proyecto.get("socioformador"),
             "cupo_actual": cupo_actual,
             "capacidad_max": capacidad,
             "ocupacion_pct": ocupacion_pct,
@@ -327,7 +327,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
         if cupo_actual > 0:
             proyectos_con_mas_demanda.append(base_item)
 
-    proyectos_sin_movimiento.sort(key=lambda item: (item.get("empresa") or "", item.get("proyecto") or ""))
+    proyectos_sin_movimiento.sort(key=lambda item: (item.get("socioformador") or "", item.get("proyecto") or ""))
     proyectos_por_llenarse.sort(
         key=lambda item: (
             int(item.get("cupos_disponibles") or 0),
@@ -364,7 +364,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
             "total_inscritos": total_inscritos,
             "total_pendientes": total_pendientes,
             "porcentaje_avance": porcentaje_avance,
-            "empresas_participantes": int(kpis.get("empresas_participantes", 0)),
+            "socioformadores_participantes": int(kpis.get("socioformadores_participantes", 0)),
             "proyectos_totales": proyectos_totales,
             "proyectos_con_cupo": proyectos_con_cupo,
             "proyectos_sin_movimiento": len(proyectos_sin_movimiento),
@@ -389,12 +389,12 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
         "series": {
             "inscripciones_por_dia": timeline[-14:],
             "carreras_con_pendientes": carreras_con_pendientes[:8],
-            "empresas_con_mas_inscritos": [
+            "socioformadores_con_mas_inscritos": [
                 {
-                    "empresa": item.get("empresa"),
+                    "socioformador": item.get("socioformador"),
                     "cantidad_inscritos": int(item.get("cantidad_inscritos") or 0),
                 }
-                for item in empresas[:8]
+                for item in socioformadores[:8]
             ],
             "proyectos_con_mas_demanda": proyectos_con_mas_demanda[:8],
         },
@@ -405,7 +405,7 @@ async def get_overview_contract(db: AsyncSession, evento_id: int | None = None) 
 async def get_particular_contract(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -420,20 +420,20 @@ async def get_particular_contract(
         include_security_metrics=False,
     )
 
-    proyectos_cupo = await get_proyectos_cupo(db, evento_id=evento_id, empresa_id=empresa_id)
+    proyectos_cupo = await get_proyectos_cupo(db, evento_id=evento_id, socioformador_id=socioformador_id)
     if proyecto_id is not None:
         proyectos_cupo = [item for item in proyectos_cupo if int(item.get("id_proyecto", 0)) == proyecto_id]
 
-    alumnos_empresa_result = await get_alumnos_por_empresa(db, evento_id, page_size=100)
-    alumnos_empresa = alumnos_empresa_result.get("data", alumnos_empresa_result) if isinstance(alumnos_empresa_result, dict) else alumnos_empresa_result
-    ratio = await get_ratio_inscritos(db, evento_id=evento_id, empresa_id=empresa_id, carrera=carrera)
+    alumnos_socioformador_result = await get_alumnos_por_socioformador(db, evento_id, page_size=100)
+    alumnos_socioformador = alumnos_socioformador_result.get("data", alumnos_socioformador_result) if isinstance(alumnos_socioformador_result, dict) else alumnos_socioformador_result
+    ratio = await get_ratio_inscritos(db, evento_id=evento_id, socioformador_id=socioformador_id, carrera=carrera)
     if proyecto_id is not None:
         ratio = [item for item in ratio if int(item.get("id_proyecto", 0)) == proyecto_id]
 
     timeline = await get_inscripciones_timeline(
         db,
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         carrera=carrera,
         fecha_inicio=fecha_inicio,
@@ -444,7 +444,7 @@ async def get_particular_contract(
     return {
         "filtros_aplicados": {
             "evento_id": evento_id,
-            "empresa_id": empresa_id,
+            "socioformador_id": socioformador_id,
             "proyecto_id": proyecto_id,
             "carrera": carrera,
             "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
@@ -458,7 +458,7 @@ async def get_particular_contract(
         },
         "series": {
             "proyectos_cupo": proyectos_cupo,
-            "alumnos_por_empresa": alumnos_empresa,
+            "alumnos_por_socioformador": alumnos_socioformador,
             "ratio_inscritos": ratio,
             "inscripciones_timeline": timeline,
         },
@@ -509,13 +509,13 @@ async def get_ocupacion_eventos(db: AsyncSession, evento_id: int | None = None) 
 async def get_proyectos_cupo(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
 ) -> list[dict]:
     filters = []
     if evento_id is not None:
         filters.append(Proyecto.id_evento == evento_id)
-    if empresa_id is not None:
-        filters.append(Proyecto.id_empresa == empresa_id)
+    if socioformador_id is not None:
+        filters.append(Proyecto.id_socioformador == socioformador_id)
 
     rows = (
         await db.execute(
@@ -525,10 +525,10 @@ async def get_proyectos_cupo(
                 Proyecto.id_evento,
                 Proyecto.capacidad_max,
                 Proyecto.cupo_actual,
-                Empresa.id_empresa,
-                Empresa.nombre_empresa,
+                Socioformador.id_socioformador,
+                Socioformador.nombre_socioformador,
             )
-            .join(Empresa, Empresa.id_empresa == Proyecto.id_empresa)
+            .join(Socioformador, Socioformador.id_socioformador == Proyecto.id_socioformador)
             .where(*filters)
             .group_by(
                 Proyecto.id_proyecto,
@@ -536,10 +536,10 @@ async def get_proyectos_cupo(
                 Proyecto.id_evento,
                 Proyecto.capacidad_max,
                 Proyecto.cupo_actual,
-                Empresa.id_empresa,
-                Empresa.nombre_empresa,
+                Socioformador.id_socioformador,
+                Socioformador.nombre_socioformador,
             )
-            .order_by(Empresa.nombre_empresa.asc(), Proyecto.nombre_proyecto.asc())
+            .order_by(Socioformador.nombre_socioformador.asc(), Proyecto.nombre_proyecto.asc())
         )
     ).all()
 
@@ -548,8 +548,8 @@ async def get_proyectos_cupo(
             "id_proyecto": row.id_proyecto,
             "proyecto": row.nombre_proyecto,
             "id_evento": row.id_evento,
-            "id_empresa": row.id_empresa,
-            "empresa": row.nombre_empresa,
+            "id_socioformador": row.id_socioformador,
+            "socioformador": row.nombre_socioformador,
             "capacidad_max": int(row.capacidad_max or 0),
             "cupo_actual": int(row.cupo_actual or 0),
         }
@@ -561,7 +561,7 @@ async def get_proyectos_cupo(
 async def get_alertas_proyectos(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     min_ocupacion_pct: float = 40.0,
     ocupacion_alta_pct: float = 90.0,
@@ -571,7 +571,7 @@ async def get_alertas_proyectos(
     if ocupacion_alta_pct < min_ocupacion_pct:
         ocupacion_alta_pct = min_ocupacion_pct
 
-    proyectos = await get_proyectos_cupo(db, evento_id=evento_id, empresa_id=empresa_id)
+    proyectos = await get_proyectos_cupo(db, evento_id=evento_id, socioformador_id=socioformador_id)
     if proyecto_id is not None:
         proyectos = [item for item in proyectos if int(item.get("id_proyecto", 0)) == proyecto_id]
 
@@ -605,8 +605,8 @@ async def get_alertas_proyectos(
                     "id_proyecto": item.get("id_proyecto"),
                     "proyecto": item.get("proyecto"),
                     "id_evento": item.get("id_evento"),
-                    "id_empresa": item.get("id_empresa"),
-                    "empresa": item.get("empresa"),
+                    "id_socioformador": item.get("id_socioformador"),
+                    "socioformador": item.get("socioformador"),
                     "ocupacion_pct": ocupacion_pct,
                     "flags": project_flags,
                     "capacidad_max": capacidad,
@@ -625,7 +625,7 @@ async def get_alertas_proyectos(
     return {
         "filtros_aplicados": {
             "evento_id": evento_id,
-            "empresa_id": empresa_id,
+            "socioformador_id": socioformador_id,
             "proyecto_id": proyecto_id,
             "min_ocupacion_pct": min_ocupacion_pct,
             "ocupacion_alta_pct": ocupacion_alta_pct,
@@ -641,8 +641,8 @@ async def get_alertas_proyectos(
     }
 
 
-@cached(key="alumnos_por_empresa", ttl=120)
-async def get_alumnos_por_empresa(
+@cached(key="alumnos_por_socioformador", ttl=120)
+async def get_alumnos_por_socioformador(
     db: AsyncSession,
     evento_id: int | None = None,
     page: int = 1,
@@ -652,22 +652,22 @@ async def get_alumnos_por_empresa(
 
     base_query = (
         select(
-            Empresa.id_empresa,
-            Empresa.nombre_empresa,
+            Socioformador.id_socioformador,
+            Socioformador.nombre_socioformador,
             func.count(Inscripcion.id_inscripcion).label("cantidad"),
         )
-        .join(Proyecto, Proyecto.id_empresa == Empresa.id_empresa)
+        .join(Proyecto, Proyecto.id_socioformador == Socioformador.id_socioformador)
         .join(Inscripcion, Inscripcion.id_proyecto == Proyecto.id_proyecto)
         .where(*filters)
-        .group_by(Empresa.id_empresa, Empresa.nombre_empresa)
-        .order_by(desc("cantidad"), Empresa.nombre_empresa.asc())
+        .group_by(Socioformador.id_socioformador, Socioformador.nombre_socioformador)
+        .order_by(desc("cantidad"), Socioformador.nombre_socioformador.asc())
     )
 
     result = await paginate(db, base_query, page, page_size)
     result["data"] = [
         {
-            "id_empresa": row.id_empresa,
-            "empresa": row.nombre_empresa,
+            "id_socioformador": row.id_socioformador,
+            "socioformador": row.nombre_socioformador,
             "cantidad_inscritos": int(row.cantidad or 0),
         }
         for row in result["data"]
@@ -830,7 +830,7 @@ def _bucket_floor(ts: datetime, step_minutes: int) -> datetime:
 async def get_inscripciones_timeline(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -862,10 +862,10 @@ async def get_inscripciones_timeline(
         filters.append(Inscripcion.id_evento == evento_id)
         base_filters.append(Inscripcion.id_evento == evento_id)
 
-    needs_proyecto_join = empresa_id is not None
-    if empresa_id is not None:
-        filters.append(Proyecto.id_empresa == empresa_id)
-        base_filters.append(Proyecto.id_empresa == empresa_id)
+    needs_proyecto_join = socioformador_id is not None
+    if socioformador_id is not None:
+        filters.append(Proyecto.id_socioformador == socioformador_id)
+        base_filters.append(Proyecto.id_socioformador == socioformador_id)
     if proyecto_id is not None:
         filters.append(Inscripcion.id_proyecto == proyecto_id)
         base_filters.append(Inscripcion.id_proyecto == proyecto_id)
@@ -900,14 +900,14 @@ async def get_inscripciones_timeline(
     # Para reflejar "bajones" tras eliminaciones recientes (como en vista trading),
     # se incorporan deltas negativos desde auditoría en el mismo timeline.
     deleted_events = []
-    if empresa_id is None and proyecto_id is None and carrera is None:
+    if socioformador_id is None and proyecto_id is None and carrera is None:
         deleted_events = (
             await db.execute(
                 select(LogAuditoria.timestamp)
                 .where(
                     LogAuditoria.timestamp >= start_dt,
                     LogAuditoria.timestamp <= end_dt,
-                    LogAuditoria.tipo_evento.in_(["INSCRIPCION_ELIMINADA_ADMIN", "INSCRIPCION_ELIMINADA_EMPRESA"]),
+                    LogAuditoria.tipo_evento.in_(["INSCRIPCION_ELIMINADA_ADMIN", "INSCRIPCION_ELIMINADA_SOCIOFORMADOR"]),
                 )
                 .order_by(LogAuditoria.timestamp.asc())
             )
@@ -1000,15 +1000,15 @@ async def get_reinscripcion_scatter(db: AsyncSession, evento_id: int | None = No
 async def get_ratio_inscritos(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     carrera: str | None = None,
 ) -> list[dict]:
     """Calcula el ratio de inscritos sobre registrados por proyecto."""
     filters = []
     if evento_id is not None:
         filters.append(Proyecto.id_evento == evento_id)
-    if empresa_id is not None:
-        filters.append(Proyecto.id_empresa == empresa_id)
+    if socioformador_id is not None:
+        filters.append(Proyecto.id_socioformador == socioformador_id)
 
     # Registrados por evento del proyecto, filtrables por carrera.
     registrados_subq = (
@@ -1074,7 +1074,7 @@ async def get_ratio_inscritos(
 async def get_embudo_conversion(
     db: AsyncSession,
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -1086,7 +1086,7 @@ async def get_embudo_conversion(
             "filtros_aplicados": {
                 "evento_id": evento_id,
                 "evento_id_resuelto": None,
-                "empresa_id": empresa_id,
+                "socioformador_id": socioformador_id,
                 "proyecto_id": proyecto_id,
                 "carrera": carrera,
                 "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
@@ -1126,9 +1126,9 @@ async def get_embudo_conversion(
 
     ins_stmt = select(func.count(distinct(Inscripcion.id_matricula))).select_from(Inscripcion)
 
-    if empresa_id is not None:
+    if socioformador_id is not None:
         ins_stmt = ins_stmt.join(Proyecto, Proyecto.id_proyecto == Inscripcion.id_proyecto)
-        ins_filters.append(Proyecto.id_empresa == empresa_id)
+        ins_filters.append(Proyecto.id_socioformador == socioformador_id)
 
     if proyecto_id is not None:
         ins_filters.append(Inscripcion.id_proyecto == proyecto_id)
@@ -1146,7 +1146,7 @@ async def get_embudo_conversion(
         "filtros_aplicados": {
             "evento_id": evento_id,
             "evento_id_resuelto": selected_evento_id,
-            "empresa_id": empresa_id,
+            "socioformador_id": socioformador_id,
             "proyecto_id": proyecto_id,
             "carrera": carrera,
             "fecha_inicio": fecha_inicio.isoformat() if fecha_inicio else None,
@@ -1218,8 +1218,8 @@ async def _resumen_evento(db: AsyncSession, evento_id: int) -> dict:
             ).where(Proyecto.id_evento == evento_id)
         )
     ).one()
-    empresas = int(
-        await db.scalar(select(func.count(distinct(Proyecto.id_empresa))).where(Proyecto.id_evento == evento_id)) or 0
+    socioformadores = int(
+        await db.scalar(select(func.count(distinct(Proyecto.id_socioformador))).where(Proyecto.id_evento == evento_id)) or 0
     )
     proyectos = int(await db.scalar(select(func.count(Proyecto.id_proyecto)).where(Proyecto.id_evento == evento_id)) or 0)
 
@@ -1230,7 +1230,7 @@ async def _resumen_evento(db: AsyncSession, evento_id: int) -> dict:
         "registrados": registrados,
         "inscritos": inscritos,
         "proyectos": proyectos,
-        "empresas": empresas,
+        "socioformadores": socioformadores,
         "ocupacion": ocupacion,
     }
 
@@ -1267,7 +1267,7 @@ async def _resumen_eventos_bulk(db: AsyncSession, evento_ids: list[int]) -> dict
             select(
                 Proyecto.id_evento,
                 func.count(Proyecto.id_proyecto).label("proyectos"),
-                func.count(distinct(Proyecto.id_empresa)).label("empresas"),
+                func.count(distinct(Proyecto.id_socioformador)).label("socioformadores"),
                 func.coalesce(func.sum(Proyecto.capacidad_max), 0).label("capacidad"),
                 func.coalesce(func.sum(Proyecto.cupo_actual), 0).label("cupo"),
             )
@@ -1281,7 +1281,7 @@ async def _resumen_eventos_bulk(db: AsyncSession, evento_ids: list[int]) -> dict
     proyectos_map = {
         int(row.id_evento): {
             "proyectos": int(row.proyectos or 0),
-            "empresas": int(row.empresas or 0),
+            "socioformadores": int(row.socioformadores or 0),
             "capacidad": float(row.capacidad or 0),
             "cupo": float(row.cupo or 0),
         }
@@ -1300,7 +1300,7 @@ async def _resumen_eventos_bulk(db: AsyncSession, evento_ids: list[int]) -> dict
             "registrados": int(registrados_map.get(evento_id, 0)),
             "inscritos": int(inscritos_map.get(evento_id, 0)),
             "proyectos": proyectos,
-            "empresas": int(proy.get("empresas", 0) or 0),
+            "socioformadores": int(proy.get("socioformadores", 0) or 0),
             "ocupacion": round((cupo / capacidad) * 100, 2) if capacidad else 0.0,
         }
 

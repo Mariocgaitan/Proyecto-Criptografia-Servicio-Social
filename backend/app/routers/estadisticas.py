@@ -33,22 +33,22 @@ async def api_ocupacion_eventos(
 @router.get("/api/v1/admin/estadisticas/proyectos-cupo", tags=["Admin", "Estadisticas"])
 async def api_proyectos_cupo(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_proyectos_cupo(db, evento_id, empresa_id)
+    return await estadisticas_service.get_proyectos_cupo(db, evento_id, socioformador_id)
 
 
-@router.get("/api/v1/admin/estadisticas/alumnos-por-empresa", tags=["Admin", "Estadisticas"])
-async def api_alumnos_por_empresa(
+@router.get("/api/v1/admin/estadisticas/alumnos-por-socioformador", tags=["Admin", "Estadisticas"])
+async def api_alumnos_por_socioformador(
     evento_id: int | None = None,
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_alumnos_por_empresa(db, evento_id, page, page_size)
+    return await estadisticas_service.get_alumnos_por_socioformador(db, evento_id, page, page_size)
 
 
 @router.get("/api/v1/admin/estadisticas/alumnos-por-carrera", tags=["Admin", "Estadisticas"])
@@ -66,7 +66,7 @@ async def api_alumnos_por_carrera(
 @router.get("/api/v1/admin/estadisticas/inscripciones-timeline", tags=["Admin", "Estadisticas"])
 async def api_inscripciones_timeline(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -79,7 +79,7 @@ async def api_inscripciones_timeline(
     return await estadisticas_service.get_inscripciones_timeline(
         db,
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         carrera=carrera,
         fecha_inicio=fecha_inicio,
@@ -111,18 +111,18 @@ async def api_comparativa_eventos(
 @router.get("/api/v1/admin/estadisticas/ratio-inscritos", tags=["Admin", "Estadisticas"])
 async def api_ratio_inscritos(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     carrera: str | None = None,
     db: AsyncSession = Depends(get_db),
     _=Depends(get_current_admin),
 ):
-    return await estadisticas_service.get_ratio_inscritos(db, evento_id, empresa_id, carrera)
+    return await estadisticas_service.get_ratio_inscritos(db, evento_id, socioformador_id, carrera)
 
 
 @router.get("/api/v1/admin/estadisticas/embudo-conversion", tags=["Admin", "Estadisticas"])
 async def api_embudo_conversion(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -133,7 +133,7 @@ async def api_embudo_conversion(
     return await estadisticas_service.get_embudo_conversion(
         db,
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         carrera=carrera,
         fecha_inicio=fecha_inicio,
@@ -154,7 +154,7 @@ async def api_logs_recientes(
 @router.get("/api/v1/admin/estadisticas/alertas-proyectos", tags=["Admin", "Estadisticas"])
 async def api_alertas_proyectos(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     min_ocupacion_pct: float = Query(default=40.0, ge=0, le=100),
     ocupacion_alta_pct: float = Query(default=90.0, ge=0, le=100),
@@ -164,7 +164,7 @@ async def api_alertas_proyectos(
     return await estadisticas_service.get_alertas_proyectos(
         db,
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         min_ocupacion_pct=min_ocupacion_pct,
         ocupacion_alta_pct=ocupacion_alta_pct,
@@ -212,7 +212,7 @@ async def api_alumnos_pendientes(
 @router.get("/api/v1/admin/estadisticas/particular", tags=["Admin", "Estadisticas"])
 async def api_estadisticas_particular(
     evento_id: int | None = None,
-    empresa_id: int | None = None,
+    socioformador_id: int | None = None,
     proyecto_id: int | None = None,
     carrera: str | None = None,
     fecha_inicio: date | None = None,
@@ -224,7 +224,7 @@ async def api_estadisticas_particular(
     return await estadisticas_service.get_particular_contract(
         db,
         evento_id=evento_id,
-        empresa_id=empresa_id,
+        socioformador_id=socioformador_id,
         proyecto_id=proyecto_id,
         carrera=carrera,
         fecha_inicio=fecha_inicio,

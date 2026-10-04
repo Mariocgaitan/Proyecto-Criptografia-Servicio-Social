@@ -47,13 +47,13 @@ def _crear_cliente_smtp() -> Optional[smtplib.SMTP]:
         logger.error(f"Error al conectar con SMTP: {e}")
         return None
 
-def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_empresa: str):
+def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_socioformador: str):
     """Envía un correo notificando al alumno su inscripción exitosa."""
     asunto = f"¡Inscripción Exitosa! Proyecto: {nombre_proyecto}"
 
     esc_alumno = html.escape(nombre_alumno)
     esc_proyecto = html.escape(nombre_proyecto)
-    esc_empresa = html.escape(nombre_empresa)
+    esc_socioformador = html.escape(nombre_socioformador)
 
     html_content = f"""
     <html>
@@ -64,7 +64,7 @@ def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto
         <p>Hola <strong>{esc_alumno}</strong>,</p>
         <p>Tu inscripción ha sido confirmada satisfactoriamente en el siguiente proyecto:</p>
         <div style="background-color: #f4f6f9; padding: 15px; border-left: 4px solid #003865; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {esc_empresa}</p>
+          <p style="margin: 0 0 10px 0;"><strong>Socioformador / Organización:</strong> {esc_socioformador}</p>
           <p style="margin: 0;"><strong>Proyecto:</strong> {esc_proyecto}</p>
         </div>
         <p>Mantente en contacto con la organización para los siguientes pasos.</p>
@@ -74,13 +74,13 @@ def enviar_correo_inscripcion(to_email: str, nombre_alumno: str, nombre_proyecto
     """
     _enviar_html(to_email, asunto, html_content)
 
-def enviar_correo_baja(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_empresa: str):
+def enviar_correo_baja(to_email: str, nombre_alumno: str, nombre_proyecto: str, nombre_socioformador: str):
     """Envía un correo notificando al alumno que ha sido dado de baja de un proyecto."""
     asunto = f"Aviso de Baja de Proyecto: {nombre_proyecto}"
 
     esc_alumno = html.escape(nombre_alumno)
     esc_proyecto = html.escape(nombre_proyecto)
-    esc_empresa = html.escape(nombre_empresa)
+    esc_socioformador = html.escape(nombre_socioformador)
 
     html_content = f"""
     <html>
@@ -91,7 +91,7 @@ def enviar_correo_baja(to_email: str, nombre_alumno: str, nombre_proyecto: str, 
         <p>Hola <strong>{esc_alumno}</strong>,</p>
         <p>Te informamos que has sido <strong>dado(a) de baja</strong> del siguiente proyecto:</p>
         <div style="background-color: #fff0f0; padding: 15px; border-left: 4px solid #d32f2f; margin: 20px 0;">
-          <p style="margin: 0 0 10px 0;"><strong>Empresa / Organización:</strong> {esc_empresa}</p>
+          <p style="margin: 0 0 10px 0;"><strong>Socioformador / Organización:</strong> {esc_socioformador}</p>
           <p style="margin: 0;"><strong>Proyecto:</strong> {esc_proyecto}</p>
         </div>
         <p>Si consideras que esto es un error o requieres más información, te invitamos a que te comuniques con el encargado de la organización o con tu director de carrera.</p>

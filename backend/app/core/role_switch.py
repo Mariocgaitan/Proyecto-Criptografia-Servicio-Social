@@ -1,7 +1,7 @@
 from app.core.config import settings
 
 
-_ALLOWED_TEST_ROLES = {"admin", "alumno", "empresa"}
+_ALLOWED_TEST_ROLES = {"admin", "alumno", "socioformador"}
 
 
 def resolve_effective_role(email: str | None, db_role: str) -> str:

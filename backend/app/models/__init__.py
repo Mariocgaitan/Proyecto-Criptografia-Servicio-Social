@@ -1,7 +1,7 @@
 from .usuario import Usuario
 from .padron_alumno import PadronAlumno
 from .evento import Evento
-from .empresa import Empresa
+from .socioformador import Socioformador
 from .proyecto import Proyecto
 from .usuario_evento import UsuarioEvento
 from .inscripcion import Inscripcion
@@ -16,7 +16,7 @@ __all__ = [
     "Usuario",
     "PadronAlumno",
     "Evento",
-    "Empresa",
+    "Socioformador",
     "Proyecto",
     "UsuarioEvento",
     "Inscripcion",

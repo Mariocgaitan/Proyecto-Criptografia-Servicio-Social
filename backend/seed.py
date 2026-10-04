@@ -4,8 +4,8 @@ Script de seed — Inserta los datos iniciales necesarios para que el sistema fu
 Pobla TODAS las tablas del sistema de forma reproducible:
   - eventos          (4 períodos)
   - padron_alumnos   (25 alumnos autorizados)
-  - empresas         (6 empresas participantes)
-  - proyectos        (1-2 proyectos por empresa ligados al evento activo)
+  - socioformadores         (6 socioformadores participantes)
+  - proyectos        (1-2 proyectos por socioformador ligados al evento activo)
   - usuarios         (25 alumnos registrados, espejo del padrón)
   - usuario_eventos  (cada alumno vinculado al evento activo)
   - logs_auditoria   (1 log de sistema por arranque de seed)
@@ -29,7 +29,7 @@ import bcrypt
 
 from app.db.models_import import (  # noqa: registra todos los modelos en SQLAlchemy
     Base,
-    Empresa,
+    Socioformador,
     Evento,
     LogAuditoria,
     PadronAlumno,
@@ -107,18 +107,18 @@ PADRON_DATA = [
     {"id_matricula": "A04901234", "nombre_completo": "Sebastián Gael Montalvo Peralta", "carrera": _CARRERAS[3], "semestre": 10},
 ]
 
-# 6 empresas participantes
-EMPRESAS_DATA = [
-    {"nombre_empresa": "Cemex",              "logo_url": None},
-    {"nombre_empresa": "Grupo Bimbo",        "logo_url": None},
-    {"nombre_empresa": "FEMSA",              "logo_url": None},
-    {"nombre_empresa": "Banorte",            "logo_url": None},
-    {"nombre_empresa": "Arca Continental",   "logo_url": None},
-    {"nombre_empresa": "Axtel (TotalPlay)",  "logo_url": None},
+# 6 socioformadores participantes
+SOCIOFORMADORES_DATA = [
+    {"nombre_socioformador": "Cemex",              "logo_url": None},
+    {"nombre_socioformador": "Grupo Bimbo",        "logo_url": None},
+    {"nombre_socioformador": "FEMSA",              "logo_url": None},
+    {"nombre_socioformador": "Banorte",            "logo_url": None},
+    {"nombre_socioformador": "Arca Continental",   "logo_url": None},
+    {"nombre_socioformador": "Axtel (TotalPlay)",  "logo_url": None},
 ]
 
-# Proyectos por empresa (se asignarán al evento activo FEB_JUN 2026)
-# Formato: (nombre_empresa, nombre_proyecto, descripcion, capacidad_max)
+# Proyectos por socioformador (se asignarán al evento activo FEB_JUN 2026)
+# Formato: (nombre_socioformador, nombre_proyecto, descripcion, capacidad_max)
 PROYECTOS_TEMPLATE = [
     ("Cemex",             "Optimización logística con IA",              "Aplicación de machine learning para rutas de distribución.",              5),
     ("Cemex",             "Gestión de inventario digital",              "Sistema ERP para plantas cementeras.",                                    4),
@@ -197,32 +197,32 @@ async def seed_padron() -> None:
             print(f"✅ Padrón sincronizado: {nuevos} nuevos, {actualizados} actualizados.")
 
 
-async def seed_empresas() -> dict[str, "Empresa"]:
-    """Inserta 6 empresas. Devuelve un mapa nombre→objeto."""
+async def seed_socioformadores() -> dict[str, "Socioformador"]:
+    """Inserta 6 socioformadores. Devuelve un mapa nombre→objeto."""
     async with AsyncSessionLocal() as db:
-        result = await db.execute(select(Empresa))
+        result = await db.execute(select(Socioformador))
         existentes = result.scalars().all()
 
         if existentes:
-            print(f"ℹ️  Ya existen {len(existentes)} empresas. Omitiendo inserción.")
-            return {e.nombre_empresa: e for e in existentes}
+            print(f"ℹ️  Ya existen {len(existentes)} socioformadores. Omitiendo inserción.")
+            return {e.nombre_socioformador: e for e in existentes}
 
-        empresas = [Empresa(**d) for d in EMPRESAS_DATA]
-        db.add_all(empresas)
+        socioformadores = [Socioformador(**d) for d in SOCIOFORMADORES_DATA]
+        db.add_all(socioformadores)
         await db.commit()
-        for e in empresas:
+        for e in socioformadores:
             await db.refresh(e)
-        print(f"✅ {len(empresas)} empresas insertadas:")
-        for e in empresas:
-            print(f"   - [{e.id_empresa}] {e.nombre_empresa}")
-        return {e.nombre_empresa: e for e in empresas}
+        print(f"✅ {len(socioformadores)} socioformadores insertadas:")
+        for e in socioformadores:
+            print(f"   - [{e.id_socioformador}] {e.nombre_socioformador}")
+        return {e.nombre_socioformador: e for e in socioformadores}
 
 
 async def seed_proyectos(
     evento_activo: "Evento",
-    empresas: dict[str, "Empresa"],
+    socioformadores: dict[str, "Socioformador"],
 ) -> None:
-    """Inserta proyectos vinculados al evento activo y a las empresas."""
+    """Inserta proyectos vinculados al evento activo y a los socioformadores."""
     async with AsyncSessionLocal() as db:
         result = await db.execute(select(Proyecto))
         if result.scalars().first():
@@ -230,14 +230,14 @@ async def seed_proyectos(
             return
 
         proyectos = []
-        for nombre_empresa, nombre_proj, desc, cap in PROYECTOS_TEMPLATE:
-            empresa = empresas.get(nombre_empresa)
-            if not empresa:
-                print(f"⚠️  Empresa '{nombre_empresa}' no encontrada, saltando proyecto.")
+        for nombre_socioformador, nombre_proj, desc, cap in PROYECTOS_TEMPLATE:
+            socioformador = socioformadores.get(nombre_socioformador)
+            if not socioformador:
+                print(f"⚠️  Socioformador '{nombre_socioformador}' no encontrada, saltando proyecto.")
                 continue
             proyectos.append(
                 Proyecto(
-                    id_empresa=empresa.id_empresa,
+                    id_socioformador=socioformador.id_socioformador,
                     id_evento=evento_activo.id_evento,
                     nombre_proyecto=nombre_proj,
                     descripcion=desc,
@@ -336,10 +336,10 @@ async def seed_admin_user() -> None:
         print(f"   ⚠️  Guarda esta contraseña — no se podrá recuperar.")
 
 
-async def seed_usuarios_empresa() -> None:
+async def seed_usuarios_socioformador() -> None:
     """
-    Genera un usuario empresa por empresa (contraseña única por empresa).
-    Es idempotente: omite empresas que ya tienen usuario empresa.
+    Genera un usuario socioformador por socioformador (contraseña única por socioformador).
+    Es idempotente: omite socioformadores que ya tienen usuario socioformador.
     """
     import re
     import unicodedata
@@ -350,54 +350,54 @@ async def seed_usuarios_empresa() -> None:
         return re.sub(r"[^a-z0-9]+", "-", ascii_text.lower()).strip("-")[:30]
 
     async with AsyncSessionLocal() as db:
-        # Usuarios empresa existentes por empresa
+        # Usuarios socioformador existentes por socioformador
         result_existentes = await db.execute(
-            select(Usuario.id_empresa).where(Usuario.rol == "empresa", Usuario.id_empresa.is_not(None))
+            select(Usuario.id_socioformador).where(Usuario.rol == "socioformador", Usuario.id_socioformador.is_not(None))
         )
-        empresas_con_usuario = {r for r in result_existentes.scalars().all() if r}
+        socioformadores_con_usuario = {r for r in result_existentes.scalars().all() if r}
 
-        # Todas las empresas
-        result_empresas = await db.execute(select(Empresa))
-        empresas = result_empresas.scalars().all()
+        # Todas los socioformadores
+        result_socioformadores = await db.execute(select(Socioformador))
+        socioformadores = result_socioformadores.scalars().all()
 
         nuevos = 0
         credenciales_log = []
-        for empresa in empresas:
-            if empresa.id_empresa in empresas_con_usuario:
+        for socioformador in socioformadores:
+            if socioformador.id_socioformador in socioformadores_con_usuario:
                 continue
 
             password = secrets.token_urlsafe(12)
-            slug_e = slugify(empresa.nombre_empresa)
+            slug_e = slugify(socioformador.nombre_socioformador)
             correo = f"contacto@{slug_e}.feriaserviciosocial.com"
 
             # Evitar correos duplicados
             dup = await db.execute(select(Usuario).where(Usuario.correo == correo))
             if dup.scalar_one_or_none():
-                correo = f"empresa{empresa.id_empresa}@{slug_e}.feriaserviciosocial.com"
+                correo = f"socioformador{socioformador.id_socioformador}@{slug_e}.feriaserviciosocial.com"
 
             usuario = Usuario(
-                id_matricula=f"EMP_{empresa.id_empresa:04d}",
-                nombre=empresa.nombre_empresa,
+                id_matricula=f"EMP_{socioformador.id_socioformador:04d}",
+                nombre=socioformador.nombre_socioformador,
                 correo=correo,
-                carrera="Empresa",
+                carrera="Socioformador",
                 semestre=0,
                 password_hash=_hash(password),
                 totp_secret="A" * 32,
-                rol="empresa",
-                id_empresa=empresa.id_empresa,
+                rol="socioformador",
+                id_socioformador=socioformador.id_socioformador,
             )
             db.add(usuario)
-            credenciales_log.append((empresa.nombre_empresa, correo, password))
+            credenciales_log.append((socioformador.nombre_socioformador, correo, password))
             nuevos += 1
 
         if nuevos == 0:
-            print("ℹ️  Todas las empresas ya tienen usuario empresa.")
+            print("ℹ️  Todas los socioformadores ya tienen usuario socioformador.")
             return
 
         await db.commit()
-        print(f"✅ {nuevos} usuarios empresa creados:")
-        for empresa_nombre, correo, pw in credenciales_log:
-            print(f"   [{empresa_nombre}]  correo={correo}  pass={pw}")
+        print(f"✅ {nuevos} usuarios socioformador creados:")
+        for socioformador_nombre, correo, pw in credenciales_log:
+            print(f"   [{socioformador_nombre}]  correo={correo}  pass={pw}")
         print("   ⚠️  Guarda estas credenciales — no se podrán recuperar.")
 
 
@@ -411,7 +411,7 @@ async def seed_log_sistema() -> None:
             ip_origen="127.0.0.1",
             detalle=(
                 "Seed inicial ejecutado: 4 eventos, 25 alumnos en padrón, "
-                "6 empresas, 12 proyectos, 25 usuarios, 25 usuario_eventos."
+                "6 socioformadores, 12 proyectos, 25 usuarios, 25 usuario_eventos."
             ),
         )
         db.add(log)
@@ -435,7 +435,7 @@ async def truncate_all() -> None:
         "logs_auditoria",
         "usuarios",
         "proyectos",
-        "empresas",
+        "socioformadores",
         "padron_alumnos",
         "eventos",
     ]
@@ -463,11 +463,11 @@ async def main(force: bool = False) -> None:
     print("\n── Padrón de alumnos ────────────────────")
     await seed_padron()
 
-    # 3. Empresas (independiente)
-    print("\n── Empresas ─────────────────────────────")
-    empresas_map = await seed_empresas()
+    # 3. Socioformadores (independiente)
+    print("\n── Socioformadores ─────────────────────────────")
+    socioformadores_map = await seed_socioformadores()
 
-    # 4. Proyectos (depende de evento activo y empresas)
+    # 4. Proyectos (depende de evento activo y socioformadores)
     evento_activo = next(
         (e for e in eventos_map.values() if e.activo), None
     )
@@ -475,7 +475,7 @@ async def main(force: bool = False) -> None:
         print("⚠️  No hay evento activo. Proyectos y usuarios NO se insertarán.")
     else:
         print(f"\n── Proyectos (evento: {evento_activo.nombre}) ──")
-        await seed_proyectos(evento_activo, empresas_map)
+        await seed_proyectos(evento_activo, socioformadores_map)
 
         # 5. Usuarios + usuario_eventos (depende de evento activo)
         print("\n── Usuarios & usuario_eventos ───────────")
@@ -485,9 +485,9 @@ async def main(force: bool = False) -> None:
     print("\n── Usuario Administrador ────────────────")
     await seed_admin_user()
 
-    # 7. Usuarios empresa (uno por empresa)
-    print("\n── Usuarios Empresa (por empresa) ───────")
-    await seed_usuarios_empresa()
+    # 7. Usuarios socioformador (uno por socioformador)
+    print("\n── Usuarios Socioformador (por socioformador) ───────")
+    await seed_usuarios_socioformador()
 
     # 8. Log de auditoría
     print("\n── Log de auditoría ─────────────────────")

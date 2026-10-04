@@ -43,7 +43,7 @@ class RoleRedirectResponse(BaseModel):
     """Respuesta después de validar TOTP con el rol del usuario."""
     access_token: str
     token_type: str = "bearer"
-    rol: str = Field(..., description="Rol: alumno, empresa o admin")
+    rol: str = Field(..., description="Rol: alumno, socioformador o admin")
     redirect_url: str = Field(..., description="URL a la que debe redirigirse el frontend")
     needs_profile: bool = Field(False, description="Indica si debe llenar el perfil inicial")
 

@@ -86,23 +86,23 @@ uv run python test_db_ssh.py
 
 ## Variables de entorno relevantes
 
-| Variable | Descripción | Valor por defecto |
-|---|---|---|
-| `DATABASE_URL` | URL de conexión a PostgreSQL (asyncpg) | `localhost:5432/feria_db` |
-| `USE_SSH_TUNNEL` | Habilita el túnel SSH | `false` |
-| `SSH_HOST` | IP o hostname del servidor SSH | — |
-| `SSH_PORT` | Puerto SSH | `22` |
-| `SSH_USER` | Usuario SSH | — |
-| `SSH_PKEY_PATH` | Ruta a la llave privada SSH | `~/.ssh/id_rsa` |
-| `REMOTE_DB_HOST` | Host de PostgreSQL en el servidor remoto | `127.0.0.1` |
-| `REMOTE_DB_PORT` | Puerto de PostgreSQL en el servidor remoto | `5432` |
-| `LOCAL_BIND_PORT` | Puerto local donde se expone el túnel | `5433` |
-| `JWT_SECRET_KEY` | Clave secreta para tokens JWT | — |
-| `APP_ENV` | Entorno (`development` / `production`) | `development` |
-| `DEBUG` | Activa logs SQL y docs `/docs` | `true` |
-| `TEST_ROLE_SWITCH_ENABLED` | Activa cambio de rol en pruebas para un correo especifico | `false` |
-| `TEST_ROLE_SWITCH_EMAIL` | Correo al que se le aplicara el rol forzado | `""` |
-| `TEST_ROLE_SWITCH_ROLE` | Rol forzado (`admin`, `alumno`, `empresa`) | `""` |
+| Variable                   | Descripción                                               | Valor por defecto         |
+| -------------------------- | --------------------------------------------------------- | ------------------------- |
+| `DATABASE_URL`             | URL de conexión a PostgreSQL (asyncpg)                    | `localhost:5432/feria_db` |
+| `USE_SSH_TUNNEL`           | Habilita el túnel SSH                                     | `false`                   |
+| `SSH_HOST`                 | IP o hostname del servidor SSH                            | —                         |
+| `SSH_PORT`                 | Puerto SSH                                                | `22`                      |
+| `SSH_USER`                 | Usuario SSH                                               | —                         |
+| `SSH_PKEY_PATH`            | Ruta a la llave privada SSH                               | `~/.ssh/id_rsa`           |
+| `REMOTE_DB_HOST`           | Host de PostgreSQL en el servidor remoto                  | `127.0.0.1`               |
+| `REMOTE_DB_PORT`           | Puerto de PostgreSQL en el servidor remoto                | `5432`                    |
+| `LOCAL_BIND_PORT`          | Puerto local donde se expone el túnel                     | `5433`                    |
+| `JWT_SECRET_KEY`           | Clave secreta para tokens JWT                             | —                         |
+| `APP_ENV`                  | Entorno (`development` / `production`)                    | `development`             |
+| `DEBUG`                    | Activa logs SQL y docs `/docs`                            | `true`                    |
+| `TEST_ROLE_SWITCH_ENABLED` | Activa cambio de rol en pruebas para un correo especifico | `false`                   |
+| `TEST_ROLE_SWITCH_EMAIL`   | Correo al que se le aplicara el rol forzado               | `""`                      |
+| `TEST_ROLE_SWITCH_ROLE`    | Rol forzado (`admin`, `alumno`, `socioformador`)          | `""`                      |
 
 ### Cambio rapido de rol para pruebas
 
@@ -125,5 +125,3 @@ TEST_ROLE_SWITCH_ROLE=admin
 ```
 
 Reinicia el backend despues de cambiar estas variables.
-
-

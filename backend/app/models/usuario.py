@@ -8,7 +8,7 @@ from app.db.base import Base
 
 class Usuario(Base):
     """
-    Representa a un usuario del sistema (alumno, empresa o admin).
+    Representa a un usuario del sistema (alumno, socioformador o admin).
     """
     __tablename__ = "usuarios"
 
@@ -34,8 +34,8 @@ class Usuario(Base):
     celular: Mapped[str | None] = mapped_column(String(20), nullable=True)
     descripcion_personal: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
-    id_empresa: Mapped[int | None] = mapped_column(
-        Integer, ForeignKey("empresas.id_empresa", ondelete="SET NULL"), nullable=True
+    id_socioformador: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("socioformadores.id_socioformador", ondelete="SET NULL"), nullable=True
     )
     id_proyecto: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("proyectos.id_proyecto", ondelete="SET NULL"), nullable=True
@@ -54,4 +54,4 @@ class Usuario(Base):
     inscripciones: Mapped[list["Inscripcion"]] = relationship(
         "Inscripcion", back_populates="usuario"
     )
-    empresa: Mapped["Empresa | None"] = relationship("Empresa", back_populates="usuarios")
+    socioformador: Mapped["Socioformador | None"] = relationship("Socioformador", back_populates="usuarios")

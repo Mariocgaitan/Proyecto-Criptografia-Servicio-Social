@@ -1,4 +1,4 @@
-"""add empresas, proyectos, inscripciones tables
+"""add socioformadores, proyectos, inscripciones tables
 
 Revision ID: a1b2c3d4e5f6
 Revises: 02c1c10b5c49
@@ -19,11 +19,11 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    # ── Tabla empresas ──────────────────────────────────────────────────────
+    # ── Tabel socioformadores ──────────────────────────────────────────────────────
     op.create_table(
-        'empresas',
-        sa.Column('id_empresa', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('nombre_empresa', sa.String(length=150), nullable=False),
+        'socioformadores',
+        sa.Column('id_socioformador', sa.Integer(), autoincrement=True, nullable=False),
+        sa.Column('nombre_socioformador', sa.String(length=150), nullable=False),
         sa.Column('logo_url', sa.String(length=255), nullable=True),
         sa.Column(
             'created_at',
@@ -31,14 +31,14 @@ def upgrade() -> None:
             server_default=sa.text('now()'),
             nullable=False,
         ),
-        sa.PrimaryKeyConstraint('id_empresa'),
+        sa.PrimaryKeyConstraint('id_socioformador'),
     )
 
     # ── Tabla proyectos ─────────────────────────────────────────────────────
     op.create_table(
         'proyectos',
         sa.Column('id_proyecto', sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column('id_empresa', sa.Integer(), nullable=False),
+        sa.Column('id_socioformador', sa.Integer(), nullable=False),
         sa.Column('id_evento', sa.Integer(), nullable=False),
         sa.Column('nombre_proyecto', sa.String(length=200), nullable=False),
         sa.Column('descripcion', sa.Text(), nullable=True),
@@ -50,7 +50,7 @@ def upgrade() -> None:
             server_default=sa.text('now()'),
             nullable=False,
         ),
-        sa.ForeignKeyConstraint(['id_empresa'], ['empresas.id_empresa'], ondelete='RESTRICT'),
+        sa.ForeignKeyConstraint(['id_socioformador'], ['socioformadores.id_socioformador'], ondelete='RESTRICT'),
         sa.ForeignKeyConstraint(['id_evento'],  ['eventos.id_evento'],   ondelete='RESTRICT'),
         sa.PrimaryKeyConstraint('id_proyecto'),
     )
@@ -87,4 +87,4 @@ def downgrade() -> None:
     op.drop_index('idx_inscripciones_proyecto',      table_name='inscripciones')
     op.drop_table('inscripciones')
     op.drop_table('proyectos')
-    op.drop_table('empresas')
+    op.drop_table('socioformadores')

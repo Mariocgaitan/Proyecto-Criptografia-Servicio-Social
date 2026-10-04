@@ -90,7 +90,7 @@ async def make_google_admin(correo: str, create_if_missing: bool = False) -> Non
         print("👤 Ahora que eres admin, puedes acceder al panel de administración:")
         print("   - Gestionar usuarios")
         print("   - Ver estadísticas")
-        print("   - Configurar empresas y proyectos")
+        print("   - Configurar socioformadores y proyectos")
         print("   - Auditoría del sistema")
 
 
